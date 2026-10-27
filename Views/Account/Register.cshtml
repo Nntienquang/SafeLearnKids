@@ -1,0 +1,45 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Đăng ký tài khoản phụ huynh";
+    ViewData["Page"] = "register";
+    ViewData["Area"] = "public";
+}
+<main id="main" style="flex:1 1 520px;min-width:0;padding:40px 56px;display:flex;flex-direction:column;justify-content:center;align-items:center">
+    <form asp-action="Register" method="post" style="width:100%;max-width:440px;display:flex;flex-direction:column;gap:18px">
+        <div class="brand" style="padding:0"><div class="brand-mark"><i class="ic ic-grad"></i></div><div class="brand-name">SafeLearn Kids</div></div>
+        <div><h1 class="sl-h1">Tạo tài khoản phụ huynh</h1><p class="sub">Mất chưa đến 1 phút. Sau đó ba mẹ tạo hồ sơ cho con.</p></div>
+        <div asp-validation-summary="ModelOnly" class="banner t-r" role="alert" style="font-size:13.5px;font-weight:600"></div>
+        <div class="field"><label asp-for="FullName" class="lab"></label><input asp-for="FullName" class="inp" autocomplete="name" placeholder="Nguyễn Văn A" /><span asp-validation-for="FullName" class="err"></span></div>
+        <div class="field"><label asp-for="Email" class="lab"></label><input asp-for="Email" class="inp" autocomplete="email" placeholder="ban@example.com" /><span asp-validation-for="Email" class="err"></span></div>
+        <div class="field">
+            <label asp-for="Password" class="lab"></label>
+            <input asp-for="Password" class="inp" autocomplete="new-password" />
+            <div id="r-meter" style="display:flex;gap:6px"><i style="flex:1;height:5px;border-radius:3px;background:var(--surface-2)"></i><i style="flex:1;height:5px;border-radius:3px;background:var(--surface-2)"></i><i style="flex:1;height:5px;border-radius:3px;background:var(--surface-2)"></i><i style="flex:1;height:5px;border-radius:3px;background:var(--surface-2)"></i></div>
+            <span asp-validation-for="Password" class="err"></span>
+            <span class="hint">Tối thiểu 8 ký tự. Thêm chữ hoa và ký hiệu để mạnh hơn.</span>
+        </div>
+        <div class="field"><label asp-for="ConfirmPassword" class="lab"></label><input asp-for="ConfirmPassword" class="inp" autocomplete="new-password" /><span asp-validation-for="ConfirmPassword" class="err"></span></div>
+        <div>
+            <label class="sl-row" style="align-items:flex-start;font-size:13.5px;color:var(--text-2);gap:10px"><input asp-for="Agree" class="chk" style="margin-top:2px" /><span>Tôi là phụ huynh hoặc người giám hộ, đồng ý với <b style="color:var(--primary-text)">điều khoản</b> và <b style="color:var(--primary-text)">chính sách dữ liệu của trẻ em</b>.</span></label>
+            <span asp-validation-for="Agree" class="err"></span>
+        </div>
+        <button type="submit" class="sl-btn sl-btn-p sl-btn-lg sl-btn-block">Tạo tài khoản</button>
+        <p style="text-align:center;color:var(--text-3);font-size:14px">Đã có tài khoản? <a href="~/login" style="color:var(--primary-text);font-weight:800">Đăng nhập</a></p>
+    </form>
+</main>
+<aside style="flex:1 1 460px;min-width:0;margin:16px;border-radius:32px;background:var(--grad);color:#fff;padding:56px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;min-height:460px">
+    <div style="position:absolute;right:-80px;top:-80px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.13)"></div>
+    <div style="position:relative"><span class="chip" style="background:rgba(255,255,255,.2);color:#fff">Cho bé tiểu học</span></div>
+    <div style="position:relative;display:flex;flex-direction:column;gap:22px">
+        <h2 style="font-size:40px;line-height:1.1;font-weight:800;letter-spacing:-.03em">Ba mẹ đặt luật,<br />con học thoải mái</h2>
+        @foreach (var s in new[] { ("1", "Tạo hồ sơ cho từng bé", "Tên, khối lớp và môn được học."), ("2", "Chọn bài và nguồn đã duyệt", "Con chỉ thấy những gì ba mẹ giao."), ("3", "Đặt giờ học, theo dõi tiến độ", "Báo cáo tuần gửi thẳng vào email.") })
+        {
+            <div class="sl-row" style="gap:14px;align-items:flex-start"><span style="flex:0 0 34px;height:34px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-weight:800">@s.Item1</span><div><div style="font-weight:800;font-size:16px">@s.Item2</div><div style="opacity:.88;font-size:14px">@s.Item3</div></div></div>
+        }
+    </div>
+    <div style="position:relative;font-size:13px;opacity:.9">Hệ thống chỉ lưu dữ liệu tối thiểu về bé và cho phép xóa bất cứ lúc nào.</div>
+</aside>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/auth.js" asp-append-version="true"></script>
+}

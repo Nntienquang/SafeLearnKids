@@ -1,0 +1,14 @@
+@{
+    ViewData["Title"] = """Trạng thái giao diện""";
+    ViewData["Page"] = "states";
+    ViewData["Area"] = "public";
+}
+<main style="flex:1;min-width:0;padding:40px 48px;display:flex;flex-direction:column;gap:22px">
+<div><h1 class="sl-h1" style="font-size:32px">Trạng thái: trống, lỗi, tải, thông báo</h1><p class="sub">Mọi màn hình cần đủ các trạng thái này.</p></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px">
+<section class="sl-card" style="flex:1 1 360px"><div class="chip t-n" style="margin-bottom:12px">Trống</div><div class="empty"><span class="ib t-n" style="width:56px;height:56px;margin:0 auto 12px"><i class="ic ic-book ic-lg"></i></span><div class="b" style="color:var(--text-2)">Chưa có bài nào được giao</div><div style="font-size:13px;margin:6px 0 14px">Chọn bài từ thư viện để con bắt đầu học.</div><a class="sl-btn sl-btn-p sl-btn-sm">Mở thư viện</a></div></section>
+<section class="sl-card" style="flex:1 1 360px"><div class="chip t-n" style="margin-bottom:12px">Đang tải</div><div class="sl-col" style="gap:12px"><div class="skel" style="height:90px;border-radius:16px"></div><div class="skel" style="height:16px;width:70%"></div><div class="skel" style="height:16px;width:45%"></div></div></section>
+<section class="sl-card" style="flex:1 1 360px"><div class="chip t-n" style="margin-bottom:12px">Mất mạng</div><div class="empty"><span class="ib t-a" style="width:56px;height:56px;margin:0 auto 12px"><i class="ic ic-wifioff ic-lg"></i></span><div class="b" style="color:var(--text-2)">Không có kết nối</div><div style="font-size:13px;margin:6px 0 14px">Kiểm tra mạng rồi thử lại.</div><a class="sl-btn sl-btn-sm"><i class="ic ic-refresh"></i>Thử lại</a></div></section></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px">
+<section class="sl-card" style="flex:1 1 360px;display:flex;flex-direction:column;gap:12px"><div class="chip t-n">Thông báo</div><div class="banner t-g" style="font-weight:600"><i class="ic ic-checkc"></i>Đã lưu thay đổi.</div><div class="banner t-a" style="font-weight:600"><i class="ic ic-alert"></i>Minh An sắp hết giờ học (còn 5 phút).</div><div class="banner t-r" style="font-weight:600"><i class="ic ic-x"></i>Không thể đồng bộ kênh. Thử lại sau.</div><div class="sl-toast"><i class="ic ic-checkc"></i>Đã gửi cho ba mẹ</div></section>
+<section class="sl-card" style="flex:1 1 360px"><div class="chip t-n" style="margin-bottom:12px">Hộp thoại xác nhận</div><div class="sl-modal"><div class="sl-row" style="gap:12px"><span class="ib t-r"><i class="ic ic-trash"></i></span><div class="card-t">Xóa hồ sơ Minh An?</div></div><p class="sub" style="margin:12px 0 18px;line-height:1.6">Toàn bộ lịch sử học và điểm quiz sẽ bị xóa vĩnh viễn.</p><div class="sl-row" style="gap:10px;justify-content:flex-end"><button class="sl-btn">Hủy</button><button class="sl-btn sl-btn-d">Xóa hồ sơ</button></div></div></section></div></main>

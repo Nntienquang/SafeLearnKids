@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = """Chi tiết bài học""";
+    ViewData["Page"] = "lesson-detail";
+    ViewData["Nav"] = "library";
+    ViewData["Crumb"] = Html.Raw("""Thư viện bài học <i class='ic ic-chevr'></i> Toán <i class='ic ic-chevr'></i> Bảng nhân 5""");
+    ViewData["Heading"] = """Bảng nhân 5""";
+    ViewData["Sub"] = """Toán · Lớp 3 · 3 nội dung · khoảng 24 phút""";
+}
+@section Actions {
+<button class="sl-btn" type="button">Gỡ khỏi lộ trình</button><button class="sl-btn sl-btn-p" type="button"><i class="ic ic-send"></i>Giao cho Minh An</button>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+<div class="sl-col" style="flex:2 1 520px;min-width:0;gap:16px">
+<div style="height:300px;border-radius:26px;background:linear-gradient(135deg,#4F46E5,#38BDF8);display:flex;align-items:center;justify-content:center;color:#fff;position:relative"><span style="width:84px;height:84px;border-radius:42px;background:#fff;color:#4F46E5;display:flex;align-items:center;justify-content:center"><i class="ic ic-play ic-xl"></i></span><span class="chip" style="position:absolute;left:18px;top:18px;background:rgba(255,255,255,.22);color:#fff">Xem thử như phụ huynh</span><span class="chip t-g" style="position:absolute;right:18px;top:18px"><i class="ic ic-shield"></i>Đã duyệt</span></div>
+<div class="sl-card"><div class="card-t" style="margin-bottom:6px">Mục tiêu bài học</div><p class="sub" style="line-height:1.7">Bé thuộc bảng nhân 5, nhận ra quy luật chữ số tận cùng là 0 hoặc 5 và vận dụng vào 3 bài toán có lời văn.</p></div>
+<div class="sl-card"><div class="card-t">Nội dung bài (theo thứ tự)</div>
+<div class="sl-row" style="gap:14px;padding:13px 0;border-top:1px solid var(--line)"><span class="ib t-p"><i class="ic ic-playc"></i></span><div class="grow"><div class="b">Video: Bảng nhân 5</div><div class="muted" style="font-size:12.5px">Kênh Học Toán Vui · 10 phút</div></div><span class="chip t-g">Đã duyệt</span></div>
+<div class="sl-row" style="gap:14px;padding:13px 0;border-top:1px solid var(--line)"><span class="ib t-t"><i class="ic ic-book"></i></span><div class="grow"><div class="b">Bài đọc: Quy luật của bảng nhân 5</div><div class="muted" style="font-size:12.5px">3 phút đọc</div></div><span class="chip t-n">Văn bản</span></div>
+<div class="sl-row" style="gap:14px;padding:13px 0;border-top:1px solid var(--line)"><span class="ib t-a"><i class="ic ic-target"></i></span><div class="grow"><div class="b">Quiz: 5 câu</div><div class="muted" style="font-size:12.5px">Bé cần đúng 3/5 để hoàn thành</div></div><span class="chip t-a">Chờ giao</span></div></div></div>
+<div class="sl-col" style="flex:1 1 300px;min-width:0;gap:16px">
+<div class="sl-card"><div class="card-t" style="margin-bottom:12px">Giao cho</div>
+<div class="sl-row" style="gap:12px;padding:10px;border-radius:14px;background:var(--primary-soft)"><span class="av av-s" style="background:#6A4CFF">M</span><span class="b grow">Minh An</span><i class="ic ic-checkc" style="color:var(--primary)"></i></div>
+<div class="sl-row" style="gap:12px;padding:10px"><span class="av av-s" style="background:#22C55E">N</span><span class="b grow" style="color:var(--text-2)">Bảo Nam (Lớp 1)</span><span class="chip t-n">Khác lớp</span></div>
+<div class="field" style="margin-top:14px"><label class="lab" for="ld-d">Hạn hoàn thành</label><input id="ld-d" class="inp" value="Chủ nhật, 25/10/2026"></div></div>
+<div class="sl-card"><div class="card-t" style="margin-bottom:12px">Thông tin an toàn</div>
+<div class="sl-col" style="gap:10px;font-size:13.5px;color:var(--text-2)"><div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Nguồn đã được quản trị duyệt</div><div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Phát bằng trình phát nhúng, không gợi ý video khác</div><div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Phù hợp lớp 2–4</div></div>
+<a class="sl-btn sl-btn-d sl-btn-sm" style="margin-top:14px" href="~/history"><i class="ic ic-flag"></i>Báo cáo nội dung này</a></div></div></div>

@@ -1,0 +1,10 @@
+@model bool
+<div class="top">
+    <div class="search"><i class="ic ic-search"></i>@(Model ? "Tìm bài học, môn, tài khoản..." : "Tìm bài học, nguồn, lịch sử...")</div>
+    <span class="icbtn" aria-label="Đổi giao diện"><i class="ic ic-moon"></i></span>
+    <span class="icbtn" aria-label="Thông báo"><i class="ic ic-bell"></i><i class="dot"></i></span>
+    @if (!Model)
+    {
+        <a class="sl-btn sl-btn-s" href="~/kids-picker"><i class="ic ic-smile"></i>Chế độ trẻ</a>
+    }
+</div>

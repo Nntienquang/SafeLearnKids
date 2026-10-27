@@ -1,0 +1,14 @@
+@{
+    ViewData["Title"] = """Tài khoản phụ huynh""";
+    ViewData["Page"] = "admin-users";
+    ViewData["Nav"] = "users";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Vận hành""");
+    ViewData["Heading"] = """Tài khoản phụ huynh""";
+    ViewData["Sub"] = """Tìm, khóa và mở khóa tài khoản (US-30).""";
+}
+@section Actions {
+<button class="sl-btn" type="button"><i class="ic ic-download"></i>Xuất danh sách</button>
+}
+<div class="sl-row" style="gap:12px;margin-bottom:16px;flex-wrap:wrap"><div class="search grow"><i class="ic ic-search"></i>Tìm theo tên hoặc email</div><div class="seg"><span class="on">Tất cả</span><span>Hoạt động</span><span>Bị khóa</span></div></div>
+<div class="sl-card" style="padding:6px 0"><table class="tbl"><thead><tr><th>Phụ huynh</th><th>Số bé</th><th>Tham gia</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+<tr><td><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--grad)">N</span><div><div class="b">Nguyễn Thu Hà</div><div class="muted" style="font-size:12.5px">ha.nguyen@@gmail.com</div></div></div></td><td class="b">2</td><td class="muted">05/10/2026</td><td><span class="chip t-g">Hoạt động</span></td><td style="text-align:right"><span class="icbtn" style="width:36px;height:36px;display:inline-flex"><i class="ic ic-more"></i></span></td></tr><tr><td><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--grad)">T</span><div><div class="b">Trần Văn Lan</div><div class="muted" style="font-size:12.5px">lan.tran@@gmail.com</div></div></div></td><td class="b">1</td><td class="muted">07/10/2026</td><td><span class="chip t-g">Hoạt động</span></td><td style="text-align:right"><span class="icbtn" style="width:36px;height:36px;display:inline-flex"><i class="ic ic-more"></i></span></td></tr><tr><td><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--grad)">P</span><div><div class="b">Phạm Quốc Bảo</div><div class="muted" style="font-size:12.5px">bao.pham@@outlook.com</div></div></div></td><td class="b">3</td><td class="muted">09/10/2026</td><td><span class="chip t-r">Bị khóa</span></td><td style="text-align:right"><span class="icbtn" style="width:36px;height:36px;display:inline-flex"><i class="ic ic-more"></i></span></td></tr><tr><td><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--grad)">L</span><div><div class="b">Lê Mỹ Linh</div><div class="muted" style="font-size:12.5px">linh.le@@gmail.com</div></div></div></td><td class="b">1</td><td class="muted">12/10/2026</td><td><span class="chip t-a">Chờ xác minh</span></td><td style="text-align:right"><span class="icbtn" style="width:36px;height:36px;display:inline-flex"><i class="ic ic-more"></i></span></td></tr></tbody></table></div>

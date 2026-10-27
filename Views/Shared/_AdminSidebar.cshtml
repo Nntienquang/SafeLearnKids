@@ -1,0 +1,21 @@
+@{
+    var nav = ViewData["Nav"] as string ?? "";
+    var fullName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "";
+}
+<aside class="side">
+    <div class="brand"><div class="brand-mark"><i class="ic ic-grad"></i></div><div><div class="brand-name">SafeLearn Kids</div><div class="brand-sub">Quản trị viên</div></div></div>
+    <a class="sl-nav @(nav == "home" ? "on" : "")" href="~/admin-home"><i class="ic ic-home"></i>Tổng quan</a>
+    <div class="side-l">Nội dung</div>
+    <a class="sl-nav @(nav == "catalog" ? "on" : "")" href="~/admin-catalog"><i class="ic ic-layers"></i>Môn học và bài học</a>
+    <a class="sl-nav @(nav == "lesson" ? "on" : "")" href="~/admin-lesson"><i class="ic ic-pen"></i>Soạn bài học</a>
+    <a class="sl-nav @(nav == "questions" ? "on" : "")" href="~/admin-questions"><i class="ic ic-target"></i>Câu hỏi và quiz</a>
+    <a class="sl-nav @(nav == "curate" ? "on" : "")" href="~/admin-curate"><i class="ic ic-playc"></i>Kênh gợi ý<span class="sl-badge hidden">0</span></a>
+    <div class="side-l">Vận hành</div>
+    <a class="sl-nav @(nav == "reports" ? "on" : "")" href="~/admin-reports"><i class="ic ic-flag"></i>Báo cáo nội dung<span class="sl-badge hidden">0</span></a>
+    <a class="sl-nav @(nav == "users" ? "on" : "")" href="~/admin-users"><i class="ic ic-users"></i>Tài khoản phụ huynh</a>
+    <a class="sl-nav @(nav == "audit" ? "on" : "")" href="~/admin-audit"><i class="ic ic-history"></i>Nhật ký xử lý</a>
+    <div class="side-foot">
+        <form asp-area="" asp-controller="Account" asp-action="Logout" method="post"><button type="submit" class="sl-btn sl-btn-g" style="justify-content:flex-start;width:100%"><i class="ic ic-logout"></i>Đăng xuất</button></form>
+        <div class="who"><span class="av av-s" style="background:#0F766E">@(fullName.Length > 0 ? fullName.Substring(fullName.LastIndexOf(' ') + 1, 1) : "?")</span><div style="flex:1;min-width:0"><div class="b" style="font-size:13.5px">@fullName</div><div class="muted" style="font-size:12px">@User.Identity?.Name</div></div></div>
+    </div>
+</aside>

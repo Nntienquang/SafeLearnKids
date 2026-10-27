@@ -1,0 +1,13 @@
+@{
+    ViewData["Title"] = """Thông báo""";
+    ViewData["Page"] = "notifications";
+    ViewData["Nav"] = "notifications";
+    ViewData["Crumb"] = Html.Raw("""Phụ huynh · Tài khoản""");
+    ViewData["Heading"] = """Thông báo""";
+    ViewData["Sub"] = """Việc cần ba mẹ xử lý và cập nhật về việc học.""";
+}
+@section Actions {
+<button class="sl-btn" type="button"><i class="ic ic-check"></i>Đánh dấu đã đọc</button>
+}
+<div class="tabs" style="margin-bottom:16px"><span class="on">Tất cả (3 mới)</span><span>Cần xử lý</span><span>Báo cáo</span></div>
+<div class="sl-card" style="padding:0;overflow:hidden"><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);background:var(--primary-soft)"><span class="ib t-a"><i class="ic ic-clock"></i></span><div class="grow"><div class="b">Minh An xin thêm 15 phút</div><div class="muted" style="font-size:13px">Chờ ba mẹ duyệt</div></div><span class="muted" style="font-size:12.5px">19:40</span></div><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);background:var(--primary-soft)"><span class="ib t-r"><i class="ic ic-flag"></i></span><div class="grow"><div class="b">Báo cáo nội dung mới</div><div class="muted" style="font-size:13px">Vòng đời của bướm · có quảng cáo lạ</div></div><span class="muted" style="font-size:12.5px">Hôm qua</span></div><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);background:var(--primary-soft)"><span class="ib t-v"><i class="ic ic-file"></i></span><div class="grow"><div class="b">Báo cáo tuần đã sẵn sàng</div><div class="muted" style="font-size:13px">Tuần 12 – 18/10</div></div><span class="muted" style="font-size:12.5px">CN</span></div><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);"><span class="ib t-g"><i class="ic ic-trophy"></i></span><div class="grow"><div class="b">Minh An nhận huy hiệu</div><div class="muted" style="font-size:13px">Siêu chăm chỉ · 5 ngày liên tiếp</div></div><span class="muted" style="font-size:12.5px">T6</span></div><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);"><span class="ib t-b"><i class="ic ic-checkc"></i></span><div class="grow"><div class="b">Nguồn mới được duyệt</div><div class="muted" style="font-size:13px">Tiếng Việt lớp 3 · 24 bài</div></div><span class="muted" style="font-size:12.5px">T5</span></div></div>

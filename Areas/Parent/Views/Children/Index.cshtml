@@ -1,0 +1,30 @@
+@{
+    ViewData["Title"] = """Hồ sơ của bé""";
+    ViewData["Page"] = "profiles";
+    ViewData["Nav"] = "profiles";
+    ViewData["Crumb"] = Html.Raw("""Phụ huynh · Hồ sơ""");
+    ViewData["Heading"] = """Hồ sơ của bé""";
+    ViewData["Sub"] = """Mỗi bé một hồ sơ riêng: lớp, môn được học và giờ học (US-04).""";
+}
+@section Actions {
+<a class="sl-btn sl-btn-p" href="~/onboarding"><i class="ic ic-plus"></i>Thêm bé</a>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px">
+<div class="sl-card" style="flex:1 1 320px;min-width:0;outline:2px solid var(--primary);display:flex;flex-direction:column;gap:16px">
+<div class="sl-row" style="gap:14px"><span class="av av-l" style="background:linear-gradient(135deg,#6A4CFF,#FF7AB6)">M</span><div class="grow"><div class="card-t" style="font-size:18px">Minh An</div><div class="muted b" style="font-size:13px">Lớp 3</div></div><span class="icbtn" style="width:40px;height:40px"><i class="ic ic-more"></i></span></div>
+<div><div class="sl-row" style="justify-content:space-between;font-size:13px;margin-bottom:6px"><span class="muted b">Hôm nay</span><span class="b">32 / 60 phút</span></div><div class="bar bar-l"><i style="width:53%"></i></div></div>
+<div class="wrap" style="gap:8px"><span class="chip t-p">Toán</span><span class="chip t-g">Tiếng Việt</span><span class="chip t-a">Khoa học</span></div>
+<div class="sl-row" style="gap:8px"><a class="sl-btn sl-btn-sm grow" href="~/library"><i class="ic ic-book"></i>Giao bài</a><a class="sl-btn sl-btn-sm grow" href="~/time"><i class="ic ic-clock"></i>Giờ học</a><a class="sl-btn sl-btn-sm sl-btn-p grow" href="~/kids-home">Vào học</a></div></div>
+<div class="sl-card" style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px">
+<div class="sl-row" style="gap:14px"><span class="av av-l" style="background:linear-gradient(135deg,#22C55E,#38BDF8)">N</span><div class="grow"><div class="card-t" style="font-size:18px">Bảo Nam</div><div class="muted b" style="font-size:13px">Lớp 1</div></div><span class="icbtn" style="width:40px;height:40px"><i class="ic ic-more"></i></span></div>
+<div><div class="sl-row" style="justify-content:space-between;font-size:13px;margin-bottom:6px"><span class="muted b">Hôm nay</span><span class="b">15 / 45 phút</span></div><div class="bar bar-l"><i style="width:33%"></i></div></div>
+<div class="wrap" style="gap:8px"><span class="chip t-g">Tiếng Việt</span><span class="chip t-p">Toán</span></div>
+<div class="sl-row" style="gap:8px"><a class="sl-btn sl-btn-sm grow" href="~/library"><i class="ic ic-book"></i>Giao bài</a><a class="sl-btn sl-btn-sm grow" href="~/time"><i class="ic ic-clock"></i>Giờ học</a><a class="sl-btn sl-btn-sm sl-btn-p grow" href="~/kids-home">Vào học</a></div></div>
+<div class="empty" style="flex:1 1 320px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px"><span class="ib t-n" style="width:56px;height:56px"><i class="ic ic-plus"></i></span><div class="b" style="color:var(--text-2)">Thêm bé thứ 3</div><div style="font-size:13px">Mỗi tài khoản có tối đa 4 hồ sơ.</div></div></div>
+<div class="sl-card" style="margin-top:16px"><div class="card-h"><div><div class="card-t">Sửa hồ sơ · Minh An</div><div class="card-s">Thay đổi có hiệu lực ngay ở lần vào học tiếp theo.</div></div><span class="chip t-g">Đã lưu</span></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:8px">
+<div class="field"><label class="lab" for="pf1">Tên hiển thị</label><input id="pf1" class="inp" value="Minh An"></div>
+<div class="field"><span class="lab">Lớp</span><div class="seg"><span>1</span><span>2</span><span class="on">3</span><span>4</span><span>5</span></div></div>
+<div class="field"><span class="lab">Môn được học</span><div class="wrap" style="gap:8px"><span class="chip t-p">Toán</span><span class="chip t-g">Tiếng Việt</span><span class="chip t-a">Khoa học</span><span class="chip t-n">Tiếng Anh</span></div></div>
+<div class="field"><span class="lab">Cho phép tìm kiếm</span><div class="sl-row" style="gap:10px"><span class="switch on"></span><span class="muted" style="font-size:13px">Chỉ tìm trong bài đã giao</span></div></div></div>
+<div class="sl-row" style="justify-content:space-between;margin-top:20px"><button class="sl-btn sl-btn-d sl-btn-sm" type="button"><i class="ic ic-trash"></i>Xóa hồ sơ và dữ liệu</button><div class="sl-row" style="gap:10px"><button class="sl-btn" type="button">Hủy</button><button class="sl-btn sl-btn-p" type="button">Lưu thay đổi</button></div></div></div>

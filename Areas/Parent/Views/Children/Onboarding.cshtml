@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = """Tạo hồ sơ bé đầu tiên""";
+    ViewData["Page"] = "onboarding";
+    Layout = "_Layout";
+    ViewData["Area"] = "parent";
+}
+@section Scripts {
+    <script src="~/js/parent.js"></script>
+}
+<main style="flex:1;min-width:0;padding:36px 56px;display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start;justify-content:center">
+<aside style="flex:0 0 260px;display:flex;flex-direction:column;gap:20px;padding-top:20px">
+<div class="brand" style="padding:0"><div class="brand-mark"><i class="ic ic-grad"></i></div><div class="brand-name">SafeLearn Kids</div></div>
+<div class="sl-col" style="gap:16px"><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--green);color:#fff"><i class="ic ic-check" style="display:inline-block"></i></span><span class="b" style="color:var(--text)">Tạo tài khoản</span></div><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--primary);color:#fff"><i class="ic ic-check" style="display:none"></i>2</span><span class="b" style="color:var(--text)">Hồ sơ của bé</span></div><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--surface-2);color:var(--text-3)"><i class="ic ic-check" style="display:none"></i>3</span><span class="b" style="color:var(--text-3)">Chọn môn và giờ học</span></div><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--surface-2);color:var(--text-3)"><i class="ic ic-check" style="display:none"></i>4</span><span class="b" style="color:var(--text-3)">Đặt mã PIN</span></div></div>
+<div class="muted" style="font-size:13px;line-height:1.6">Bạn có thể thêm bé khác và sửa mọi thứ sau trong mục Hồ sơ của bé.</div></aside>
+<section class="sl-card" style="flex:1 1 560px;max-width:700px;padding:34px;display:flex;flex-direction:column;gap:22px">
+<div class="sl-row" style="justify-content:space-between"><div><span class="chip t-p">Bước 2 / 4</span><h1 class="sl-h1" style="margin-top:10px;font-size:30px">Bé của bạn tên là gì?</h1><p class="sub">Chỉ cần thông tin tối thiểu. Không cần họ tên đầy đủ hay ảnh thật.</p></div></div>
+<div class="sl-row" style="gap:20px;align-items:flex-start;flex-wrap:wrap">
+<div class="sl-col" style="gap:10px;align-items:center"><span class="av av-l" style="width:96px;height:96px;font-size:36px;background:linear-gradient(135deg,#6A4CFF,#FF7AB6)">M</span><span class="muted" style="font-size:12.5px">Chọn nhân vật</span><div class="sl-row" style="gap:6px"><span class="av av-s" style="background:#FFB020"></span><span class="av av-s" style="background:#22C55E;outline:3px solid var(--primary)"></span><span class="av av-s" style="background:#38BDF8"></span><span class="av av-s" style="background:#F472B6"></span></div></div>
+<div class="sl-col grow" style="gap:16px;min-width:260px">
+<div class="field"><label class="lab" for="ob-n">Tên hoặc biệt danh của bé</label><input id="ob-n" class="inp" placeholder="Ví dụ: Minh An"></div>
+<div class="field"><span class="lab">Lớp</span><div class="seg" style="flex-wrap:wrap"><span>1</span><span>2</span><span class="on">3</span><span>4</span><span>5</span></div></div>
+<div class="field"><label class="lab" for="ob-y">Năm sinh (không bắt buộc)</label><input id="ob-y" class="inp" inputmode="numeric" placeholder="2018"></div>
+</div></div>
+<div class="banner t-b" style="font-size:13.5px;font-weight:600"><i class="ic ic-info"></i>Bé không có tài khoản riêng. Bé vào học bằng hồ sơ này sau khi ba mẹ bật chế độ trẻ.</div>
+<div class="sl-row" style="justify-content:space-between"><a class="sl-btn sl-btn-g" href="~/register"><i class="ic ic-arrowl"></i>Quay lại</a><a class="sl-btn sl-btn-p sl-btn-lg" id="ob-next" href="~/parent-home">Tiếp tục<i class="ic ic-arrowr"></i></a></div>
+</section></main>

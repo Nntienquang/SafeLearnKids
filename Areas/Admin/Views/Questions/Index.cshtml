@@ -1,0 +1,16 @@
+@{
+    ViewData["Title"] = """Câu hỏi và quiz""";
+    ViewData["Page"] = "admin-questions";
+    ViewData["Nav"] = "questions";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
+    ViewData["Heading"] = """Câu hỏi và quiz""";
+    ViewData["Sub"] = """Soạn câu hỏi và duyệt câu hỏi AI gợi ý (US-23, 25).""";
+}
+@section Actions {
+<button class="sl-btn" type="button"><i class="ic ic-plus"></i>Câu hỏi mới</button><button class="sl-btn sl-btn-p" type="button"><i class="ic ic-sparkles"></i>AI gợi ý câu hỏi</button>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="sl-card" style="flex:2 1 520px;min-width:0"><div class="tabs"><span class="on">Bảng nhân 5 (5)</span><span>Phân số (6)</span><span>Chờ duyệt AI (8)</span></div>
+<div class="sl-row" style="gap:14px;padding:14px;border-radius:16px;border:1px solid var(--line);margin-top:10px"><div class="grow"><div class="b">5 × 7 = ?</div><div class="muted" style="font-size:12.5px">Trắc nghiệm · 4 đáp án</div></div><span class="chip t-n">Tay</span><span class="chip t-g">Đã duyệt</span></div><div class="sl-row" style="gap:14px;padding:14px;border-radius:16px;border:1px solid var(--primary);margin-top:10px"><div class="grow"><div class="b">Kết quả 5 × 6 tận cùng bằng chữ số nào?</div><div class="muted" style="font-size:12.5px">Trắc nghiệm</div></div><span class="chip t-v">AI</span><span class="chip t-a">Chờ duyệt</span></div><div class="sl-row" style="gap:14px;padding:14px;border-radius:16px;border:1px solid var(--line);margin-top:10px"><div class="grow"><div class="b">5 × 9 = ?</div><div class="muted" style="font-size:12.5px">Trắc nghiệm</div></div><span class="chip t-n">Tay</span><span class="chip t-g">Đã duyệt</span></div></div>
+<div class="sl-card" style="flex:1 1 340px;min-width:0"><div class="sl-row" style="gap:8px;margin-bottom:12px"><span class="chip t-v"><i class="ic ic-sparkles"></i>AI gợi ý</span><span class="muted" style="font-size:12.5px">Cần người duyệt trước khi dùng</span></div><div class="b" style="margin-bottom:10px">Kết quả 5 × 6 tận cùng bằng chữ số nào?</div>
+<div class="sl-row" style="gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--green);margin-top:8px;background:rgba(34,197,94,.1)"><i class="ic ic-checkc" style="color:var(--green)"></i><span class="b">0</span></div><div class="sl-row" style="gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);margin-top:8px;"><i class="ic ic-chevr" style="color:var(--text-3)"></i><span class="b">5</span></div><div class="sl-row" style="gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);margin-top:8px;"><i class="ic ic-chevr" style="color:var(--text-3)"></i><span class="b">6</span></div><div class="sl-row" style="gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);margin-top:8px;"><i class="ic ic-chevr" style="color:var(--text-3)"></i><span class="b">3</span></div>
+<div class="sl-row" style="gap:8px;margin-top:14px"><button class="sl-btn grow" type="button">Từ chối</button><button class="sl-btn sl-btn-p grow" type="button">Duyệt câu hỏi</button></div></div></div>

@@ -1,0 +1,15 @@
+@{
+    ViewData["Title"] = """Xử lý báo cáo nội dung""";
+    ViewData["Page"] = "admin-reports";
+    ViewData["Nav"] = "reports";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Vận hành""");
+    ViewData["Heading"] = """Xử lý báo cáo nội dung""";
+    ViewData["Sub"] = """Báo cáo từ phụ huynh và bé về nội dung không phù hợp (US-22).""";
+}
+@section Actions {
+<div class="seg"><span class="on">Chờ xử lý (5)</span><span>Đã xử lý</span></div>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="sl-card" style="flex:2 1 520px;min-width:0;padding:6px 0"><table class="tbl"><thead><tr><th>Nội dung</th><th>Người gửi</th><th>Mức</th><th></th></tr></thead><tbody>
+<tr><td><div class="b">Vòng đời của bướm</div><div class="muted" style="font-size:12.5px">Có quảng cáo lạ</div></td><td class="muted">Phụ huynh · Thu Hà</td><td><span class="chip t-r">Khẩn</span></td><td style="text-align:right"><button class="sl-btn sl-btn-sm" type="button">Mở</button></td></tr><tr><td><div class="b">Greetings</div><div class="muted" style="font-size:12.5px">Âm thanh quá lớn</div></td><td class="muted">Phụ huynh · Lan</td><td><span class="chip t-a">Vừa</span></td><td style="text-align:right"><button class="sl-btn sl-btn-sm" type="button">Mở</button></td></tr><tr><td><div class="b">Động vật sống ở đâu?</div><div class="muted" style="font-size:12.5px">Hình ảnh gây sợ</div></td><td class="muted">Bé · Minh An</td><td><span class="chip t-a">Vừa</span></td><td style="text-align:right"><button class="sl-btn sl-btn-sm" type="button">Mở</button></td></tr></tbody></table></div>
+<div class="sl-card" style="flex:1 1 340px;min-width:0"><div class="sl-row" style="gap:12px"><div style="width:84px;height:56px;flex:0 0 auto;border-radius:16px;background:linear-gradient(135deg,#F59E0B,#FB7185);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play"></i></div><div><div class="b">Vòng đời của bướm</div><span class="chip t-r">Khẩn</span></div></div><p class="sub" style="margin-top:12px;line-height:1.6">"Có quảng cáo lạ ở phút 6" · Thu Hà · hôm qua</p>
+<div class="field" style="margin-top:10px"><label class="lab" for="ar1">Ghi chú xử lý</label><textarea id="ar1" class="inp ta">Đã kiểm tra, gỡ khỏi lộ trình.</textarea></div><div class="sl-row" style="gap:8px;margin-top:14px"><button class="sl-btn grow" type="button">Giữ nội dung</button><button class="sl-btn sl-btn-d grow" type="button">Gỡ nội dung</button></div></div></div>

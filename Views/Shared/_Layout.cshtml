@@ -1,0 +1,44 @@
+@{
+    var area = ViewData["Area"] as string ?? "public";
+    var isKids = area == "kids";
+    var title = ViewData["Title"] as string;
+}
+<!DOCTYPE html>
+<html lang="vi" data-bs-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>@(string.IsNullOrEmpty(title) ? "SafeLearn Kids" : title + " · SafeLearn Kids")</title>
+    <meta name="description" content="SafeLearn Kids · Hệ thống học tập an toàn cho trẻ em" />
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Baloo+2:wght@600;700&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+</head>
+<body data-page="@ViewData["Page"]" data-area="@area">
+<div class="app" id="app" data-app="@(isKids ? "kids" : null)" data-theme="light" style="@ViewData["AppStyle"]">
+    <script>try{document.getElementById('app').setAttribute('data-theme',JSON.parse(localStorage.getItem('kl.v1')).theme||'light')}catch(e){}</script>
+    @RenderBody()
+</div>
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <script>
+        window.SL_USER = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            name = User.FindFirst("FullName")?.Value ?? User.Identity!.Name,
+            email = User.Identity!.Name,
+            role = User.IsInRole("Admin") ? "admin" : "parent",
+            demo = string.Equals(User.Identity!.Name, "ha.nguyen@gmail.com", StringComparison.OrdinalIgnoreCase)
+        }));
+    </script>
+}
+<script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/store.js" asp-append-version="true"></script>
+<script src="~/js/ui.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

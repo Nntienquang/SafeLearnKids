@@ -1,0 +1,14 @@
+@{
+    Layout = "_Layout";
+    ViewData["Area"] = "kids";
+    ViewData["AppStyle"] = "flex-direction:column;flex-wrap:nowrap";
+}
+@if (!(ViewData["NoTop"] is true))
+{
+    <partial name="_KidsTop" />
+}
+@RenderBody()
+@section Scripts {
+    <script src="~/js/kids.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+}

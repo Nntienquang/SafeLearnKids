@@ -1,0 +1,21 @@
+@{
+    Layout = "_Layout";
+    ViewData["Area"] = "admin";
+}
+<partial name="_AdminSidebar" />
+<div class="main">
+    <partial name="_TopBar" model="@true" />
+    <div class="head">
+        <div>
+            <div class="crumb">@ViewData["Crumb"]</div>
+            <h1 class="sl-h1">@ViewData["Heading"]</h1>
+            <p class="sub">@ViewData["Sub"]</p>
+        </div>
+        <div class="sl-row" style="gap:10px">@await RenderSectionAsync("Actions", required: false)</div>
+    </div>
+    @RenderBody()
+</div>
+@section Scripts {
+    <script src="~/js/admin.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+}

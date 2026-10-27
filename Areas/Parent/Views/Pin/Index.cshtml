@@ -1,0 +1,22 @@
+@{
+    ViewData["Title"] = """Mã PIN và chế độ trẻ""";
+    ViewData["Page"] = "pin";
+    ViewData["Nav"] = "pin";
+    ViewData["Crumb"] = Html.Raw("""Phụ huynh · Bảo vệ""");
+    ViewData["Heading"] = """Mã PIN và chế độ trẻ""";
+    ViewData["Sub"] = """PIN giúp bé không thoát chế độ học hoặc đổi cài đặt của ba mẹ (US-05).""";
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px">
+<div class="sl-card" style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:18px">
+<div class="card-h"><div><div class="card-t">Chế độ trẻ</div><div class="card-s">Khi bật, màn hình chỉ còn giao diện của bé.</div></div><span class="switch on"></span></div>
+<div class="banner t-g" style="font-weight:600;font-size:13.5px"><i class="ic ic-checkc"></i>Đang bật cho Minh An từ 19:02. Thoát cần nhập PIN.</div>
+<div class="field"><span class="lab">Khi bé thoát</span><div class="sl-col" style="gap:10px"><label class="sl-row" style="gap:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);font-size:14px;font-weight:600"><input class="chk" type="checkbox" checked>Luôn yêu cầu PIN</label><label class="sl-row" style="gap:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);font-size:14px;font-weight:600"><input class="chk" type="checkbox" >Cho phép chuyển sang hồ sơ khác của bé mà không cần PIN</label><label class="sl-row" style="gap:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);font-size:14px;font-weight:600"><input class="chk" type="checkbox" checked>Tự khóa lại sau 10 phút không thao tác</label></div></div>
+<div class="field"><span class="lab">Đổi mã PIN</span><div class="sl-row" style="gap:10px;flex-wrap:wrap"><input class="inp" type="password" value="••••" style="width:120px" aria-label="PIN hiện tại"><i class="ic ic-arrowr" style="color:var(--text-3)"></i><input class="inp f" type="password" value="••••" style="width:120px" aria-label="PIN mới"><button class="sl-btn sl-btn-p" type="button">Cập nhật</button></div><span class="hint">PIN gồm 4 chữ số, được lưu dạng băm. Sai 5 lần sẽ khóa 5 phút.</span></div>
+</div>
+<div class="sl-card" style="flex:1 1 360px;min-width:0;display:flex;flex-direction:column;align-items:center;gap:16px;background:var(--surface-2)">
+<div class="muted b" style="font-size:12.5px;letter-spacing:.08em">XEM TRƯỚC · MÀN HÌNH NHẬP PIN</div>
+<span class="ib t-p" style="width:56px;height:56px;border-radius:18px"><i class="ic ic-lock ic-lg"></i></span>
+<div class="b" style="font-size:18px">Nhập PIN của ba mẹ</div>
+<div class="sl-row" style="gap:14px"><span style="width:18px;height:18px;border-radius:9px;background:var(--primary)"></span><span style="width:18px;height:18px;border-radius:9px;background:var(--primary)"></span><span style="width:18px;height:18px;border-radius:9px;background:var(--primary)"></span><span style="width:18px;height:18px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line)"></span></div>
+<div style="display:grid;grid-template-columns:repeat(3,64px);gap:12px;justify-content:center"><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">1</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">2</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">3</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">4</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">5</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">6</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">7</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">8</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">9</span><span style="width:64px"></span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">0</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px"><i class="ic ic-arrowl"></i></span></div>
+<span class="err">Sai PIN. Còn 3 lần thử.</span></div></div>

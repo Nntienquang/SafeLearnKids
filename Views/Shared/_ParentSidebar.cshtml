@@ -1,0 +1,27 @@
+@{
+    var nav = ViewData["Nav"] as string ?? "";
+    var fullName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "";
+}
+<aside class="side">
+    <div class="brand"><div class="brand-mark"><i class="ic ic-grad"></i></div><div><div class="brand-name">SafeLearn Kids</div><div class="brand-sub">Phụ huynh</div></div></div>
+    <div class="child-sw"><span class="av av-s" style="background:linear-gradient(135deg,#6A4CFF,#FF7AB6)">M</span><div style="flex:1;min-width:0"><div class="b" style="font-size:14px">Minh An</div><div class="muted" style="font-size:12px">Lớp 3</div></div><i class="ic ic-chevd"></i></div>
+    <a class="sl-nav @(nav == "home" ? "on" : "")" href="~/parent-home"><i class="ic ic-home"></i>Tổng quan</a>
+    <a class="sl-nav @(nav == "profiles" ? "on" : "")" href="~/profiles"><i class="ic ic-users"></i>Hồ sơ của bé</a>
+    <a class="sl-nav @(nav == "pin" ? "on" : "")" href="~/pin"><i class="ic ic-key"></i>Mã PIN và chế độ trẻ</a>
+    <div class="side-l">Nội dung</div>
+    <a class="sl-nav @(nav == "library" ? "on" : "")" href="~/library"><i class="ic ic-book"></i>Thư viện bài học</a>
+    <a class="sl-nav @(nav == "sources" ? "on" : "")" href="~/sources"><i class="ic ic-playc"></i>Nguồn YouTube</a>
+    <div class="side-l">Giám sát</div>
+    <a class="sl-nav @(nav == "time" ? "on" : "")" href="~/time"><i class="ic ic-clock"></i>Thời gian học</a>
+    <a class="sl-nav @(nav == "history" ? "on" : "")" href="~/history"><i class="ic ic-history"></i>Lịch sử và báo cáo</a>
+    <a class="sl-nav @(nav == "progress" ? "on" : "")" href="~/progress"><i class="ic ic-chart"></i>Tiến độ và lộ trình</a>
+    <a class="sl-nav @(nav == "weekly" ? "on" : "")" href="~/weekly"><i class="ic ic-file"></i>Báo cáo tuần</a>
+    <div class="side-l">Tài khoản</div>
+    <a class="sl-nav @(nav == "notifications" ? "on" : "")" href="~/notifications"><i class="ic ic-bell"></i>Thông báo<span class="sl-badge hidden">0</span></a>
+    <a class="sl-nav @(nav == "privacy" ? "on" : "")" href="~/privacy"><i class="ic ic-shield"></i>Quyền riêng tư</a>
+    <a class="sl-nav @(nav == "settings" ? "on" : "")" href="~/settings"><i class="ic ic-sliders"></i>Cài đặt</a>
+    <div class="side-foot">
+        <form asp-area="" asp-controller="Account" asp-action="Logout" method="post"><button type="submit" class="sl-btn sl-btn-g" style="justify-content:flex-start;width:100%"><i class="ic ic-logout"></i>Đăng xuất</button></form>
+        <div class="who"><span class="av av-s" style="background:var(--grad)">@(fullName.Length > 0 ? fullName.Substring(fullName.LastIndexOf(' ') + 1, 1) : "?")</span><div style="flex:1;min-width:0"><div class="b" style="font-size:13.5px">@fullName</div><div class="muted" style="font-size:12px">@User.Identity?.Name</div></div></div>
+    </div>
+</aside>

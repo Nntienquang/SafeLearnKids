@@ -1,0 +1,52 @@
+@model LoginViewModel
+@inject IWebHostEnvironment Env
+@{
+    ViewData["Title"] = "Đăng nhập";
+    ViewData["Page"] = "login";
+    ViewData["Area"] = "public";
+}
+<aside style="flex:1 1 460px;min-width:0;margin:16px;border-radius:32px;background:var(--grad);color:#fff;padding:56px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;min-height:460px">
+    <div style="position:absolute;left:-70px;top:-70px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.12)"></div>
+    <div class="brand" style="padding:0;position:relative"><div class="brand-mark" style="background:rgba(255,255,255,.2);box-shadow:none"><i class="ic ic-grad"></i></div><div class="brand-name">SafeLearn Kids</div></div>
+    <div style="position:relative;display:flex;flex-direction:column;gap:20px">
+        <h2 style="font-size:42px;line-height:1.08;font-weight:800;letter-spacing:-.03em">Ba mẹ quyết định con học gì và học bao lâu</h2>
+        <div style="background:rgba(255,255,255,.14);border-radius:22px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+            <div class="sl-row" style="justify-content:space-between"><div><div style="font-size:12.5px;opacity:.85">Minh An · hôm nay</div><div style="font-size:24px;font-weight:800">32 / 60 phút</div></div><span class="chip" style="background:rgba(255,255,255,.22);color:#fff">Còn 28 phút</span></div>
+            <div style="height:10px;border-radius:5px;background:rgba(255,255,255,.25)"><i style="display:block;width:53%;height:10px;border-radius:5px;background:#FFC93C"></i></div>
+            <div class="sl-row" style="gap:10px;font-size:14px"><i class="ic ic-playc"></i>Đang học: Toán · Bảng nhân 2 và bảng nhân 5</div>
+        </div>
+    </div>
+    <div style="position:relative;font-size:13px;opacity:.9">Chưa có tài khoản? <a href="~/register" style="font-weight:800;text-decoration:underline">Đăng ký miễn phí</a></div>
+</aside>
+<main id="main" style="flex:1 1 520px;min-width:0;padding:40px 56px;display:flex;flex-direction:column;justify-content:center;align-items:center">
+    <form asp-action="Login" method="post" style="width:100%;max-width:420px;display:flex;flex-direction:column;gap:18px">
+        <input type="hidden" asp-for="ReturnUrl" />
+        <div><h1 class="sl-h1">Chào mừng quay lại</h1><p class="sub">Đăng nhập để quản lý việc học của con.</p></div>
+        @if (TempData["Info"] is string info)
+        {
+            <div class="banner t-g" role="status" style="font-weight:600;font-size:13.5px"><i class="ic ic-checkc"></i>@info</div>
+        }
+        <div asp-validation-summary="ModelOnly" class="banner t-r" role="alert" style="font-size:13.5px;font-weight:600"></div>
+        <div class="field">
+            <label asp-for="Email" class="lab"></label>
+            <div style="position:relative"><input asp-for="Email" class="inp" autocomplete="username" style="padding-left:44px" /><i class="ic ic-mail" style="position:absolute;left:15px;top:14px;color:var(--text-3)"></i></div>
+            <span asp-validation-for="Email" class="err"></span>
+        </div>
+        <div class="field">
+            <div class="sl-row" style="justify-content:space-between"><label asp-for="Password" class="lab"></label><a href="~/recover" style="font-size:13px;font-weight:800;color:var(--primary-text)">Quên mật khẩu?</a></div>
+            <div style="position:relative"><input asp-for="Password" class="inp" autocomplete="current-password" style="padding-left:44px" /><i class="ic ic-lock" style="position:absolute;left:15px;top:14px;color:var(--text-3)"></i></div>
+            <span asp-validation-for="Password" class="err"></span>
+        </div>
+        <label class="sl-row" style="gap:10px;font-size:14px;color:var(--text-2)"><input asp-for="RememberMe" class="chk" />@Html.DisplayNameFor(m => m.RememberMe)</label>
+        <button type="submit" class="sl-btn sl-btn-p sl-btn-lg sl-btn-block">Đăng nhập</button>
+        @if (Env.IsDevelopment())
+        {
+            <div style="padding:12px 14px;border-radius:14px;background:var(--primary-soft);font-size:13px;color:var(--text-2);line-height:1.7"><b style="color:var(--primary-text)">Tài khoản demo</b> (chỉ môi trường Development)<br /><a href="#" data-demo="ha.nguyen@gmail.com|matkhau123" style="font-weight:800;color:var(--primary-text)">Phụ huynh</a> · <a href="#" data-demo="admin@safelearnkids.vn|admin12345" style="font-weight:800;color:var(--primary-text)">Quản trị viên</a></div>
+        }
+        <div class="sl-row" style="gap:10px;padding:12px 14px;border-radius:14px;background:var(--surface-2);color:var(--text-2);font-size:13px"><i class="ic ic-shield" style="color:var(--green)"></i>Kết nối được mã hóa. Tài khoản bị khóa tạm thời nếu nhập sai 5 lần.</div>
+    </form>
+</main>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/auth.js" asp-append-version="true"></script>
+}

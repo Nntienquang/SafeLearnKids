@@ -1,0 +1,20 @@
+@{
+    ViewData["Title"] = """Nguồn nội dung YouTube""";
+    ViewData["Page"] = "sources";
+    ViewData["Nav"] = "sources";
+    ViewData["Crumb"] = Html.Raw("""Phụ huynh · Nội dung""");
+    ViewData["Heading"] = """Nguồn nội dung YouTube""";
+    ViewData["Sub"] = """Chỉ kênh và danh sách phát đã duyệt mới xuất hiện cho bé (US-10, 11).""";
+}
+@section Actions {
+<button class="sl-btn" type="button"><i class="ic ic-refresh"></i>Đồng bộ ngay</button>
+}
+<div class="sl-card" style="margin-bottom:16px"><div class="card-t" style="margin-bottom:10px">Thêm nguồn mới</div><div class="sl-row" style="gap:12px;flex-wrap:wrap"><div class="search grow" style="background:var(--surface-2)"><i class="ic ic-link"></i>Dán liên kết kênh hoặc danh sách phát YouTube</div><button class="sl-btn sl-btn-p" type="button"><i class="ic ic-plus"></i>Kiểm tra và thêm</button></div>
+<div class="banner t-b" style="margin-top:12px;font-size:13.5px;font-weight:600"><i class="ic ic-info"></i>Hệ thống chỉ lưu thông tin video, không tải video về. Bé xem bằng trình phát nhúng của YouTube.</div></div>
+<div class="sl-card" style="padding:6px 0"><table class="tbl"><thead><tr><th>Nguồn</th><th>Loại</th><th>Số video</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+<tr><td><div class="sl-row" style="gap:12px"><span class="av" style="background:linear-gradient(135deg,#6A4CFF,#38BDF8);border-radius:14px">H</span><div><div class="b">Học Toán Vui</div><div class="muted" style="font-size:12.5px">@@hoctoanvui</div></div></div></td><td><span class="chip t-p">Kênh</span></td><td class="b">128</td><td><span class="chip t-g">Đã duyệt</span></td><td style="text-align:right"><span class="icbtn" style="width:36px;height:36px;display:inline-flex"><i class="ic ic-more"></i></span></td></tr>
+<tr><td><div class="sl-row" style="gap:12px"><span class="av" style="background:linear-gradient(135deg,#14B8A6,#22C55E);border-radius:14px">T</span><div><div class="b">Tiếng Việt lớp 3</div><div class="muted" style="font-size:12.5px">Danh sách phát · 24 bài</div></div></div></td><td><span class="chip t-g">Playlist</span></td><td class="b">24</td><td><span class="chip t-g">Đã duyệt</span></td><td style="text-align:right"><span class="icbtn" style="width:36px;height:36px;display:inline-flex"><i class="ic ic-more"></i></span></td></tr>
+<tr><td><div class="sl-row" style="gap:12px"><span class="av" style="background:linear-gradient(135deg,#F59E0B,#FB7185);border-radius:14px">K</span><div><div class="b">Khoa học cho bé</div><div class="muted" style="font-size:12.5px">@@khoahoccho_be</div></div></div></td><td><span class="chip t-a">Kênh</span></td><td class="b">76</td><td><span class="chip t-a">Đang kiểm duyệt</span></td><td style="text-align:right"><span class="icbtn" style="width:36px;height:36px;display:inline-flex"><i class="ic ic-more"></i></span></td></tr>
+<tr><td><div class="sl-row" style="gap:12px"><span class="av" style="background:linear-gradient(135deg,#F43F5E,#FB923C);border-radius:14px">V</span><div><div class="b">Vui học tiếng Anh</div><div class="muted" style="font-size:12.5px">@@vuihoctienganh</div></div></div></td><td><span class="chip t-r">Kênh</span></td><td class="b">54</td><td><span class="chip t-r">Bị từ chối</span></td><td style="text-align:right"><span class="icbtn" style="width:36px;height:36px;display:inline-flex"><i class="ic ic-more"></i></span></td></tr>
+</tbody></table></div>
+<div class="muted" style="font-size:12.5px;margin-top:12px">Đồng bộ lần cuối: 07:00 hôm nay · Hạn mức API còn 92%</div>

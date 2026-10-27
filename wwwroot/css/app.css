@@ -1,0 +1,67 @@
+/* SafeLearn Kids · app layer: responsive, a11y, states. Tokens live in theme.css */
+html{scroll-behavior:smooth}
+body{margin:0;background:#F5F6FB}
+.app{min-height:100vh;width:100%}
+.skip{position:absolute;left:-999px;top:8px;z-index:300;background:#111;color:#fff;padding:10px 16px;border-radius:12px;font-weight:700}
+.skip:focus{left:8px}
+.app :focus-visible{outline:3px solid var(--primary);outline-offset:2px;border-radius:10px}
+.hidden{display:none!important}
+.side{position:sticky;top:0;height:100vh;min-height:0;overflow:auto}
+.sl-btn,.sl-nav,.icbtn,.k-btn,.k-pill,.switch,.seg span,.tabs span,.k-card{cursor:pointer;transition:background .15s,transform .15s,box-shadow .15s,border-color .15s}
+.sl-nav:hover{background:var(--surface-2)}
+.sl-btn:hover{transform:translateY(-1px)}
+a.k-card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.sl-btn:active,.k-btn:active{transform:translateY(1px)}
+.sl-btn[disabled]{opacity:.5;pointer-events:none}
+.hamb{display:none}
+.scrim{position:fixed;inset:0;background:rgba(8,10,30,.5);z-index:55;display:none}
+.scrim.on{display:block}
+.toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:10px;z-index:400;max-width:calc(100vw - 40px)}
+.toasts .sl-toast{animation:tin .25s ease}
+@keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.overlay{position:fixed;inset:0;background:rgba(8,10,30,.55);display:flex;align-items:center;justify-content:center;z-index:350;padding:16px}
+.overlay .sl-modal{width:100%;max-width:460px}
+.pop{position:absolute;z-index:70;min-width:220px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:6px}
+.pop button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;font-weight:600;cursor:pointer}
+.pop button:hover,.pop button:focus-visible{background:var(--surface-2)}
+.search input{all:unset;flex:1;min-width:0;color:var(--text);font-weight:500}
+.search input::placeholder{color:var(--text-3)}
+.opt{cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.opt:hover{transform:translateY(-2px)}
+.opt.sel{border-color:var(--primary)!important;background:var(--primary-soft)!important}
+.opt.ok{border-color:#22C55E!important;background:rgba(34,197,94,.16)!important}
+.opt.no{border-color:var(--rose)!important;background:var(--rose-soft)!important}
+.err.hidden,.banner.hidden{display:none}
+.pin-key{cursor:pointer;user-select:none}
+.toolbar-sticky{position:sticky;top:0}
+@media(max-width:1000px){
+ .side{position:fixed;left:0;top:0;bottom:0;width:272px;z-index:60;transform:translateX(-104%);transition:transform .25s;box-shadow:0 0 40px rgba(0,0,0,.3);flex:none}
+ .side.open{transform:none}
+ .hamb{display:flex}
+ .main{padding:0 18px 32px;flex-basis:100%}
+}
+@media(max-width:700px){
+ .app main[style]{padding:22px 16px!important}
+ .k-top{padding:12px 14px}
+ .sl-h1{font-size:24px}
+ .mock{display:none}
+ section[style*="padding:28px 56px"],header[style*="padding:20px 56px"],section[style*="padding:8px 56px"],footer[style*="padding:20px 56px"]{padding-left:18px!important;padding-right:18px!important}
+ h1[style*="font-size:60px"]{font-size:40px!important}
+ .toasts{left:14px;right:14px;bottom:14px}
+ .tbl{display:block;overflow-x:auto}
+ .head{align-items:flex-start}
+}
+@media print{
+ .side,.top,.hamb,.toasts,.head .sl-row{display:none!important}
+ .app{background:#fff}.main{padding:0}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+.k-note{font-size:13.5px;font-weight:700;color:var(--text-3);line-height:1.4}
+@media(max-height:900px) and (min-width:1001px){.sl-nav{padding:8px 12px}.side-l{padding:12px 12px 4px}.brand{padding-bottom:10px}}
+
+/* ASP.NET validation states */
+.input-validation-error{border-color:var(--rose)!important;box-shadow:0 0 0 4px var(--rose-soft)}
+.field-validation-valid,.validation-summary-valid{display:none}
+.field-validation-error{color:var(--rose-text);font-size:12.5px;font-weight:600}
+.banner ul{margin:0;padding-left:18px}
+.validation-summary-errors{display:flex}

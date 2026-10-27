@@ -1,0 +1,20 @@
+@{
+    ViewData["Title"] = """Thời gian học""";
+    ViewData["Page"] = "time";
+    ViewData["Nav"] = "time";
+    ViewData["Crumb"] = Html.Raw("""Phụ huynh · Giám sát""");
+    ViewData["Heading"] = """Thời gian học""";
+    ViewData["Sub"] = """Đặt giới hạn mỗi ngày và duyệt yêu cầu thêm giờ (US-17, 19).""";
+}
+@section Actions {
+<button class="sl-btn sl-btn-p" type="button">Lưu cài đặt</button>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+<div class="sl-card" style="flex:2 1 460px;min-width:0"><div class="card-h"><div><div class="card-t">Giới hạn theo ngày · Minh An</div><div class="card-s">Máy chủ tự dừng bài học khi hết giờ.</div></div><div class="seg"><span class="on">Từng ngày</span><span>Mọi ngày</span></div></div>
+<div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T2</span><div class="bar grow"><i style="width:50%"></i></div><span class="b" style="width:68px;text-align:right">45 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T3</span><div class="bar grow"><i style="width:50%"></i></div><span class="b" style="width:68px;text-align:right">45 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;background:var(--primary-soft)"><span class="b" style="width:36px">T4</span><div class="bar grow"><i style="width:66%"></i></div><span class="b" style="width:68px;text-align:right">60 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T5</span><div class="bar grow"><i style="width:50%"></i></div><span class="b" style="width:68px;text-align:right">45 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T6</span><div class="bar grow"><i style="width:50%"></i></div><span class="b" style="width:68px;text-align:right">45 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T7</span><div class="bar grow"><i style="width:100%"></i></div><span class="b" style="width:68px;text-align:right">90 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">CN</span><div class="bar grow"><i style="width:100%"></i></div><span class="b" style="width:68px;text-align:right">90 phút</span></div>
+<div class="field" style="margin-top:16px"><span class="lab">Khung giờ được học</span><div class="sl-row" style="gap:10px"><input class="inp" value="17:00" style="width:110px"><span class="muted">đến</span><input class="inp" value="20:30" style="width:110px"></div></div></div>
+<div class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px">
+<div class="sl-card" style="border:1px solid var(--sun);"><div class="sl-row" style="gap:12px"><span class="ib t-a"><i class="ic ic-clock"></i></span><div class="grow"><div class="b">Minh An xin thêm 15 phút</div><div class="muted" style="font-size:12.5px">19:40 · "Con muốn xem hết bài ạ"</div></div></div>
+<div class="sl-row" style="gap:8px;margin-top:14px"><button class="sl-btn grow" type="button">Từ chối</button><button class="sl-btn sl-btn-p grow" type="button">Cho thêm 15 phút</button></div></div>
+<div class="sl-card"><div class="card-t" style="margin-bottom:12px">Hôm nay</div><div class="sl-row" style="gap:18px"><div class="donut" style="background:conic-gradient(var(--primary) 0 53%,var(--surface-2) 53% 100%)"><b>32<small>phút đã học</small></b></div><div class="sl-col" style="gap:8px;font-size:13.5px"><span class="muted b">Giới hạn 60 phút</span><span class="chip t-g">Còn 28 phút</span></div></div></div>
+<div class="sl-card"><div class="card-h"><div class="card-t">Nhắc nghỉ mắt</div><span class="switch on"></span></div><div class="card-s">Gợi ý bé nghỉ 5 phút sau mỗi 25 phút học.</div></div></div></div>
