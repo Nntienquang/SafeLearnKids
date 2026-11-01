@@ -1,0 +1,123 @@
+@model AdminUserDetailViewModel
+@{
+    var user = Model.User;
+    ViewData["Title"] = user.Name;
+    ViewData["Page"] = "admin-users";
+    ViewData["Nav"] = "users";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Người dùng""");
+    ViewData["Heading"] = user.Name;
+    ViewData["Sub"] = user.Email;
+    var locked = Model.Disabled || Model.LockedOutUntil is not null;
+    var currentRole = user.Roles.Contains("Admin") ? "Admin" : user.Roles.Contains("Parent") ? "Parent" : "";
+    string ActionLabel(string action) => action switch
+    {
+        "LockUser" => "Khóa tài khoản",
+        "UnlockUser" => "Mở khóa tài khoản",
+        "ChangeRole" => "Đổi vai trò",
+        "ResendConfirmation" => "Gửi lại email xác minh",
+        "SendPasswordReset" => "Gửi email đặt lại mật khẩu",
+        _ => action
+    };
+    string FailLabel(string? reason) => reason switch
+    {
+        "InvalidCredentials" => "Sai thông tin đăng nhập",
+        "LockedOut" => "Đang tạm khóa",
+        "EmailNotConfirmed" => "Chưa xác minh email",
+        "Disabled" => "Tài khoản bị khóa",
+        _ => "Không thành công"
+    };
+}
+@section Actions {
+<a class="sl-btn" asp-action="Index"><i class="ic ic-arrowl"></i>Danh sách</a>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px">
+    <div class="sl-card">
+        <div class="card-h"><div class="card-t">Thông tin</div><partial name="_StatusChip" model="user.Status" /></div>
+        <table class="tbl"><tbody>
+            <tr><td class="muted">Vai trò</td><td class="b">@(user.Roles.Count > 0 ? string.Join(", ", user.Roles) : "—")</td></tr>
+            <tr><td class="muted">Email</td><td>@(Model.EmailConfirmed ? "Đã xác minh" : "Chưa xác minh")</td></tr>
+            <tr><td class="muted">Số bé</td><td>@user.Children</td></tr>
+            <tr><td class="muted">Tham gia</td><td>@user.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td></tr>
+            <tr><td class="muted">Đăng nhập gần nhất</td><td>@(user.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa có")</td></tr>
+            @if (Model.LockedOutUntil is { } until)
+            {
+                <tr><td class="muted">Tạm khóa đến</td><td>@until.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td></tr>
+            }
+        </tbody></table>
+    </div>
+    <div class="sl-card">
+        <div class="card-h"><div class="card-t">Thao tác</div></div>
+        @if (Model.IsSelf)
+        {
+            <p class="muted">Đây là tài khoản của bạn nên không thể tự khóa hoặc đổi vai trò.</p>
+        }
+        <div class="sl-row" style="gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            @if (locked)
+            {
+                <form asp-action="Unlock" asp-route-id="@user.Id" method="post" data-confirm="Mở khóa @user.Name?" data-text="Tài khoản sẽ đăng nhập lại được." data-ok-label="Mở khóa">
+                    <button class="sl-btn" type="submit">Mở khóa</button>
+                </form>
+            }
+            else if (!Model.IsSelf)
+            {
+                <form asp-action="Lock" asp-route-id="@user.Id" method="post" data-confirm="Khóa @user.Name?" data-text="Tài khoản sẽ không đăng nhập được và mọi phiên hiện tại bị kết thúc." data-ok-label="Khóa tài khoản" data-danger="true">
+                    <button class="sl-btn sl-btn-d" type="submit">Khóa tài khoản</button>
+                </form>
+            }
+            @if (!Model.Disabled && !Model.EmailConfirmed)
+            {
+                <form asp-action="ResendConfirmation" asp-route-id="@user.Id" method="post"><button class="sl-btn" type="submit">Gửi lại email xác minh</button></form>
+            }
+            @if (!Model.Disabled && Model.EmailConfirmed)
+            {
+                <form asp-action="SendReset" asp-route-id="@user.Id" method="post"><button class="sl-btn" type="submit">Gửi email đặt lại mật khẩu</button></form>
+            }
+        </div>
+        @if (Model.RoleEditable && !Model.IsSelf)
+        {
+            <form asp-action="SetRole" asp-route-id="@user.Id" method="post" class="sl-row" style="gap:10px;flex-wrap:wrap" data-confirm="Đổi vai trò của @user.Name?" data-text="Tài khoản sẽ bị đăng xuất khỏi mọi phiên. Người được chuyển sang Admin sẽ có toàn quyền quản trị." data-ok-label="Đổi vai trò" data-danger="true">
+                <select class="inp" style="width:auto" name="role" aria-label="Vai trò">
+                    <option value="Parent" selected="@(currentRole == "Parent")">Parent</option>
+                    <option value="Admin" selected="@(currentRole == "Admin")">Admin</option>
+                </select>
+                <button class="sl-btn" type="submit">Lưu vai trò</button>
+            </form>
+        }
+        else if (!Model.RoleEditable)
+        {
+            <p class="muted">Vai trò @string.Join(", ", user.Roles) không chỉnh được tại đây.</p>
+        }
+    </div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
+    <div class="sl-card">
+        <div class="card-h"><div class="card-t">Lịch sử đăng nhập</div></div>
+        @foreach (var login in Model.Logins)
+        {
+            <div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)"><div class="grow"><div class="b">@(login.Succeeded ? "Thành công" : FailLabel(login.FailReason))</div><div class="muted" style="font-size:12.5px">@login.IpAddress</div></div><span class="muted" style="font-size:12.5px">@login.At.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div>
+        }
+        @if (Model.Logins.Count == 0)
+        {
+            <div class="empty">Chưa có lượt đăng nhập</div>
+        }
+    </div>
+    <div class="sl-card">
+        <div class="card-h"><div class="card-t">Nhật ký quản trị</div></div>
+        @foreach (var entry in Model.Audit)
+        {
+            <div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)"><div class="grow"><div class="b">@ActionLabel(entry.Action)@(entry.Detail is null ? "" : $": {entry.Detail}")</div><div class="muted" style="font-size:12.5px">@entry.Actor</div></div><span class="muted" style="font-size:12.5px">@entry.At.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div>
+        }
+        @if (Model.Audit.Count == 0)
+        {
+            <div class="empty">Chưa có thao tác quản trị</div>
+        }
+    </div>
+</div>

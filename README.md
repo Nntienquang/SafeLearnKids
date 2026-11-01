@@ -26,6 +26,21 @@ Cấu hình kết nối qua `ConnectionStrings:DefaultConnection` hoặc biến 
 
 Đăng ký mới chuyển tới `/check-email`, chưa tự đăng nhập. Xác minh email trước khi đăng nhập; tài khoản tạo từ lượt SQL trước mà chưa xác minh cũng dùng form gửi lại ở trang này. `/recover` gửi hướng dẫn đặt lại; `/change-password` yêu cầu đăng nhập và mật khẩu hiện tại. Đăng xuất, đổi hoặc đặt lại mật khẩu thu hồi các phiên cũ ở máy chủ.
 
+## Tài khoản Admin đầu tiên
+
+Đăng ký ở `/register` chỉ tạo Parent, nên Admin đầu tiên được tạo từ cấu hình riêng của từng máy. Đặt mật khẩu của bạn (đạt chính sách mật khẩu) rồi khởi động lại app:
+
+```powershell
+dotnet user-secrets set "Bootstrap:AdminEmail" "<email-quan-tri>"
+dotnet user-secrets set "Bootstrap:AdminPassword" "<mat-khau-rieng>"
+```
+
+Môi trường khác dùng `Bootstrap__AdminEmail`, `Bootstrap__AdminPassword`. Bước này chỉ chạy khi chưa có Admin nào đăng nhập được, nên hạ quyền về sau không bị đảo ngược. Tài khoản có sẵn cùng email sẽ bị thay mật khẩu. Không đưa giá trị này vào `appsettings*.json`/Git; xóa cấu hình sau khi đăng nhập được.
+
+## Quản lý người dùng
+
+`/admin-users` đọc trực tiếp từ SQL: tìm kiếm, lọc theo trạng thái/vai trò, phân trang, xuất CSV. `/admin-users/{id}` có khóa/mở khóa, đổi vai trò Parent/Admin, gửi lại email xác minh, gửi đặt lại mật khẩu, lịch sử đăng nhập và nhật ký quản trị. Khóa hoặc đổi vai trò kết thúc ngay mọi phiên của tài khoản đó. Admin không thể tự khóa hay tự đổi vai trò, nên hệ thống luôn còn ít nhất một Admin. Vai trò Child, Moderator, Teacher chỉ xem được tại đây. Thao tác quản trị ghi vào `dbo.AuditLogs`, đăng nhập ghi vào `dbo.LoginHistories`, đồng ý điều khoản khi đăng ký ghi vào `dbo.UserConsents`. Kiểm thử: `py scripts\smoke-admin-users.py` sau khi build.
+
 ## Email xác minh và khôi phục
 
 Profile Development dùng **Pickup**: email `.eml` được lưu riêng tại `%LOCALAPPDATA%\SafeLearnKids\Mail`. Mở thư mới nhất trên máy để lấy liên kết; đây là thư thử nghiệm, chưa gửi tới Gmail. Không có endpoint xem thư/token trong ứng dụng. Không đặt folder này trong repo hoặc wwwroot; không đưa thư/token lên Git/Trello/chat.

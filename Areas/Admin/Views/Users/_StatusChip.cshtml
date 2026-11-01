@@ -1,0 +1,10 @@
+@model string
+@{
+    var (label, tone) = Model switch
+    {
+        AdminUserStatus.Locked => ("Bị khóa", "r"),
+        AdminUserStatus.Pending => ("Chờ xác minh", "a"),
+        _ => ("Hoạt động", "g")
+    };
+}
+<span class="chip t-@tone">@label</span>

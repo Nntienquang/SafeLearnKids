@@ -17,7 +17,8 @@ public class AccountController(
     UserManager<ApplicationUser> users,
     SignInManager<ApplicationUser> signIn,
     ApplicationDbContext db,
-    AccountEmailService email) : Controller
+    AccountEmailService email,
+    AccountActivityLog activity) : Controller
 {
     private const string LoginFailure = "Không thể đăng nhập. Hãy kiểm tra email, mật khẩu hoặc thử lại sau.";
     private const string InvalidLink = "Liên kết không hợp lệ, đã được dùng hoặc đã hết hạn. Hãy yêu cầu liên kết mới.";
@@ -37,7 +38,8 @@ public class AccountController(
     public async Task<IActionResult> Login(LoginViewModel model)
     {
         if (!ModelState.IsValid) return View(model);
-        var user = await users.FindByEmailAsync(model.Email.Trim());
+        var email = model.Email.Trim();
+        var user = await users.FindByEmailAsync(email);
         if (user is not null && await signIn.CanSignInAsync(user) && !await users.IsLockedOutAsync(user))
         {
             Microsoft.AspNetCore.Identity.SignInResult result;
@@ -45,11 +47,19 @@ public class AccountController(
             catch (FormatException) { DummyPasswordCheck(model.Password); result = Microsoft.AspNetCore.Identity.SignInResult.Failed; }
             if (result.Succeeded)
             {
+                user.LastLoginAt = DateTime.UtcNow;
+                await users.UpdateAsync(user);
+                await activity.LoginAsync(user.Id, email, true, null);
                 if (model.ReturnUrl is not null && Url.IsLocalUrl(model.ReturnUrl)) return LocalRedirect(model.ReturnUrl);
-                return Redirect(await users.IsInRoleAsync(user, DemoSeeder.AdminRole) ? "/admin-home" : "/parent-home");
+                return Redirect(HomeUrl(await users.IsInRoleAsync(user, DemoSeeder.AdminRole), await users.IsInRoleAsync(user, DemoSeeder.ParentRole)));
             }
+            await activity.LoginAsync(user.Id, email, false, result.IsLockedOut ? "LockedOut" : "InvalidCredentials");
         }
-        else DummyPasswordCheck(model.Password);
+        else
+        {
+            DummyPasswordCheck(model.Password);
+            await activity.LoginAsync(user?.Id, email, false, await BlockedReasonAsync(user));
+        }
         ModelState.AddModelError(string.Empty, LoginFailure);
         return View(model);
     }
@@ -112,6 +122,7 @@ public class AccountController(
                 await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 301) * attempt), cancellationToken);
                 continue;
             }
+            await activity.TermsAcceptedAsync(user.Id);
             // Queue email after commit, outside the transaction retry.
             await email.SendConfirmationAsync(user, cancellationToken);
             return RedirectToAction(nameof(CheckEmail));
@@ -234,6 +245,16 @@ public class AccountController(
         await signIn.SignOutAsync();
         TempData["Info"] = "Đã đổi mật khẩu và kết thúc các phiên đăng nhập. Hãy đăng nhập lại.";
         return RedirectToAction(nameof(Login));
+    }
+
+    private static string HomeUrl(bool admin, bool parent) => admin ? "/admin-home" : parent ? "/parent-home" : "/";
+
+    private async Task<string> BlockedReasonAsync(ApplicationUser? user)
+    {
+        if (user is null) return "InvalidCredentials";
+        if (!user.IsActive) return "Disabled";
+        if (await users.IsLockedOutAsync(user)) return "LockedOut";
+        return user.EmailConfirmed ? "InvalidCredentials" : "EmailNotConfirmed";
     }
 
     private static bool IsSqlError(Exception exception, params int[] numbers)

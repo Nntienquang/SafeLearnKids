@@ -12,10 +12,10 @@
     <a class="sl-nav @(nav == "curate" ? "on" : "")" href="~/admin-curate"><i class="ic ic-playc"></i>Kênh gợi ý<span class="sl-badge hidden">0</span></a>
     <div class="side-l">Vận hành</div>
     <a class="sl-nav @(nav == "reports" ? "on" : "")" href="~/admin-reports"><i class="ic ic-flag"></i>Báo cáo nội dung<span class="sl-badge hidden">0</span></a>
-    <a class="sl-nav @(nav == "users" ? "on" : "")" href="~/admin-users"><i class="ic ic-users"></i>Tài khoản phụ huynh</a>
+    <a class="sl-nav @(nav == "users" ? "on" : "")" href="~/admin-users"><i class="ic ic-users"></i>Người dùng</a>
     <a class="sl-nav @(nav == "audit" ? "on" : "")" href="~/admin-audit"><i class="ic ic-history"></i>Nhật ký xử lý</a>
     <div class="side-foot">
         <form asp-area="" asp-controller="Account" asp-action="Logout" method="post"><button type="submit" class="sl-btn sl-btn-g" style="justify-content:flex-start;width:100%"><i class="ic ic-logout"></i>Đăng xuất</button></form>
-        <div class="who"><span class="av av-s" style="background:#0F766E">@(fullName.Length > 0 ? fullName.Substring(fullName.LastIndexOf(' ') + 1, 1) : "?")</span><div style="flex:1;min-width:0"><div class="b" style="font-size:13.5px">@fullName</div><div class="muted" style="font-size:12px">@User.Identity?.Name</div></div></div>
+        <div class="who"><span class="av av-s" style="background:#0F766E">@(fullName.Length > 0 ? fullName.Substring(fullName.LastIndexOf(' ') + 1, 1).ToUpper() : "?")</span><div style="flex:1;min-width:0"><div class="b" style="font-size:13.5px">@fullName</div><div class="muted" style="font-size:12px">@User.Identity?.Name</div></div></div>
     </div>
 </aside>
