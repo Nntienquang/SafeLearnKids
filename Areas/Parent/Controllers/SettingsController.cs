@@ -18,23 +18,17 @@ public class SettingsController(UserManager<ApplicationUser> users, AvatarStorag
     [EnableRateLimiting("account")]
     [RequestSizeLimit(AvatarStorage.MaxRequestBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = AvatarStorage.MaxRequestBytes)]
-    public async Task<IActionResult> Avatar(IFormFile? file, CancellationToken cancellationToken)
+    public async Task<IActionResult> Avatar(IFormFile? file, bool removeAvatar, CancellationToken cancellationToken)
     {
         var user = await users.GetUserAsync(User);
         if (user is null) return Challenge();
-        if (await avatars.ReplaceAsync(user, file, cancellationToken)) TempData["Info"] = "Đã cập nhật ảnh đại diện.";
+        if (removeAvatar && file is null)
+        {
+            if (await avatars.RemoveAsync(user)) TempData["Info"] = "Đã gỡ ảnh đại diện.";
+            else TempData["Error"] = "Chưa thể lưu thay đổi. Vui lòng thử lại.";
+        }
+        else if (await avatars.ReplaceAsync(user, file, cancellationToken)) TempData["Info"] = "Đã cập nhật ảnh đại diện.";
         else TempData["Error"] = AvatarStorage.Rejected;
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost("settings/avatar/remove")]
-    [EnableRateLimiting("account")]
-    public async Task<IActionResult> RemoveAvatar()
-    {
-        var user = await users.GetUserAsync(User);
-        if (user is null) return Challenge();
-        if (await avatars.RemoveAsync(user)) TempData["Info"] = "Đã gỡ ảnh đại diện.";
-        else TempData["Error"] = "Chưa thể lưu thay đổi. Vui lòng thử lại.";
         return RedirectToAction(nameof(Index));
     }
 }

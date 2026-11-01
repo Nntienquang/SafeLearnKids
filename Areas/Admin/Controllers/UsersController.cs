@@ -115,19 +115,24 @@ public class UsersController(
     {
         var user = await users.FindByIdAsync(id);
         if (user is null) return NotFound();
-        return View("Form", new AdminUserFormViewModel { Id = id, IsSelf = id == ActorId, FullName = user.FullName ?? string.Empty, Email = user.Email ?? string.Empty });
+        return View("Form", new AdminUserFormViewModel { Id = id, IsSelf = id == ActorId, FullName = user.FullName ?? string.Empty, Email = user.Email ?? string.Empty, AvatarUrl = user.AvatarUrl });
     }
 
     [HttpPost("admin-users/{id}/edit")]
-    public async Task<IActionResult> Edit(string id, AdminUserFormViewModel model, CancellationToken cancellationToken)
+    [RequestSizeLimit(AvatarStorage.MaxRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = AvatarStorage.MaxRequestBytes)]
+    public async Task<IActionResult> Edit(string id, AdminUserFormViewModel model, IFormFile? file, bool removeAvatar, CancellationToken cancellationToken)
     {
         var user = await users.FindByIdAsync(id);
         if (user is null) return NotFound();
         model.Id = id;
         model.IsSelf = id == ActorId;
+        model.AvatarUrl = user.AvatarUrl;
         var address = model.Email.Trim();
         var fullName = model.FullName.Trim();
         var emailChanged = !string.Equals(address, user.Email, StringComparison.OrdinalIgnoreCase);
+        var profileChanged = emailChanged || fullName != user.FullName;
+        if (file is not null && !await avatars.AcceptsAsync(file, cancellationToken)) ModelState.AddModelError(nameof(model.AvatarUrl), AvatarStorage.Rejected);
         if (fullName.Length < 2) ModelState.AddModelError(nameof(model.FullName), "Họ và tên cần từ 2 đến 100 ký tự.");
         // Changing it would unconfirm the address and lock the acting admin out.
         if (emailChanged && model.IsSelf) ModelState.AddModelError(nameof(model.Email), "Bạn không thể tự đổi email của mình tại đây.");
@@ -157,7 +162,13 @@ public class UsersController(
             return View("Form", model);
         }
         if (emailChanged && user.IsActive) await SendAccessEmailAsync(user, cancellationToken);
-        return await FinishAsync(id, result, "UpdateUser", emailChanged ? "Đã lưu thay đổi. Địa chỉ mới cần được xác minh." : "Đã lưu thay đổi.", emailChanged ? "Đổi email" : null);
+        var avatarAction = file is not null ? "ChangeAvatar" : removeAvatar && user.AvatarUrl is not null ? "RemoveAvatar" : null;
+        if (avatarAction is not null && !await (file is not null ? avatars.ReplaceAsync(user, file, cancellationToken) : avatars.RemoveAsync(user)))
+            return Refuse(id, profileChanged ? "Đã lưu thông tin nhưng chưa lưu được ảnh. Vui lòng thử lại." : SaveFailed);
+        var message = emailChanged ? "Đã lưu thay đổi. Địa chỉ mới cần được xác minh." : "Đã lưu thay đổi.";
+        if (!profileChanged && avatarAction is not null) return await FinishAsync(id, result, avatarAction, message);
+        if (avatarAction is not null) await activity.AdminActionAsync(ActorId, avatarAction, id, null);
+        return await FinishAsync(id, result, "UpdateUser", message, emailChanged ? "Đổi email" : null);
     }
 
     [HttpPost("admin-users/{id}/delete")]
@@ -190,26 +201,6 @@ public class UsersController(
         await activity.AdminActionAsync(ActorId, "DeleteUser", id, roles);
         TempData["Info"] = "Đã xóa tài khoản.";
         return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost("admin-users/{id}/avatar")]
-    [RequestSizeLimit(AvatarStorage.MaxRequestBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = AvatarStorage.MaxRequestBytes)]
-    public async Task<IActionResult> Avatar(string id, IFormFile? file, CancellationToken cancellationToken)
-    {
-        var user = await users.FindByIdAsync(id);
-        if (user is null) return NotFound();
-        if (!await avatars.ReplaceAsync(user, file, cancellationToken)) return Refuse(id, AvatarStorage.Rejected);
-        return await FinishAsync(id, IdentityResult.Success, "ChangeAvatar", "Đã cập nhật ảnh đại diện.");
-    }
-
-    [HttpPost("admin-users/{id}/avatar/remove")]
-    public async Task<IActionResult> RemoveAvatar(string id)
-    {
-        var user = await users.FindByIdAsync(id);
-        if (user is null) return NotFound();
-        if (!await avatars.RemoveAsync(user)) return Refuse(id, SaveFailed);
-        return await FinishAsync(id, IdentityResult.Success, "RemoveAvatar", "Đã gỡ ảnh đại diện.");
     }
 
     [HttpGet("admin-users/{id}")]
@@ -299,7 +290,7 @@ public class UsersController(
         if (user is null) return NotFound();
         if (user is not { IsActive: true, EmailConfirmed: false }) return Refuse(id, "Chỉ gửi xác minh cho tài khoản đang chờ xác minh.");
         await SendAccessEmailAsync(user, cancellationToken);
-        return await FinishAsync(id, IdentityResult.Success, "ResendConfirmation", "Đã gửi lại email xác minh.");
+        return await FinishAsync(id, IdentityResult.Success, "ResendConfirmation", "Đang gửi email xác minh. Nếu sau vài phút chưa thấy, hãy kiểm tra mục Spam.");
     }
 
     [HttpPost("admin-users/{id}/send-reset")]
@@ -309,7 +300,7 @@ public class UsersController(
         if (user is null) return NotFound();
         if (user is not { IsActive: true, EmailConfirmed: true }) return Refuse(id, "Chỉ gửi đặt lại mật khẩu cho tài khoản đang hoạt động.");
         await email.SendPasswordResetAsync(user, cancellationToken);
-        return await FinishAsync(id, IdentityResult.Success, "SendPasswordReset", "Đã gửi email đặt lại mật khẩu.");
+        return await FinishAsync(id, IdentityResult.Success, "SendPasswordReset", "Đang gửi email đặt lại mật khẩu. Nếu sau vài phút chưa thấy, hãy kiểm tra mục Spam.");
     }
 
     private string ActorId => users.GetUserId(User)!;

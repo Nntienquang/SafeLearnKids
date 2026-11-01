@@ -23,14 +23,14 @@
     <div class="sl-card kpi"><span class="muted b">Bị khóa</span><div class="kpi-v">@Model.Locked</div></div>
 </div>
 <form method="get" asp-action="Index" class="sl-row" style="gap:12px;margin-bottom:16px;flex-wrap:wrap">
-    <input class="inp grow" style="min-width:220px" type="search" name="q" value="@Model.Q" maxlength="256" aria-label="Tìm tài khoản" placeholder="Tìm theo tên hoặc email" />
-    <select class="inp" style="width:auto" name="status" aria-label="Lọc theo trạng thái">
+    <input class="inp inp-sm grow" style="min-width:220px" type="search" name="q" value="@Model.Q" maxlength="256" aria-label="Tìm tài khoản" placeholder="Tìm theo tên hoặc email" />
+    <select class="inp inp-sm" style="width:auto" name="status" aria-label="Lọc theo trạng thái">
         <option value="">Mọi trạng thái</option>
         <option value="@AdminUserStatus.Active" selected="@(Model.Status == AdminUserStatus.Active)">Hoạt động</option>
         <option value="@AdminUserStatus.Pending" selected="@(Model.Status == AdminUserStatus.Pending)">Chờ xác minh</option>
         <option value="@AdminUserStatus.Locked" selected="@(Model.Status == AdminUserStatus.Locked)">Bị khóa</option>
     </select>
-    <select class="inp" style="width:auto" name="role" aria-label="Lọc theo vai trò">
+    <select class="inp inp-sm" style="width:auto" name="role" aria-label="Lọc theo vai trò">
         <option value="">Mọi vai trò</option>
         @foreach (var role in Model.RoleOptions)
         {

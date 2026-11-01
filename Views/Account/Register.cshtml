@@ -12,22 +12,22 @@
                 <h1 id="register-title" class="sl-h1">Tạo tài khoản phụ huynh</h1>
                 <p class="sub">Bắt đầu hành trình học an toàn cùng con.</p>
             </header>
-            <form asp-action="Register" method="post" class="auth-form d-grid gap-3" data-auth-form data-submit-label="Đang tạo tài khoản…">
+            <form asp-action="Register" method="post" class="auth-form" data-auth-form data-submit-label="Đang tạo tài khoản…">
                 <div asp-validation-summary="ModelOnly" class="banner t-r auth-alert" role="alert" tabindex="-1" data-auth-feedback></div>
                 <div class="field">
-                    <label asp-for="FullName" class="lab form-label"></label>
-                    <input asp-for="FullName" class="form-control inp" autocomplete="name" placeholder="Họ và tên của bạn" minlength="2" maxlength="100" data-msg-minlength="Họ và tên cần từ 2 đến 100 ký tự." required aria-describedby="FullName-validation" />
+                    <label asp-for="FullName" class="lab"></label>
+                    <input asp-for="FullName" class="inp" autocomplete="name" placeholder="Họ và tên của bạn" minlength="2" maxlength="100" data-msg-minlength="Họ và tên cần từ 2 đến 100 ký tự." required aria-describedby="FullName-validation" />
                     <span asp-validation-for="FullName" id="FullName-validation" class="err" aria-live="polite"></span>
                 </div>
                 <div class="field">
-                    <label asp-for="Email" class="lab form-label"></label>
-                    <input asp-for="Email" type="email" class="form-control inp" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="ban@example.com" required aria-describedby="Email-validation" />
+                    <label asp-for="Email" class="lab"></label>
+                    <input asp-for="Email" type="email" class="inp" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="ban@example.com" required aria-describedby="Email-validation" />
                     <span asp-validation-for="Email" id="Email-validation" class="err" aria-live="polite"></span>
                 </div>
                 <div class="field">
-                    <label asp-for="Password" class="lab form-label"></label>
+                    <label asp-for="Password" class="lab"></label>
                     <div class="auth-password">
-                        <input asp-for="Password" class="form-control inp" autocomplete="new-password" minlength="8" maxlength="100" data-msg-minlength="Mật khẩu tối thiểu 8 ký tự." required aria-describedby="password-policy Password-validation password-strength" />
+                        <input asp-for="Password" class="inp" autocomplete="new-password" minlength="8" maxlength="100" data-msg-minlength="Mật khẩu tối thiểu 8 ký tự." required aria-describedby="password-policy Password-validation password-strength" />
                         <button type="button" class="auth-toggle" data-password-toggle="Password" aria-controls="Password" aria-label="Hiện mật khẩu" aria-pressed="false" hidden>Hiện</button>
                     </div>
                     <span asp-validation-for="Password" id="Password-validation" class="err" aria-live="polite"></span>
@@ -36,17 +36,17 @@
                     <p id="password-strength" class="hint" aria-live="polite">Độ mạnh tham khảo; mật khẩu sẽ được kiểm tra khi đăng ký.</p>
                 </div>
                 <div class="field">
-                    <label asp-for="ConfirmPassword" class="lab form-label"></label>
+                    <label asp-for="ConfirmPassword" class="lab"></label>
                     <div class="auth-password">
-                        <input asp-for="ConfirmPassword" class="form-control inp" autocomplete="new-password" maxlength="100" required aria-describedby="ConfirmPassword-validation" />
+                        <input asp-for="ConfirmPassword" class="inp" autocomplete="new-password" maxlength="100" required aria-describedby="ConfirmPassword-validation" />
                         <button type="button" class="auth-toggle" data-password-toggle="ConfirmPassword" aria-controls="ConfirmPassword" aria-label="Hiện mật khẩu nhập lại" aria-pressed="false" hidden>Hiện</button>
                     </div>
                     <span asp-validation-for="ConfirmPassword" id="ConfirmPassword-validation" class="err" aria-live="polite"></span>
                 </div>
                 <div class="field">
-                    <div class="form-check auth-check auth-consent">
-                        <input asp-for="Agree" class="form-check-input chk" required data-auth-agree data-msg-required="Hãy xác nhận bạn là phụ huynh và đồng ý điều khoản." aria-describedby="Agree-validation" />
-                        <label asp-for="Agree" class="form-check-label">Tôi là phụ huynh hoặc người giám hộ, đồng ý với điều khoản và chính sách dữ liệu của trẻ em.</label>
+                    <div class="auth-check auth-consent">
+                        <input asp-for="Agree" class="chk" required data-auth-agree data-msg-required="Hãy xác nhận bạn là phụ huynh và đồng ý điều khoản." aria-describedby="Agree-validation" />
+                        <label asp-for="Agree">Tôi là phụ huynh hoặc người giám hộ, đồng ý với điều khoản và chính sách dữ liệu của trẻ em.</label>
                     </div>
                     <span asp-validation-for="Agree" id="Agree-validation" class="err" aria-live="polite"></span>
                 </div>

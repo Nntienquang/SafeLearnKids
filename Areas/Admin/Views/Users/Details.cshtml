@@ -33,7 +33,7 @@
 }
 @section Actions {
 <a class="sl-btn" asp-action="Index"><i class="ic ic-arrowl"></i>Danh sách</a>
-<a class="sl-btn sl-btn-p" asp-action="Edit" asp-route-id="@user.Id">Sửa thông tin</a>
+<a class="sl-btn sl-btn-p" asp-action="Edit" asp-route-id="@user.Id"><i class="ic ic-edit"></i>Sửa thông tin</a>
 }
 @if (TempData["Info"] is string info)
 {
@@ -43,79 +43,93 @@
 {
     <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
 }
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px">
+<div class="ud-grid">
     <div class="sl-card">
-        <div class="card-h"><div class="card-t">Thông tin</div><partial name="_StatusChip" model="user.Status" /></div>
-        <div class="sl-row" style="gap:14px;margin-bottom:14px;flex-wrap:wrap">
+        <div class="ud-head">
             <partial name="_Avatar" model="@(new AvatarViewModel(user.AvatarUrl, user.Name, "av-l", "var(--grad)"))" />
-            <form asp-action="Avatar" asp-route-id="@user.Id" method="post" enctype="multipart/form-data" class="sl-row" style="gap:10px;flex-wrap:wrap">
-                <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required aria-label="Chọn ảnh đại diện" style="max-width:220px" />
-                <button class="sl-btn sl-btn-sm" type="submit">Tải ảnh lên</button>
-            </form>
-            @if (user.AvatarUrl is not null)
-            {
-                <form asp-action="RemoveAvatar" asp-route-id="@user.Id" method="post"><button class="sl-btn sl-btn-sm" type="submit">Gỡ ảnh</button></form>
-            }
+            <div class="grow">
+                <div class="sl-row" style="gap:8px;flex-wrap:wrap">
+                    @if (user.Roles.Count > 0)
+                    {
+                        <span class="chip t-p">@string.Join(", ", user.Roles)</span>
+                    }
+                    <partial name="_StatusChip" model="user.Status" />
+                </div>
+            </div>
         </div>
-        <table class="tbl"><tbody>
-            <tr><td class="muted">Vai trò</td><td class="b">@(user.Roles.Count > 0 ? string.Join(", ", user.Roles) : "—")</td></tr>
-            <tr><td class="muted">Email</td><td>@(Model.EmailConfirmed ? "Đã xác minh" : "Chưa xác minh")</td></tr>
-            <tr><td class="muted">Số bé</td><td>@user.Children</td></tr>
-            <tr><td class="muted">Tham gia</td><td>@user.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td></tr>
-            <tr><td class="muted">Đăng nhập gần nhất</td><td>@(user.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa có")</td></tr>
+        <dl class="ud-facts">
+            <div class="ud-fact"><dt>Email</dt><dd>@(Model.EmailConfirmed ? "Đã xác minh" : "Chưa xác minh")</dd></div>
+            <div class="ud-fact"><dt>Số bé</dt><dd>@user.Children</dd></div>
+            <div class="ud-fact"><dt>Tham gia</dt><dd>@user.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div>
+            <div class="ud-fact"><dt>Đăng nhập gần nhất</dt><dd>@(user.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa có")</dd></div>
             @if (Model.LockedOutUntil is { } until)
             {
-                <tr><td class="muted">Tạm khóa đến</td><td>@until.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td></tr>
+                <div class="ud-fact"><dt>Tạm khóa đến</dt><dd>@until.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd></div>
             }
-        </tbody></table>
+        </dl>
     </div>
     <div class="sl-card">
-        <div class="card-h"><div class="card-t">Thao tác</div></div>
+        <div class="card-h" style="margin-bottom:6px"><div class="card-t">Thao tác</div></div>
         @if (Model.IsSelf)
         {
-            <p class="muted">Đây là tài khoản của bạn nên không thể tự khóa, xóa hoặc đổi vai trò.</p>
+            <p class="muted ud-hint">Đây là tài khoản của bạn nên không thể tự khóa, xóa hoặc đổi vai trò.</p>
         }
-        <div class="sl-row" style="gap:10px;flex-wrap:wrap;margin-bottom:14px">
-            @if (locked)
-            {
-                <form asp-action="Unlock" asp-route-id="@user.Id" method="post" data-confirm="Mở khóa @user.Name?" data-text="Tài khoản sẽ đăng nhập lại được." data-ok-label="Mở khóa">
-                    <button class="sl-btn" type="submit">Mở khóa</button>
-                </form>
-            }
-            else if (!Model.IsSelf)
-            {
-                <form asp-action="Lock" asp-route-id="@user.Id" method="post" data-confirm="Khóa @user.Name?" data-text="Tài khoản sẽ không đăng nhập được và mọi phiên hiện tại bị kết thúc." data-ok-label="Khóa tài khoản" data-danger="true">
-                    <button class="sl-btn sl-btn-d" type="submit">Khóa tài khoản</button>
-                </form>
-            }
-            @if (!Model.Disabled && !Model.EmailConfirmed)
-            {
-                <form asp-action="ResendConfirmation" asp-route-id="@user.Id" method="post"><button class="sl-btn" type="submit">Gửi lại email xác minh</button></form>
-            }
-            @if (!Model.Disabled && Model.EmailConfirmed)
-            {
-                <form asp-action="SendReset" asp-route-id="@user.Id" method="post"><button class="sl-btn" type="submit">Gửi email đặt lại mật khẩu</button></form>
-            }
-            @if (!Model.IsSelf)
-            {
-                <form asp-action="Delete" asp-route-id="@user.Id" method="post" data-confirm="Xóa vĩnh viễn @user.Name?" data-text="Không thể hoàn tác. Tài khoản đã có hồ sơ bé hoặc dữ liệu liên quan sẽ không xóa được." data-ok-label="Xóa tài khoản" data-danger="true">
-                    <button class="sl-btn sl-btn-d" type="submit">Xóa tài khoản</button>
-                </form>
-            }
-        </div>
         @if (Model.RoleEditable && !Model.IsSelf)
         {
-            <form asp-action="SetRole" asp-route-id="@user.Id" method="post" class="sl-row" style="gap:10px;flex-wrap:wrap" data-confirm="Đổi vai trò của @user.Name?" data-text="Tài khoản sẽ bị đăng xuất khỏi mọi phiên. Người được chuyển sang Admin sẽ có toàn quyền quản trị." data-ok-label="Đổi vai trò" data-danger="true">
-                <select class="inp" style="width:auto" name="role" aria-label="Vai trò">
-                    <option value="Parent" selected="@(currentRole == "Parent")">Parent</option>
-                    <option value="Admin" selected="@(currentRole == "Admin")">Admin</option>
-                </select>
-                <button class="sl-btn" type="submit">Lưu vai trò</button>
-            </form>
+            <div class="ud-sec">
+                <div class="ud-lab">Vai trò</div>
+                <form asp-action="SetRole" asp-route-id="@user.Id" method="post" class="sl-row" style="gap:10px" data-confirm="Đổi vai trò của @user.Name?" data-text="Tài khoản sẽ bị đăng xuất khỏi mọi phiên. Người được chuyển sang Admin sẽ có toàn quyền quản trị." data-ok-label="Đổi vai trò" data-danger="true">
+                    <select class="inp inp-sm grow" name="role" aria-label="Vai trò">
+                        <option value="Parent" selected="@(currentRole == "Parent")">Parent</option>
+                        <option value="Admin" selected="@(currentRole == "Admin")">Admin</option>
+                    </select>
+                    <button class="sl-btn" type="submit">Lưu vai trò</button>
+                </form>
+            </div>
         }
         else if (!Model.RoleEditable)
         {
-            <p class="muted">Vai trò @string.Join(", ", user.Roles) không chỉnh được tại đây.</p>
+            <div class="ud-sec"><div class="ud-lab">Vai trò</div><p class="muted ud-hint">Vai trò @string.Join(", ", user.Roles) không chỉnh được tại đây.</p></div>
+        }
+        @if (!Model.Disabled)
+        {
+            <div class="ud-sec">
+                <div class="ud-lab">Email</div>
+                @if (Model.EmailConfirmed)
+                {
+                    <form asp-action="SendReset" asp-route-id="@user.Id" method="post"><button class="sl-btn sl-btn-block" type="submit"><i class="ic ic-mail"></i>Gửi email đặt lại mật khẩu</button></form>
+                }
+                else
+                {
+                    <form asp-action="ResendConfirmation" asp-route-id="@user.Id" method="post"><button class="sl-btn sl-btn-block" type="submit"><i class="ic ic-mail"></i>Gửi lại email xác minh</button></form>
+                }
+            </div>
+        }
+        @if (locked || !Model.IsSelf)
+        {
+            <div class="ud-sec">
+                <div class="ud-lab">Quyền truy cập</div>
+                <div class="ud-acts">
+                    @if (locked)
+                    {
+                        <form asp-action="Unlock" asp-route-id="@user.Id" method="post" data-confirm="Mở khóa @user.Name?" data-text="Tài khoản sẽ đăng nhập lại được." data-ok-label="Mở khóa">
+                            <button class="sl-btn sl-btn-block" type="submit">Mở khóa</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="Lock" asp-route-id="@user.Id" method="post" data-confirm="Khóa @user.Name?" data-text="Tài khoản sẽ không đăng nhập được và mọi phiên hiện tại bị kết thúc." data-ok-label="Khóa tài khoản" data-danger="true">
+                            <button class="sl-btn sl-btn-d sl-btn-block" type="submit"><i class="ic ic-lock"></i>Khóa tài khoản</button>
+                        </form>
+                    }
+                    @if (!Model.IsSelf)
+                    {
+                        <form asp-action="Delete" asp-route-id="@user.Id" method="post" data-confirm="Xóa vĩnh viễn @user.Name?" data-text="Không thể hoàn tác. Tài khoản đã có hồ sơ bé hoặc dữ liệu liên quan sẽ không xóa được." data-ok-label="Xóa tài khoản" data-danger="true">
+                            <button class="sl-btn sl-btn-d sl-btn-block" type="submit"><i class="ic ic-trash"></i>Xóa tài khoản</button>
+                        </form>
+                    }
+                </div>
+            </div>
         }
     </div>
 </div>

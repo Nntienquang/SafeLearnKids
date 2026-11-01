@@ -28,6 +28,7 @@ UI.theme=function(t){
   t=S.get().theme;APP.setAttribute('data-theme',t);
   var dark=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches);
   document.documentElement.setAttribute('data-bs-theme',dark?'dark':'light');
+  document.documentElement.style.colorScheme=dark?'dark':'light';
   $$('[data-theme-toggle] .ic').forEach(function(i){i.className='ic '+(dark?'ic-sun':'ic-moon');});
   $$('[data-theme-toggle]').forEach(function(b){b.setAttribute('aria-label','Giao diện: '+LABEL[t]+'. Bấm để đổi');b.title='Giao diện: '+LABEL[t];});
   $$('[data-theme-opt]').forEach(function(o){var on=o.dataset.themeOpt===t;o.style.borderColor=on?'var(--primary)':'var(--line)';o.setAttribute('aria-pressed',on);});
@@ -140,4 +141,14 @@ UI.ready=function(fn){if(document.readyState!=='loading')fn();else document.addE
 UI.ready(function(){enhance();UI.theme();document.dispatchEvent(new CustomEvent('kl:ui'));});
 matchMedia('(prefers-color-scheme:dark)').addEventListener&&matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(){UI.theme();});
 document.addEventListener('kl:change',function(){});
+function avatarPick(p,state,src){var q=function(s){return p.querySelector(s);},img=q('[data-avatar-image]'),start=p.dataset.start===undefined?(p.dataset.start=img.getAttribute('src')||''):p.dataset.start,save=p.closest('form').querySelector('[data-avatar-save]'),shown=state==='new'?src:state==='clear'?'':start;
+if(img.src.indexOf('blob:')===0)URL.revokeObjectURL(img.src);
+if(shown)img.src=shown;else img.removeAttribute('src');img.hidden=!shown;q('[data-avatar-initial]').hidden=!!shown;
+q('[data-avatar-clear]').value=state==='clear'?'true':'false';q('[data-avatar-undo]').hidden=state==='same';q('[data-avatar-remove]').hidden=state!=='same'||!start;
+if(state!=='new')q('[data-avatar-file]').value='';if(save)save.hidden=state==='same';
+var s=q('[data-avatar-status]');s.className='ud-hint '+(state==='same'?'muted':'t-note');s.textContent=state==='new'?'Đang xem trước, ảnh chưa được lưu.':state==='clear'?'Ảnh sẽ được gỡ khi bạn lưu.':'JPG, PNG hoặc WebP, tối đa 2 MB.';}
+document.addEventListener('change',function(e){var t=e.target;if(!t.matches||!t.matches('[data-avatar-file]')||!t.files.length)return;var f=t.files[0],p=t.closest('[data-avatar-picker]'),s=p.querySelector('[data-avatar-status]');
+if(['image/jpeg','image/png','image/webp'].indexOf(f.type)<0||f.size>2097152){t.value='';s.className='ud-hint err';s.textContent='Chọn ảnh JPG, PNG hoặc WebP, tối đa 2 MB.';return;}
+avatarPick(p,'new',URL.createObjectURL(f));});
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-avatar-remove],[data-avatar-undo]');if(b)avatarPick(b.closest('[data-avatar-picker]'),b.hasAttribute('data-avatar-remove')?'clear':'same');});
 })();
