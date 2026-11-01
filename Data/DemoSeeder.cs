@@ -30,8 +30,13 @@ public static class DemoSeeder
         }
 
         var users = services.GetRequiredService<UserManager<ApplicationUser>>();
-        await EnsureUserAsync(users, "ha.nguyen@gmail.com", "Nguyễn Thu Hà", "matkhau123", ParentRole);
-        await EnsureUserAsync(users, "admin@safelearnkids.vn", "Quản trị SafeLearn Kids", "admin12345", AdminRole);
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var parentPassword = configuration["Demo:ParentPassword"];
+        var adminPassword = configuration["Demo:AdminPassword"];
+        if (string.IsNullOrWhiteSpace(parentPassword) || string.IsNullOrWhiteSpace(adminPassword))
+            throw new InvalidOperationException("Set Demo:ParentPassword and Demo:AdminPassword privately before seeding demo accounts.");
+        await EnsureUserAsync(users, "ha.nguyen@gmail.com", "Nguyễn Thu Hà", parentPassword, ParentRole);
+        await EnsureUserAsync(users, "admin@safelearnkids.vn", "Quản trị SafeLearn Kids", adminPassword, AdminRole);
     }
 
     private static async Task EnsureUserAsync(UserManager<ApplicationUser> users, string email, string fullName, string password, string role)
@@ -50,9 +55,7 @@ public static class DemoSeeder
         };
 
         var result = await users.CreateAsync(user, password);
-        if (result.Succeeded)
-        {
-            await users.AddToRoleAsync(user, role);
-        }
+        if (!result.Succeeded || !(await users.AddToRoleAsync(user, role)).Succeeded)
+            throw new InvalidOperationException("Demo account creation failed. Check the configured password policy and role setup.");
     }
 }

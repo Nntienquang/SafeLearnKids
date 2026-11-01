@@ -6,12 +6,14 @@ public class LoginViewModel
 {
     [Required(ErrorMessage = "Nhập email của bạn.")]
     [EmailAddress(ErrorMessage = "Email chưa đúng định dạng.")]
+    [StringLength(256, ErrorMessage = "Email không được vượt quá 256 ký tự.")]
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Nhập mật khẩu.")]
     [DataType(DataType.Password)]
     [Display(Name = "Mật khẩu")]
+    [StringLength(100, ErrorMessage = "Mật khẩu không được vượt quá 100 ký tự.")]
     public string Password { get; set; } = string.Empty;
 
     [Display(Name = "Ghi nhớ trên máy này")]
@@ -29,15 +31,17 @@ public class RegisterViewModel
 
     [Required(ErrorMessage = "Nhập email.")]
     [EmailAddress(ErrorMessage = "Email chưa đúng định dạng.")]
+    [StringLength(256, ErrorMessage = "Email không được vượt quá 256 ký tự.")]
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Nhập mật khẩu.")]
-    [StringLength(100, MinimumLength = 8, ErrorMessage = "Mật khẩu tối thiểu 8 ký tự.")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "Mật khẩu cần từ 8 đến 100 ký tự.")]
     [DataType(DataType.Password)]
     [Display(Name = "Mật khẩu")]
     public string Password { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "Nhập lại mật khẩu.")]
     [DataType(DataType.Password)]
     [Display(Name = "Nhập lại mật khẩu")]
     [Compare(nameof(Password), ErrorMessage = "Hai mật khẩu chưa khớp nhau.")]
@@ -51,27 +55,63 @@ public class ForgotPasswordViewModel
 {
     [Required(ErrorMessage = "Nhập email đã đăng ký.")]
     [EmailAddress(ErrorMessage = "Email chưa đúng định dạng.")]
+    [StringLength(256, ErrorMessage = "Email không được vượt quá 256 ký tự.")]
     [Display(Name = "Email")]
     public string Email { get; set; } = string.Empty;
 }
 
 public class ResetPasswordViewModel
 {
-    [Required]
-    [EmailAddress]
+    [Required(ErrorMessage = "Nhập email.")]
+    [EmailAddress(ErrorMessage = "Email chưa đúng định dạng.")]
+    [StringLength(256, ErrorMessage = "Email không được vượt quá 256 ký tự.")]
     public string Email { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Liên kết không hợp lệ. Hãy yêu cầu liên kết mới.")]
+    [StringLength(8192, ErrorMessage = "Liên kết không hợp lệ. Hãy yêu cầu liên kết mới.")]
     public string Token { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Nhập mật khẩu mới.")]
-    [StringLength(100, MinimumLength = 8, ErrorMessage = "Mật khẩu mới tối thiểu 8 ký tự.")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "Mật khẩu mới cần từ 8 đến 100 ký tự.")]
     [DataType(DataType.Password)]
     [Display(Name = "Mật khẩu mới")]
     public string Password { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "Nhập lại mật khẩu mới.")]
     [DataType(DataType.Password)]
     [Display(Name = "Nhập lại mật khẩu mới")]
     [Compare(nameof(Password), ErrorMessage = "Hai mật khẩu chưa khớp nhau.")]
     public string ConfirmPassword { get; set; } = string.Empty;
+}
+
+public class ChangePasswordViewModel
+{
+    [Required(ErrorMessage = "Nhập mật khẩu hiện tại.")]
+    [DataType(DataType.Password)]
+    [StringLength(100, ErrorMessage = "Mật khẩu hiện tại không được vượt quá 100 ký tự.")]
+    [Display(Name = "Mật khẩu hiện tại")]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Nhập mật khẩu mới.")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "Mật khẩu mới cần từ 8 đến 100 ký tự.")]
+    [DataType(DataType.Password)]
+    [Display(Name = "Mật khẩu mới")]
+    public string Password { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Nhập lại mật khẩu mới.")]
+    [DataType(DataType.Password)]
+    [Compare(nameof(Password), ErrorMessage = "Hai mật khẩu chưa khớp nhau.")]
+    [Display(Name = "Nhập lại mật khẩu mới")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
+public class EmailConfirmationViewModel
+{
+    [Required(ErrorMessage = "Liên kết không hợp lệ. Hãy yêu cầu liên kết mới.")]
+    [StringLength(450, ErrorMessage = "Liên kết không hợp lệ. Hãy yêu cầu liên kết mới.")]
+    public string UserId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Liên kết không hợp lệ. Hãy yêu cầu liên kết mới.")]
+    [StringLength(8192, ErrorMessage = "Liên kết không hợp lệ. Hãy yêu cầu liên kết mới.")]
+    public string Code { get; set; } = string.Empty;
 }
