@@ -32,4 +32,21 @@
         pw.addEventListener('input', paint);
         paint();
     }
+    if (window.jQuery && window.jQuery.validator) {
+        var origRange = window.jQuery.validator.methods.range;
+        if (origRange) {
+            window.jQuery.validator.methods.range = function (value, element, param) {
+                if (element.type === 'checkbox') {
+                    return element.checked;
+                }
+                return origRange.call(this, value, element, param);
+            };
+        }
+        window.jQuery.validator.addMethod('mustbetrue', function (value, element) {
+            return element.checked;
+        });
+        if (window.jQuery.validator.unobtrusive) {
+            window.jQuery.validator.unobtrusive.adapters.addBool('mustbetrue');
+        }
+    }
 })();

@@ -14,6 +14,14 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
+builder.Services.AddDbContext<SafeLearnDbContext>(options =>
+{
+    if (useInMemory)
+        options.UseInMemoryDatabase("SafeLearnKids_Entities");
+    else
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
+
 // ---- ASP.NET Core Identity (roles: Parent, Admin) ----
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>

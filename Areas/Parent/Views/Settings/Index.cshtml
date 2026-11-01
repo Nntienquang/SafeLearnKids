@@ -1,18 +1,52 @@
 @{
-    ViewData["Title"] = """Cài đặt tài khoản""";
+    ViewData["Title"] = "Cài đặt tài khoản";
     ViewData["Page"] = "settings";
     ViewData["Nav"] = "settings";
-    ViewData["Crumb"] = Html.Raw("""Phụ huynh · Tài khoản""");
-    ViewData["Heading"] = """Cài đặt""";
-    ViewData["Sub"] = """Hồ sơ phụ huynh, giao diện và bảo mật đăng nhập.""";
+    ViewData["Crumb"] = Html.Raw("Phụ huynh · Tài khoản");
+    ViewData["Heading"] = "Cài đặt";
+    ViewData["Sub"] = "Hồ sơ phụ huynh, giao diện và bảo mật đăng nhập.";
+
+    var fullName = User.FindFirst("FullName")?.Value;
+    if (string.IsNullOrWhiteSpace(fullName))
+    {
+        fullName = User.Identity?.Name ?? "Phụ huynh";
+    }
+    var email = User.Identity?.Name ?? "";
+    var words = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    var initials = words.Length >= 2 
+        ? $"{words[0][0]}{words[^1][0]}".ToUpper() 
+        : (fullName.Length > 0 ? fullName[..1].ToUpper() : "P");
 }
 @section Actions {
 <button class="sl-btn sl-btn-p" type="button">Lưu thay đổi</button>
 }
 <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
-<div class="sl-card" style="flex:2 1 460px;min-width:0;display:flex;flex-direction:column;gap:16px"><div class="sl-row" style="gap:16px"><span class="av av-l" style="background:var(--grad)">TH</span><div><div class="card-t" style="font-size:18px">Nguyễn Thu Hà</div><div class="muted">ha.nguyen@@gmail.com</div></div></div>
-<div class="field"><label class="lab" for="st1">Họ và tên</label><input id="st1" class="inp" value="Nguyễn Thu Hà"></div><div class="field"><label class="lab" for="st2">Email</label><input id="st2" class="inp" value="ha.nguyen@@gmail.com"></div>
-<div class="field"><span class="lab">Đổi mật khẩu</span><button class="sl-btn" type="button" style="align-self:flex-start"><i class="ic ic-key"></i>Đổi mật khẩu</button></div></div>
-<div class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px"><div class="sl-card"><div class="card-t" style="margin-bottom:12px">Giao diện</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-<div class="sl-col" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid var(--primary)"><span class="ib t-a"><i class="ic ic-sun"></i></span><span class="b" style="font-size:13px">Sáng</span></div><div class="sl-col" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid var(--line)"><span class="ib t-v"><i class="ic ic-moon"></i></span><span class="b" style="font-size:13px">Tối</span></div><div class="sl-col" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid var(--line)"><span class="ib t-n"><i class="ic ic-monitor"></i></span><span class="b" style="font-size:13px">Theo máy</span></div></div></div>
-<div class="sl-card"><div class="card-t" style="margin-bottom:12px">Thông báo</div><div class="sl-row" style="justify-content:space-between;padding:9px 0"><span class="b" style="font-size:14px">Xin thêm giờ</span><span class="switch on"></span></div><div class="sl-row" style="justify-content:space-between;padding:9px 0"><span class="b" style="font-size:14px">Báo cáo tuần</span><span class="switch on"></span></div><div class="sl-row" style="justify-content:space-between;padding:9px 0"><span class="b" style="font-size:14px">Huy hiệu mới</span><span class="switch"></span></div></div></div></div>
+<div class="sl-card" style="flex:2 1 460px;min-width:0;display:flex;flex-direction:column;gap:16px">
+    <div class="sl-row" style="gap:16px">
+        <span class="av av-l" style="background:var(--grad)">@initials</span>
+        <div>
+            <div class="card-t" style="font-size:18px">@fullName</div>
+            <div class="muted">@email</div>
+        </div>
+    </div>
+    <div class="field"><label class="lab" for="st1">Họ và tên</label><input id="st1" class="inp" value="@fullName"></div>
+    <div class="field"><label class="lab" for="st2">Email</label><input id="st2" class="inp" value="@email" readonly style="opacity:0.85"></div>
+    <div class="field"><span class="lab">Đổi mật khẩu</span><button class="sl-btn" type="button" style="align-self:flex-start"><i class="ic ic-key"></i>Đổi mật khẩu</button></div>
+</div>
+<div class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px">
+    <div class="sl-card">
+        <div class="card-t" style="margin-bottom:12px">Giao diện</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <div class="sl-col" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid var(--primary)"><span class="ib t-a"><i class="ic ic-sun"></i></span><span class="b" style="font-size:13px">Sáng</span></div>
+            <div class="sl-col" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid var(--line)"><span class="ib t-v"><i class="ic ic-moon"></i></span><span class="b" style="font-size:13px">Tối</span></div>
+            <div class="sl-col" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid var(--line)"><span class="ib t-n"><i class="ic ic-monitor"></i></span><span class="b" style="font-size:13px">Theo máy</span></div>
+        </div>
+    </div>
+    <div class="sl-card">
+        <div class="card-t" style="margin-bottom:12px">Thông báo</div>
+        <div class="sl-row" style="justify-content:space-between;padding:9px 0"><span class="b" style="font-size:14px">Xin thêm giờ</span><span class="switch on"></span></div>
+        <div class="sl-row" style="justify-content:space-between;padding:9px 0"><span class="b" style="font-size:14px">Báo cáo tuần</span><span class="switch on"></span></div>
+        <div class="sl-row" style="justify-content:space-between;padding:9px 0"><span class="b" style="font-size:14px">Huy hiệu mới</span><span class="switch"></span></div>
+    </div>
+</div>
+</div>

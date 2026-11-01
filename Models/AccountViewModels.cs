@@ -1,6 +1,33 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace SafeLearnKids.Web.Models;
+
+public class MustBeTrueAttribute : ValidationAttribute, IClientModelValidator
+{
+    public MustBeTrueAttribute()
+    {
+        ErrorMessage = "Hãy xác nhận bạn là phụ huynh và đồng ý điều khoản.";
+    }
+
+    public override bool IsValid(object? value)
+    {
+        return value is true;
+    }
+
+    public void AddValidation(ClientModelValidationContext context)
+    {
+        MergeAttribute(context.Attributes, "data-val", "true");
+        MergeAttribute(context.Attributes, "data-val-mustbetrue", FormatErrorMessage(context.ModelMetadata.GetDisplayName()));
+    }
+
+    private static bool MergeAttribute(IDictionary<string, string> attributes, string key, string value)
+    {
+        if (attributes.ContainsKey(key)) return false;
+        attributes.Add(key, value);
+        return true;
+    }
+}
 
 public class LoginViewModel
 {
@@ -43,7 +70,7 @@ public class RegisterViewModel
     [Compare(nameof(Password), ErrorMessage = "Hai mật khẩu chưa khớp nhau.")]
     public string ConfirmPassword { get; set; } = string.Empty;
 
-    [Range(typeof(bool), "true", "true", ErrorMessage = "Hãy xác nhận bạn là phụ huynh và đồng ý điều khoản.")]
+    [MustBeTrue(ErrorMessage = "Hãy xác nhận bạn là phụ huynh và đồng ý điều khoản.")]
     public bool Agree { get; set; }
 }
 
