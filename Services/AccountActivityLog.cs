@@ -11,7 +11,7 @@ public sealed class AccountActivityLog(
     ILogger<AccountActivityLog> logger)
 {
     public const string UserEntity = "User";
-    private const string TermsVersion = "v1.0";
+    public const string TermsVersion = "v1.0";
 
     public Task LoginAsync(string? userId, string email, bool succeeded, string? failReason) => SaveAsync(db =>
         db.LoginHistories.Add(new LoginHistory

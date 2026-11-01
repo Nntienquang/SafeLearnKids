@@ -194,6 +194,10 @@ def main():
             with running_app(url, directory, logs=logs) as client:
                 for asset in ("/css/auth.css", "/js/auth.js"):
                     check(client.request(asset)[0] == 200, f"asset {asset}")
+                _, _, register_page = client.request("/register")
+                for path, title in (("/terms", "Điều khoản sử dụng"), ("/child-data-policy", "Chính sách dữ liệu của trẻ em")):
+                    status, _, body = client.request(path)
+                    check(status == 200 and title in body and "v1.0" in body and f'href="{path}"' in register_page, f"{path} is public and linked from signup")
                 status, headers, _ = client.request("/register")
                 check("no-store" in headers.get("Cache-Control", "") and headers.get("Referrer-Policy") == "no-referrer", "account pages are private and suppress referrers")
                 check(headers.get("X-Content-Type-Options") == "nosniff" and "frame-ancestors 'none'" in headers.get("Content-Security-Policy", ""), "security response headers")
@@ -222,8 +226,8 @@ def main():
                 check(status == 200 and "Liên kết" in body, "invalid confirmation token rejected")
                 check(confirm(client, link)[0] == 302 and sql(f"SELECT EmailConfirmed FROM dbo.Users WHERE Email=N'{EMAIL}';") == "1", "confirmation activates only the token owner")
                 check(confirm(client, link)[0] == 200, "confirmation cannot be replayed")
-                status, headers, _ = Client(url).post_form("/register", user)
-                check(status == 302 and headers.get("Location") == "/check-email" and sql(count_query) == "1", "duplicate registration has a generic result")
+                status, _, body = Client(url).post_form("/register", user)
+                check(status == 200 and "Email này đã được đăng ký" in body and sql(count_query) == "1", "duplicate registration shows an error on the form")
                 before = len(list(directory.glob("*.eml")))
                 check(client.post_form("/resend-confirmation", {"Email": missing_email}, "/check-email")[0] == 302
                       and client.post_form("/resend-confirmation", {"Email": EMAIL}, "/check-email")[0] == 302
@@ -301,8 +305,8 @@ def main():
                 check("matkhau123" not in script and "admin12345" not in script and "state.accounts=[]" in script, "public script has no passwords and clears legacy credentials")
                 with ThreadPoolExecutor(max_workers=2) as executor:
                     results = list(executor.map(lambda _: Client(url).post_form("/register", {**user, "Email": race_email}), range(2)))
-                check(all(result[0] == 302 and result[1].get("Location") == "/check-email" for result in results)
-                      and sql(f"SELECT COUNT(*) FROM dbo.Users WHERE Email=N'{race_email}';") == "1", "simultaneous registration keeps one account and a generic response")
+                check(sorted(result[0] for result in results) == [200, 302] and any("Email này đã được đăng ký" in result[2] for result in results)
+                      and sql(f"SELECT COUNT(*) FROM dbo.Users WHERE Email=N'{race_email}';") == "1", "simultaneous registration keeps one account and shows one form error")
             check(sql(count_query) == "1", "SQL user survives process shutdown")
             with running_app(url, directory, {"Auth__PasswordResetTokenLifetime": "00:00:01", "Auth__EmailConfirmationTokenLifetime": "00:00:01"}, logs) as client:
                 check(client.post_form("/login", {"Email": EMAIL, "Password": changed_password})[0] == 302, "fresh process signs in with persisted changed password")

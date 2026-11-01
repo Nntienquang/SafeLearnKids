@@ -46,7 +46,7 @@
                 <div class="field">
                     <div class="auth-check auth-consent">
                         <input asp-for="Agree" class="chk" required data-auth-agree data-msg-required="Hãy xác nhận bạn là phụ huynh và đồng ý điều khoản." aria-describedby="Agree-validation" />
-                        <label asp-for="Agree">Tôi là phụ huynh hoặc người giám hộ, đồng ý với điều khoản và chính sách dữ liệu của trẻ em.</label>
+                        <label asp-for="Agree">Tôi là phụ huynh hoặc người giám hộ, đồng ý với <a href="~/terms" class="auth-link" target="_blank" rel="noopener">Điều khoản sử dụng</a> và <a href="~/child-data-policy" class="auth-link" target="_blank" rel="noopener">Chính sách dữ liệu của trẻ em</a>.</label>
                     </div>
                     <span asp-validation-for="Agree" id="Agree-validation" class="err" aria-live="polite"></span>
                 </div>

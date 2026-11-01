@@ -18,6 +18,14 @@ public class HomeController : Controller
     public IActionResult States() => View();
 
     [AllowAnonymous]
+    [HttpGet("terms")]
+    public IActionResult Terms() => View();
+
+    [AllowAnonymous]
+    [HttpGet("child-data-policy")]
+    public IActionResult ChildDataPolicy() => View();
+
+    [AllowAnonymous]
     [Route("error/{code?}")]
     public IActionResult Error(int? code)
     {
