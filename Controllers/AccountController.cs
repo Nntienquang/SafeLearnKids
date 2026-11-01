@@ -21,7 +21,8 @@ public class AccountController(
     AccountActivityLog activity) : Controller
 {
     private const string LoginFailure = "Không thể đăng nhập. Hãy kiểm tra email, mật khẩu hoặc thử lại sau.";
-    private const string InvalidLink = "Liên kết không hợp lệ, đã được dùng hoặc đã hết hạn. Hãy yêu cầu liên kết mới.";
+    private const string EmailRegistered = "Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.";
+    private const string InvalidLink ="Liên kết không hợp lệ, đã được dùng hoặc đã hết hạn. Hãy yêu cầu liên kết mới.";
     private static readonly ApplicationUser DummyUser = new();
     private static readonly PasswordHasher<ApplicationUser> DummyHasher = new();
     private static readonly string DummyHash = DummyHasher.HashPassword(DummyUser, Guid.NewGuid().ToString());
@@ -89,9 +90,11 @@ public class AccountController(
                 var result = await users.CreateAsync(user, model.Password);
                 if (!result.Succeeded)
                 {
-                    // A duplicate address receives the same response as a new registration.
                     if (result.Errors.All(error => error.Code is "DuplicateUserName" or "DuplicateEmail"))
-                        return RedirectToAction(nameof(CheckEmail));
+                    {
+                        ModelState.AddModelError(nameof(model.Email), EmailRegistered);
+                        return View(model);
+                    }
                     AddPasswordErrors(result);
                     return View(model);
                 }
@@ -108,7 +111,8 @@ public class AccountController(
             {
                 // Another registration won after Identity's duplicate check.
                 db.ChangeTracker.Clear();
-                return RedirectToAction(nameof(CheckEmail));
+                ModelState.AddModelError(nameof(model.Email), EmailRegistered);
+                return View(model);
             }
             catch (Exception exception) when (IsSqlError(exception, 1205))
             {

@@ -1,0 +1,22 @@
+@using SafeLearnKids.Web.Services
+@{
+    Layout = "_Layout";
+    ViewData["Area"] = "public";
+    ViewData["AppStyle"] = "display:block";
+    var page = ViewData["Page"] as string;
+}
+<main id="main" class="legal" tabindex="-1">
+    <header class="legal-top">
+        <a href="~/" class="brand" style="padding:0"><span class="brand-mark"><i class="ic ic-grad" aria-hidden="true"></i></span><span class="brand-name">SafeLearn Kids</span></a>
+        <nav class="legal-nav" aria-label="Văn bản pháp lý">
+            <a class="sl-btn sl-btn-sm @(page == "terms" ? "sl-btn-s" : "sl-btn-g")" href="~/terms" aria-current="@(page == "terms" ? "page" : null)">Điều khoản</a>
+            <a class="sl-btn sl-btn-sm @(page == "child-data-policy" ? "sl-btn-s" : "sl-btn-g")" href="~/child-data-policy" aria-current="@(page == "child-data-policy" ? "page" : null)">Dữ liệu trẻ em</a>
+        </nav>
+    </header>
+    <article class="sl-card legal-doc">
+        <h1 class="sl-h1">@ViewData["Title"]</h1>
+        <p class="muted legal-meta">Phiên bản @AccountActivityLog.TermsVersion · Hiệu lực từ 01/11/2026</p>
+        <p class="banner t-a legal-draft">Bản dự thảo của đồ án Công nghệ phần mềm, Nhóm 16. SafeLearn Kids đang được phát triển, chưa cung cấp thương mại và một số chức năng còn đang hoàn thiện.</p>
+        @RenderBody()
+    </article>
+</main>

@@ -65,8 +65,10 @@ def main():
 
                             responses = list(executor.map(register, range(2)))
                             statuses = [response[0] for response in responses]
-                            safe_response = all(response[0] == 302 and response[1].get("Location") == "/check-email"
-                                                for response in responses)
+                            winner = [response for response in responses if response[0] == 302]
+                            loser = [response for response in responses if response[0] == 200]
+                            safe_response = (len(winner) == len(loser) == 1 and winner[0][1].get("Location") == "/check-email"
+                                             and "Email này đã được đăng ký" in loser[0][2])
                             user_count = smoke.sql(f"SELECT COUNT(*) FROM dbo.Users WHERE NormalizedEmail=N'{address.upper()}';")
                             parent_count = smoke.sql(
                                 "SELECT COUNT(*) FROM dbo.Users u JOIN dbo.UserRoles ur ON ur.UserId=u.Id "
@@ -74,7 +76,7 @@ def main():
                                 f"WHERE u.NormalizedEmail=N'{address.upper()}' AND u.EmailConfirmed=0 AND u.IsActive=1 "
                                 "AND LEN(u.PasswordHash)>40 AND r.NormalizedName=N'PARENT';")
                             record(safe_response and user_count == parent_count == "1",
-                                   f"signup pair {round_number + 1}: generic responses, one pending user with Parent role",
+                                   f"signup pair {round_number + 1}: one success, one form error, one pending user with Parent role",
                                    statuses=statuses, user_count=user_count, parent_count=parent_count)
             if args.section in ("all", "rate"):
                 with smoke.running_app(url, directory, {"Auth__RateLimitPermitLimit": "2"}, logs) as client:
