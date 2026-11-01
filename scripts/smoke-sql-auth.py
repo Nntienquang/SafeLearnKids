@@ -337,6 +337,7 @@ def main():
                     refused = True
                 check(refused, "unsafe production/demo/email configuration is refused at startup")
     finally:
+        sql("DELETE FROM dbo.LoginHistories WHERE UserNameTried LIKE N'sql-smoke-%@example.invalid';")
         sql(f"DELETE FROM dbo.Users WHERE Email IN (N'{EMAIL}',N'{other_email}',N'{race_email}') AND FullName=N'SQL smoke test';")
         check(sql(f"SELECT COUNT(*) FROM dbo.Users WHERE Email IN (N'{EMAIL}',N'{other_email}',N'{race_email}');") == "0", "only generated test users and their Identity links are cleaned up")
     print(f"RESULT {checks}/{checks} passed (SQL + email + security + restart)")

@@ -26,6 +26,7 @@ builder.Services.AddOptions<AccountEmailOptions>().Bind(builder.Configuration.Ge
     .Validate(options => System.Net.Mail.MailAddress.TryCreate(options.FromAddress, out _), "Configure a valid Email:FromAddress.")
     .ValidateOnStart();
 builder.Services.AddScoped<AccountEmailService>();
+builder.Services.AddScoped<AccountActivityLog>();
 builder.Services.AddSingleton<AccountEmailQueue>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<AccountEmailQueue>());
 

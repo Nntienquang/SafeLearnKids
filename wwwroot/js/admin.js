@@ -89,17 +89,8 @@ if(P==='admin-reports'){
 }
 
 if(P==='admin-users'){
-  var FAKE=[{name:'Trần Văn Lan',email:'lan.tran@gmail.com',kids:1,at:'07/10/2026'},{name:'Phạm Quốc Bảo',email:'bao.pham@outlook.com',kids:3,at:'09/10/2026',locked:1},{name:'Lê Mỹ Linh',email:'linh.le@gmail.com',kids:1,at:'12/10/2026',pending:1}];
-  var users=st.accounts.filter(function(a){return a.role==='parent';}).map(function(a){return {name:a.name,email:a.email,kids:st.children.length,at:'05/10/2026'};}).concat(FAKE),flt='Tất cả',q='';
-  var tb=$('.tbl tbody'),seg=$('.seg'),inp=$('.search');inp.innerHTML='<i class="ic ic-search"></i><input type="search" aria-label="Tìm tài khoản" placeholder="Tìm theo tên hoặc email">';
-  function draw(){var list=users.filter(function(u){var s=u.locked?'Bị khóa':u.pending?'Chờ xác minh':'Hoạt động';return (flt==='Tất cả'||(flt==='Hoạt động'&&s==='Hoạt động')||(flt==='Bị khóa'&&u.locked))&&(!q||UI.vn(u.name+u.email).indexOf(UI.vn(q))>-1);});
-    tb.innerHTML=list.map(function(u){var s=u.locked?['Bị khóa','r']:u.pending?['Chờ xác minh','a']:['Hoạt động','g'];return '<tr><td><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--grad)">'+esc(u.name.split(' ').pop().charAt(0))+'</span><div><div class="b">'+esc(u.name)+'</div><div class="muted" style="font-size:12.5px">'+esc(u.email)+'</div></div></div></td><td class="b">'+u.kids+'</td><td class="muted">'+u.at+'</td><td><span class="chip t-'+s[1]+'">'+s[0]+'</span></td><td style="text-align:right"><button type="button" class="sl-btn sl-btn-sm '+(u.locked?'':'sl-btn-d')+'" data-e="'+esc(u.email)+'">'+(u.locked?'Mở khóa':'Khóa')+'</button></td></tr>';}).join('')||'<tr><td colspan="5"><div class="empty">Không tìm thấy tài khoản</div></td></tr>';}
-  draw();
-  inp.querySelector('input').addEventListener('input',function(e){q=e.target.value.trim();draw();});
-  seg.addEventListener('kl:select',function(e){flt=e.detail.textContent;draw();});
-  tb.addEventListener('click',function(e){var b=e.target.closest('[data-e]');if(!b)return;var u=users.filter(function(z){return z.email===b.dataset.e;})[0];
-    UI.confirm({title:(u.locked?'Mở khóa ':'Khóa ')+u.name+'?',text:u.locked?'Tài khoản sẽ đăng nhập lại được.':'Tài khoản sẽ không đăng nhập được cho tới khi được mở khóa.',ok:u.locked?'Mở khóa':'Khóa tài khoản',danger:!u.locked,icon:'lock'}).then(function(ok){if(!ok)return;u.locked=u.locked?0:1;S.audit('quantri · Tài khoản '+u.email,(u.locked?'Khóa':'Mở khóa')+' tài khoản');UI.toast(u.locked?'Đã khóa tài khoản':'Đã mở khóa');draw();});});
-  UI.on(UI.byText('.head button','Xuất danh sách'),function(){UI.download('phu-huynh.csv',UI.csv([['Họ tên','Email','Số bé','Tham gia']].concat(users.map(function(u){return [u.name,u.email,u.kids,u.at];}))),'text/csv;charset=utf-8');UI.toast('Đã xuất danh sách');});
+  document.addEventListener('submit',function(e){var f=e.target;if(!f.dataset.confirm||f.dataset.confirmed)return;e.preventDefault();
+    UI.confirm({title:f.dataset.confirm,text:f.dataset.text,ok:f.dataset.okLabel,danger:f.dataset.danger==='true',icon:'lock'}).then(function(ok){if(!ok)return;f.dataset.confirmed='1';f.submit();});});
 }
 
 if(P==='admin-audit'){
