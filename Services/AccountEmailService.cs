@@ -34,12 +34,25 @@ public sealed class AccountEmailService(
             $"Để xác minh email, hãy mở liên kết và chọn Xác minh tài khoản:\n{url}\n\nNếu bạn không đăng ký, hãy bỏ qua email này.", cancellationToken);
     }
 
+    public async Task SendInvitationAsync(ApplicationUser user, CancellationToken cancellationToken)
+    {
+        var token = await users.GenerateEmailConfirmationTokenAsync(user);
+        var url = Link("/confirm-email", new Dictionary<string, string?>
+        {
+            ["userId"] = user.Id, ["code"] = Encode(token)
+        });
+        await SendAsync(user.Email!, "Lời mời tham gia SafeLearn Kids",
+            $"Quản trị viên đã tạo tài khoản SafeLearn Kids cho bạn. Hãy mở liên kết, chọn Xác minh tài khoản rồi đặt mật khẩu:\n{url}\n\nNếu bạn không mong đợi lời mời này, hãy bỏ qua email.", cancellationToken);
+    }
+
+    public async Task<string> PasswordSetupTokenAsync(ApplicationUser user) =>
+        Encode(await users.GeneratePasswordResetTokenAsync(user));
+
     public async Task SendPasswordResetAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
-        var token = await users.GeneratePasswordResetTokenAsync(user);
         var url = Link("/reset-password", new Dictionary<string, string?>
         {
-            ["email"] = user.Email, ["token"] = Encode(token)
+            ["email"] = user.Email, ["token"] = await PasswordSetupTokenAsync(user)
         });
         await SendAsync(user.Email!, "Đặt lại mật khẩu SafeLearn Kids",
             $"Để đặt lại mật khẩu, hãy mở liên kết:\n{url}\n\nNếu bạn không yêu cầu, hãy bỏ qua email này.", cancellationToken);

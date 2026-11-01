@@ -16,10 +16,14 @@ public class UsersController(
     ApplicationDbContext db,
     AccountEmailService email,
     AccountActivityLog activity,
+    AvatarStorage avatars,
     IServiceProvider services) : Controller
 {
     private const int PageSize = 20;
     private const string SaveFailed = "Chưa thể lưu thay đổi. Vui lòng thử lại.";
+    private const string EmailTaken = "Email này đã có tài khoản.";
+    private const string EmailUnusable = "Không thể dùng email này cho tài khoản.";
+    private const string InUse = "Tài khoản đã có hồ sơ bé hoặc dữ liệu liên quan nên không xóa được. Hãy khóa tài khoản.";
     private static readonly string[] ManagedRoles = [DemoSeeder.ParentRole, DemoSeeder.AdminRole];
 
     [HttpGet("admin-users")]
@@ -65,6 +69,147 @@ public class UsersController(
         await activity.AdminActionAsync(ActorId, "ExportUsers", null, $"{matches.Count} tài khoản");
         var content = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
         return File(content, "text/csv; charset=utf-8", "nguoi-dung.csv");
+    }
+
+    [HttpGet("admin-users/new")]
+    public IActionResult Create() => View("Form", new AdminUserFormViewModel());
+
+    [HttpPost("admin-users/new")]
+    public async Task<IActionResult> Create(AdminUserFormViewModel model, CancellationToken cancellationToken)
+    {
+        model.Id = null;
+        if (!ManagedRoles.Contains(model.Role)) ModelState.AddModelError(nameof(model.Role), "Vai trò không hợp lệ.");
+        var address = model.Email.Trim();
+        var fullName = model.FullName.Trim();
+        if (fullName.Length < 2) ModelState.AddModelError(nameof(model.FullName), "Họ và tên cần từ 2 đến 100 ký tự.");
+        if (ModelState.IsValid && await users.FindByEmailAsync(address) is not null) ModelState.AddModelError(nameof(model.Email), EmailTaken);
+        if (!ModelState.IsValid) return View("Form", model);
+
+        var user = new ApplicationUser { UserName = address, Email = address, FullName = fullName };
+        try
+        {
+            // Dispose rolls back a user left without a role.
+            await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
+            var result = await users.CreateAsync(user);
+            if (result.Succeeded) result = await users.AddToRoleAsync(user, model.Role);
+            if (!result.Succeeded)
+            {
+                ModelState.AddModelError(nameof(model.Email), EmailUnusable);
+                return View("Form", model);
+            }
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Another request took the address after the check above.
+            db.ChangeTracker.Clear();
+            ModelState.AddModelError(nameof(model.Email), EmailTaken);
+            return View("Form", model);
+        }
+        await email.SendInvitationAsync(user, cancellationToken);
+        return await FinishAsync(user.Id, IdentityResult.Success, "CreateUser", "Đã tạo tài khoản và gửi email mời.", model.Role);
+    }
+
+    [HttpGet("admin-users/{id}/edit")]
+    public async Task<IActionResult> Edit(string id)
+    {
+        var user = await users.FindByIdAsync(id);
+        if (user is null) return NotFound();
+        return View("Form", new AdminUserFormViewModel { Id = id, IsSelf = id == ActorId, FullName = user.FullName ?? string.Empty, Email = user.Email ?? string.Empty });
+    }
+
+    [HttpPost("admin-users/{id}/edit")]
+    public async Task<IActionResult> Edit(string id, AdminUserFormViewModel model, CancellationToken cancellationToken)
+    {
+        var user = await users.FindByIdAsync(id);
+        if (user is null) return NotFound();
+        model.Id = id;
+        model.IsSelf = id == ActorId;
+        var address = model.Email.Trim();
+        var fullName = model.FullName.Trim();
+        var emailChanged = !string.Equals(address, user.Email, StringComparison.OrdinalIgnoreCase);
+        if (fullName.Length < 2) ModelState.AddModelError(nameof(model.FullName), "Họ và tên cần từ 2 đến 100 ký tự.");
+        // Changing it would unconfirm the address and lock the acting admin out.
+        if (emailChanged && model.IsSelf) ModelState.AddModelError(nameof(model.Email), "Bạn không thể tự đổi email của mình tại đây.");
+        if (ModelState.IsValid && emailChanged && await users.FindByEmailAsync(address) is not null) ModelState.AddModelError(nameof(model.Email), EmailTaken);
+        if (!ModelState.IsValid) return View("Form", model);
+
+        user.FullName = fullName;
+        IdentityResult result;
+        try
+        {
+            await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
+            result = emailChanged ? await users.SetUserNameAsync(user, address) : await users.UpdateAsync(user);
+            // SetEmailAsync clears the confirmation and ends the account's sessions.
+            if (result.Succeeded && emailChanged) result = await users.SetEmailAsync(user, address);
+            if (result.Succeeded && transaction is not null) await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
+            ModelState.AddModelError(nameof(model.Email), EmailTaken);
+            return View("Form", model);
+        }
+        if (!result.Succeeded)
+        {
+            db.ChangeTracker.Clear();
+            ModelState.AddModelError(emailChanged ? nameof(model.Email) : string.Empty, emailChanged ? EmailUnusable : SaveFailed);
+            return View("Form", model);
+        }
+        if (emailChanged && user.IsActive) await SendAccessEmailAsync(user, cancellationToken);
+        return await FinishAsync(id, result, "UpdateUser", emailChanged ? "Đã lưu thay đổi. Địa chỉ mới cần được xác minh." : "Đã lưu thay đổi.", emailChanged ? "Đổi email" : null);
+    }
+
+    [HttpPost("admin-users/{id}/delete")]
+    public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
+    {
+        var user = await users.FindByIdAsync(id);
+        if (user is null) return NotFound();
+        // The acting admin cannot be deleted, so one admin always remains.
+        if (id == ActorId) return Refuse(id, "Bạn không thể tự xóa tài khoản của mình.");
+        var business = services.GetService<SafeLearnDbContext>();
+        // Children's learning data follows the parent privacy flow, not an admin click.
+        if (business is not null && await business.ChildProfiles.AnyAsync(child => child.ParentId == id || child.UserId == id, cancellationToken))
+            return Refuse(id, InUse);
+        var roles = string.Join(", ", await users.GetRolesAsync(user));
+        var avatar = user.AvatarUrl;
+        // The foreign key is cleared on delete, but these rows keep the typed email.
+        var history = business is null ? [] : await business.LoginHistories.Where(item => item.UserId == id).Select(item => item.Id).ToListAsync(cancellationToken);
+        try
+        {
+            if (!(await users.DeleteAsync(user)).Succeeded) return Refuse(id, SaveFailed);
+        }
+        catch (DbUpdateException)
+        {
+            // Lessons, reviews and other shared records still reference this account.
+            db.ChangeTracker.Clear();
+            return Refuse(id, InUse);
+        }
+        avatars.Delete(avatar);
+        if (business is not null) await business.LoginHistories.Where(item => history.Contains(item.Id)).ExecuteDeleteAsync(cancellationToken);
+        await activity.AdminActionAsync(ActorId, "DeleteUser", id, roles);
+        TempData["Info"] = "Đã xóa tài khoản.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("admin-users/{id}/avatar")]
+    [RequestSizeLimit(AvatarStorage.MaxRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = AvatarStorage.MaxRequestBytes)]
+    public async Task<IActionResult> Avatar(string id, IFormFile? file, CancellationToken cancellationToken)
+    {
+        var user = await users.FindByIdAsync(id);
+        if (user is null) return NotFound();
+        if (!await avatars.ReplaceAsync(user, file, cancellationToken)) return Refuse(id, AvatarStorage.Rejected);
+        return await FinishAsync(id, IdentityResult.Success, "ChangeAvatar", "Đã cập nhật ảnh đại diện.");
+    }
+
+    [HttpPost("admin-users/{id}/avatar/remove")]
+    public async Task<IActionResult> RemoveAvatar(string id)
+    {
+        var user = await users.FindByIdAsync(id);
+        if (user is null) return NotFound();
+        if (!await avatars.RemoveAsync(user)) return Refuse(id, SaveFailed);
+        return await FinishAsync(id, IdentityResult.Success, "RemoveAvatar", "Đã gỡ ảnh đại diện.");
     }
 
     [HttpGet("admin-users/{id}")]
@@ -153,7 +298,7 @@ public class UsersController(
         var user = await users.FindByIdAsync(id);
         if (user is null) return NotFound();
         if (user is not { IsActive: true, EmailConfirmed: false }) return Refuse(id, "Chỉ gửi xác minh cho tài khoản đang chờ xác minh.");
-        await email.SendConfirmationAsync(user, cancellationToken);
+        await SendAccessEmailAsync(user, cancellationToken);
         return await FinishAsync(id, IdentityResult.Success, "ResendConfirmation", "Đã gửi lại email xác minh.");
     }
 
@@ -168,6 +313,12 @@ public class UsersController(
     }
 
     private string ActorId => users.GetUserId(User)!;
+
+    private async Task SendAccessEmailAsync(ApplicationUser user, CancellationToken cancellationToken)
+    {
+        if (await users.HasPasswordAsync(user)) await email.SendConfirmationAsync(user, cancellationToken);
+        else await email.SendInvitationAsync(user, cancellationToken);
+    }
 
     private static bool RoleEditable(IEnumerable<string> roles) => roles.All(ManagedRoles.Contains);
 
@@ -215,7 +366,8 @@ public class UsersController(
             user.CreatedAt,
             user.LastLoginAt,
             !user.IsActive || user.LockoutEnd > now ? AdminUserStatus.Locked
-                : user.EmailConfirmed ? AdminUserStatus.Active : AdminUserStatus.Pending)).ToList();
+                : user.EmailConfirmed ? AdminUserStatus.Active : AdminUserStatus.Pending,
+            user.AvatarUrl)).ToList();
     }
 
     // Names come from the sign-up form; spreadsheets must not run them as formulas.

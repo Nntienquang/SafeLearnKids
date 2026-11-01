@@ -20,6 +20,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.ToTable("Users", "dbo");
             entity.Property(user => user.Id).HasMaxLength(450);
             entity.Property(user => user.FullName).HasMaxLength(100);
+            entity.Property(user => user.AvatarUrl).HasMaxLength(300);
             entity.Property(user => user.IsActive).HasDefaultValue(true);
             entity.Property(user => user.CreatedAt).HasDefaultValueSql("sysutcdatetime()");
         });

@@ -9,6 +9,9 @@ from pathlib import Path
 import socket
 import sys
 import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 
 
@@ -23,6 +26,9 @@ ADMIN = f"sql-smoke-admin-{RUN}@example.invalid"
 PARENT = f"sql-smoke-parent-{RUN}@example.invalid"
 PASSWORD = f"AdminTest1{RUN}"
 FORMULA_NAME = "=HYPERLINK(1) smoke"
+INVITED = f"sql-smoke-invited-{RUN}@example.invalid"
+MOVED = f"sql-smoke-moved-{RUN}@example.invalid"
+PNG = bytes.fromhex("89504E470D0A1A0A") + b"\0" * 32
 
 
 def free_url():
@@ -36,6 +42,9 @@ def register(client, directory, email, name):
         "FullName": name, "Email": email, "Password": PASSWORD, "ConfirmPassword": PASSWORD, "Agree": "true"})
     check(status == 302, f"registers {name}")
     check(smoke.confirm(client, smoke.mail_link(directory, email, "/confirm-email"))[0] == 302, f"confirms {name}")
+
+
+generated = []
 
 
 def table(body):
@@ -54,6 +63,117 @@ def post(client, page, path, values=None):
 
 def audit_count(target, action):
     return sql(f"SELECT COUNT(*) FROM dbo.AuditLogs WHERE EntityId=N'{target}' AND Action=N'{action}';")
+
+
+def upload(client, page, path, name, content, content_type="image/png"):
+    """Send one multipart file with the page's antiforgery token."""
+    token = smoke.token_from(client.request(page)[2])
+    boundary = uuid.uuid4().hex
+    parts = (f'--{boundary}\r\nContent-Disposition: form-data; name="__RequestVerificationToken"\r\n\r\n{token}\r\n'
+             f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\n'
+             f'Content-Type: {content_type}\r\n\r\n').encode() + content + f"\r\n--{boundary}--\r\n".encode()
+    request = urllib.request.Request(client.url + path, data=parts,
+                                     headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    try:
+        return client.opener.open(request, timeout=10).code
+    except urllib.error.HTTPError as error:
+        return error.code
+
+
+def avatar_of(user):
+    return sql(f"SELECT ISNULL(AvatarUrl, N'') FROM dbo.Users WHERE Id=N'{user}';")
+
+
+def avatar_file(url):
+    return smoke.ROOT / "wwwroot" / url.lstrip("/")
+
+
+def crud_checks(admin, url, directory, admin_id):
+    anonymous = smoke.Client(url)
+    new = "/admin-users/new"
+    check(anonymous.request(new)[0] == 302, "anonymous users cannot open the create form")
+    values = {"FullName": "SQL smoke invited", "Email": INVITED, "Role": "Parent"}
+    check(admin.request(new, values)[0] == 400, "creating an account requires CSRF")
+    check(admin.post_form(new, {**values, "Email": ADMIN})[0] == 200 and sql(f"SELECT COUNT(*) FROM dbo.Users WHERE Email=N'{ADMIN}';") == "1", "duplicate email is refused")
+    check(admin.post_form(new, {**values, "Role": "Moderator"})[0] == 200 and user_id(INVITED) == "", "unsupported role cannot be created")
+    status, headers, _ = admin.post_form(new, values)
+    invited_id = user_id(INVITED)
+    check(status == 302 and invited_id in headers.get("Location", ""), "Admin creates an account")
+    check(sql(f"SELECT COUNT(*) FROM dbo.Users WHERE Id=N'{invited_id}' AND PasswordHash IS NULL AND EmailConfirmed=0;") == "1", "invited account has no password yet")
+    check(sql(f"SELECT r.Name FROM dbo.UserRoles ur JOIN dbo.Roles r ON r.Id=ur.RoleId WHERE ur.UserId=N'{invited_id}';") == "Parent", "invited account has the chosen role")
+    check(audit_count(invited_id, "CreateUser") == "1", "account creation is audited")
+
+    link = smoke.mail_link(directory, INVITED, "/confirm-email")
+    invited = smoke.Client(url)
+    check(invited.post_form("/login", {"Email": INVITED, "Password": PASSWORD})[0] == 200, "invited account cannot sign in before accepting")
+    status, headers, _ = smoke.confirm(invited, link)
+    location = headers.get("Location", "")
+    check(status == 302 and location.startswith("/reset-password"), "accepting the invitation leads to choosing a password")
+    query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(location).query))
+    status, _, _ = invited.post_form(location, {"Email": query["email"], "Token": query["token"], "Password": PASSWORD, "ConfirmPassword": PASSWORD})
+    check(status == 302, "invited user sets a password")
+    check(invited.post_form("/login", {"Email": INVITED, "Password": PASSWORD})[1].get("Location") == "/parent-home", "invited user signs in with that password")
+
+    page, edit = f"/admin-users/{invited_id}", f"/admin-users/{invited_id}/edit"
+    check(INVITED in admin.request(edit)[2], "edit form shows current values")
+    check(admin.post_form(edit, {"FullName": "SQL smoke renamed", "Email": INVITED})[0] == 302
+          and sql(f"SELECT FullName FROM dbo.Users WHERE Id=N'{invited_id}';") == "SQL smoke renamed", "Admin renames an account")
+    check("SQL smoke renamed" in invited.request("/settings")[2], "rename reaches the live session")
+    check(admin.post_form(edit, {"FullName": "SQL smoke renamed", "Email": PARENT})[0] == 200
+          and sql(f"SELECT Email FROM dbo.Users WHERE Id=N'{invited_id}';") == INVITED, "edit refuses an address already in use")
+    self_edit = f"/admin-users/{admin_id}/edit"
+    check(admin.post_form(self_edit, {"FullName": "SQL smoke test", "Email": MOVED})[0] == 200
+          and sql(f"SELECT Email FROM dbo.Users WHERE Id=N'{admin_id}';") == ADMIN, "Admin cannot change their own email here")
+
+    png_url = None
+    session = smoke.clone(invited)
+    check(upload(admin, page, f"{page}/avatar", "a.png", PNG) == 302 and avatar_of(invited_id).endswith(".png"), "Admin uploads an avatar")
+    png_url = avatar_of(invited_id)
+    check(avatar_file(png_url).read_bytes() == PNG, "avatar bytes are stored")
+    check(anonymous.opener.open(url + png_url, timeout=10).headers.get_content_type() == "image/png", "avatar is served as an image")
+    check(png_url in session.request("/settings")[2], "avatar reaches the live session")
+    check(upload(admin, page, f"{page}/avatar", "a.png", b"<script>alert(1)</script>") == 302 and avatar_of(invited_id) == png_url, "script disguised as PNG is refused")
+    check(upload(admin, page, f"{page}/avatar", "a.svg", b"<svg xmlns='http://www.w3.org/2000/svg'/>", "image/svg+xml") == 302 and avatar_of(invited_id) == png_url, "SVG is refused")
+    check(upload(admin, page, f"{page}/avatar", "a.png", PNG + b"\0" * (2 * 1024 * 1024)) == 302 and avatar_of(invited_id) == png_url, "oversized avatar is refused")
+    check(upload(invited, "/settings", "/settings/avatar", "b.png", PNG) == 302 and avatar_of(invited_id) not in ("", png_url), "Parent replaces their own avatar")
+    check(not avatar_file(png_url).exists(), "replaced avatar file is removed")
+    check(upload(admin, "/admin-users", "/settings/avatar", "c.png", PNG) == 302 and avatar_of(admin_id) == "", "Admin cannot use the Parent avatar route")
+    check(post(invited, "/settings", "/settings/avatar/remove")[0] == 302 and avatar_of(invited_id) == "", "Parent removes their own avatar")
+    check(upload(admin, page, f"{page}/avatar", "d.png", PNG) == 302, "Admin uploads an avatar again")
+    png_url = avatar_of(invited_id)
+    check(post(admin, page, f"{page}/avatar/remove")[0] == 302 and avatar_of(invited_id) == "" and not avatar_file(png_url).exists(), "Admin removes an avatar")
+
+    check(admin.post_form(edit, {"FullName": "SQL smoke renamed", "Email": MOVED})[0] == 302
+          and sql(f"SELECT COUNT(*) FROM dbo.Users WHERE Id=N'{invited_id}' AND Email=N'{MOVED}' AND UserName=N'{MOVED}' AND EmailConfirmed=0;") == "1", "Admin changes an email and it needs confirming")
+    check(invited.request("/settings")[0] == 302, "email change ends existing sessions")
+    check(smoke.Client(url).post_form("/login", {"Email": INVITED, "Password": PASSWORD})[0] == 200, "old email can no longer sign in")
+    moved = smoke.Client(url)
+    check(smoke.confirm(moved, smoke.mail_link(directory, MOVED, "/confirm-email"))[1].get("Location") == "/login", "new address confirms without re-setting the password")
+    check(moved.post_form("/login", {"Email": MOVED, "Password": PASSWORD})[1].get("Location") == "/parent-home", "new email signs in")
+
+    delete = f"{page}/delete"
+    check(admin.request(delete, {})[0] == 400, "deleting requires CSRF")
+    check(moved.request(delete, {})[0] in (302, 400) and user_id(MOVED) == invited_id, "Parent cannot delete accounts")
+    self_page = f"/admin-users/{admin_id}"
+    check(post(admin, self_page, f"{self_page}/delete")[0] == 302 and user_id(ADMIN) == admin_id, "Admin cannot delete themselves")
+    sql(f"INSERT dbo.ChildProfiles(ParentId, DisplayName, GradeLevelId) SELECT TOP 1 N'{invited_id}', N'Smoke', Id FROM dbo.GradeLevels;")
+    check(post(admin, page, delete)[0] == 302 and user_id(MOVED) == invited_id, "account with a child profile is not deleted")
+    sql(f"DELETE FROM dbo.ChildProfiles WHERE ParentId=N'{invited_id}';")
+    sql(f"INSERT dbo.ContentSources(Name, ExternalId, Url, SuggestedById) VALUES (N'Smoke', N'{RUN[:32]}', N'https://example.invalid', N'{invited_id}');")
+    check(post(admin, page, delete)[0] == 302 and user_id(MOVED) == invited_id
+          and "không xóa được" in admin.request(page)[2], "account referenced by shared records is not deleted")
+    sql(f"DELETE FROM dbo.ContentSources WHERE ExternalId=N'{RUN[:32]}';")
+    check(upload(moved, "/settings", "/settings/avatar", "e.png", PNG) == 302, "avatar is set before deletion")
+    png_url = avatar_of(invited_id)
+    check(post(admin, page, delete)[0] == 302 and user_id(MOVED) == "", "Admin deletes an account")
+    check(not avatar_file(png_url).exists(), "deletion removes the avatar file")
+    check(moved.request("/settings")[0] == 302, "deletion ends existing sessions")
+    check(admin.request(page)[0] == 404, "deleted account returns 404")
+    # The attempt on the old address after the change never belonged to this account.
+    check(sql(f"SELECT COUNT(*) FROM dbo.LoginHistories WHERE UserNameTried=N'{MOVED}';") == "0"
+          and sql(f"SELECT COUNT(*) FROM dbo.LoginHistories WHERE UserNameTried=N'{INVITED}';") == "1", "deletion removes the account's login history")
+    check(audit_count(invited_id, "DeleteUser") == "1", "deletion is audited")
+    return invited_id
 
 
 def sql_checks(url, directory):
@@ -138,6 +258,7 @@ def sql_checks(url, directory):
         _, _, body = admin.request(page)
         check("Khóa tài khoản" in body and "Lịch sử đăng nhập" in body and "Thành công" in body, "details page shows history and actions")
         check(PASSWORD not in body and "PasswordHash" not in body, "details page exposes no secrets")
+        generated.append(crud_checks(admin, url, directory, admin_id))
 
 
 def bootstrap_checks(url, directory):
@@ -148,6 +269,11 @@ def bootstrap_checks(url, directory):
         check(status == 302 and headers.get("Location") == "/admin-home", "bootstrap creates a working first Admin")
         status, _, body = client.request("/admin-users")
         check(status == 200 and email in table(body), "user management renders without SQL business tables")
+        created = f"created-{RUN}@example.invalid"
+        status, headers, _ = client.post_form("/admin-users/new", {"FullName": "Memory user", "Email": created, "Role": "Parent"})
+        check(status == 302, "create works without SQL business tables")
+        page = headers["Location"]
+        check(post(client, page, f"{page}/delete")[0] == 302 and created not in table(client.request("/admin-users")[2]), "delete works without SQL business tables")
 
 
 def main():
@@ -157,11 +283,18 @@ def main():
             sql_checks(free_url(), directory)
             bootstrap_checks(free_url(), directory)
     finally:
-        ids = f"SELECT Id FROM dbo.Users WHERE Email IN (N'{ADMIN}',N'{PARENT}')"
+        emails = ",".join(f"N'{item}'" for item in (ADMIN, PARENT, INVITED, MOVED))
+        ids = f"SELECT Id FROM dbo.Users WHERE Email IN ({emails})"
+        for url in sql(f"SELECT AvatarUrl FROM dbo.Users WHERE Email IN ({emails}) AND AvatarUrl IS NOT NULL;").split():
+            avatar_file(url).unlink(missing_ok=True)
+        sql(f"DELETE FROM dbo.ChildProfiles WHERE ParentId IN ({ids});")
+        sql(f"DELETE FROM dbo.ContentSources WHERE SuggestedById IN ({ids});")
         sql(f"DELETE FROM dbo.AuditLogs WHERE EntityId IN ({ids}) OR ActorId IN ({ids});")
-        sql(f"DELETE FROM dbo.LoginHistories WHERE UserNameTried IN (N'{ADMIN}',N'{PARENT}');")
-        sql(f"DELETE FROM dbo.Users WHERE Email IN (N'{ADMIN}',N'{PARENT}');")
-        check(sql(f"SELECT COUNT(*) FROM dbo.Users WHERE Email IN (N'{ADMIN}',N'{PARENT}');") == "0", "generated accounts are cleaned up")
+        for item in generated:
+            sql(f"DELETE FROM dbo.AuditLogs WHERE EntityId=N'{item}';")
+        sql(f"DELETE FROM dbo.LoginHistories WHERE UserNameTried IN ({emails});")
+        sql(f"DELETE FROM dbo.Users WHERE Email IN ({emails});")
+        check(sql(f"SELECT COUNT(*) FROM dbo.Users WHERE Email IN ({emails});") == "0", "generated accounts are cleaned up")
     print(f"RESULT {smoke.checks}/{smoke.checks} passed (user management + roles + bootstrap)")
 
 

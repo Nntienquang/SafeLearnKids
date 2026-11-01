@@ -27,6 +27,7 @@ builder.Services.AddOptions<AccountEmailOptions>().Bind(builder.Configuration.Ge
     .ValidateOnStart();
 builder.Services.AddScoped<AccountEmailService>();
 builder.Services.AddScoped<AccountActivityLog>();
+builder.Services.AddScoped<AvatarStorage>();
 builder.Services.AddSingleton<AccountEmailQueue>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<AccountEmailQueue>());
 

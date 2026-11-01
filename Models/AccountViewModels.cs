@@ -29,6 +29,12 @@ public class MustBeTrueAttribute : ValidationAttribute, IClientModelValidator
     }
 }
 
+public record AvatarViewModel(string? Url, string Name, string Size, string Background)
+{
+    public string Initial => Name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .LastOrDefault(word => char.IsLetter(word[0]))?.Substring(0, 1).ToUpper() ?? "?";
+}
+
 public class LoginViewModel
 {
     [Required(ErrorMessage = "Nhập email của bạn.")]

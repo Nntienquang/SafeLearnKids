@@ -11,17 +11,31 @@
     {
         fullName = User.Identity?.Name ?? "Phụ huynh";
     }
-    var email = User.Identity?.Name ?? "";
-    var words = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-    var initials = words.Length >= 2 
-        ? $"{words[0][0]}{words[^1][0]}".ToUpper() 
-        : (fullName.Length > 0 ? fullName[..1].ToUpper() : "P");
+    var avatarUrl = User.FindFirst("AvatarUrl")?.Value;
 }
 @section Actions {
 <button class="sl-btn sl-btn-p" type="button" disabled title="Chỉnh sửa hồ sơ chưa khả dụng.">Lưu thay đổi</button>
 }
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
 <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
-<div class="sl-card" style="flex:2 1 460px;min-width:0;display:flex;flex-direction:column;gap:16px"><div class="sl-row" style="gap:16px"><span class="av av-l" style="background:var(--grad)">TH</span><div><div class="card-t" style="font-size:18px">@User.FindFirst("FullName")?.Value</div><div class="muted">@User.Identity?.Name</div></div></div>
+<div class="sl-card" style="flex:2 1 460px;min-width:0;display:flex;flex-direction:column;gap:16px"><div class="sl-row" style="gap:16px"><partial name="_Avatar" model="@(new AvatarViewModel(avatarUrl, fullName, "av-l", "var(--grad)"))" /><div><div class="card-t" style="font-size:18px">@User.FindFirst("FullName")?.Value</div><div class="muted">@User.Identity?.Name</div></div></div>
+<div class="sl-row" style="gap:10px;flex-wrap:wrap">
+    <form asp-action="Avatar" method="post" enctype="multipart/form-data" class="sl-row" style="gap:10px;flex-wrap:wrap">
+        <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required aria-label="Chọn ảnh đại diện" style="max-width:240px" />
+        <button class="sl-btn sl-btn-sm" type="submit">Tải ảnh lên</button>
+    </form>
+    @if (avatarUrl is not null)
+    {
+        <form asp-action="RemoveAvatar" method="post"><button class="sl-btn sl-btn-sm" type="submit">Gỡ ảnh</button></form>
+    }
+</div>
 <div class="field"><label class="lab" for="st1">Họ và tên</label><input id="st1" class="inp" value="@User.FindFirst("FullName")?.Value" readonly></div><div class="field"><label class="lab" for="st2">Email</label><input id="st2" class="inp" value="@User.Identity?.Name" readonly></div>
 <div class="field"><span class="lab">Đổi mật khẩu</span><a class="sl-btn" href="~/change-password" style="align-self:flex-start"><i class="ic ic-key"></i>Đổi mật khẩu</a></div></div>
 <div class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px"><div class="sl-card"><div class="card-t" style="margin-bottom:12px">Giao diện</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">

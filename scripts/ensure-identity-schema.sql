@@ -1,5 +1,5 @@
 -- Run against the existing hoctapchotre database, after reviewing the target.
--- Adds Identity support tables only; does not recreate or alter Users/Roles/UserRoles.
+-- Adds Identity support tables and Users.AvatarUrl; does not recreate Users/Roles/UserRoles.
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 SET QUOTED_IDENTIFIER ON;
@@ -14,6 +14,9 @@ IF OBJECT_ID(N'dbo.Users', N'U') IS NULL
     THROW 50001, 'The existing Users, Roles and UserRoles tables are required.', 1;
 
 BEGIN TRANSACTION;
+
+IF COL_LENGTH(N'dbo.Users', N'AvatarUrl') IS NULL
+    ALTER TABLE dbo.Users ADD AvatarUrl nvarchar(300) NULL;
 
 IF OBJECT_ID(N'dbo.UserClaims', N'U') IS NULL
 BEGIN

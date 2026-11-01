@@ -45,3 +45,4 @@ appsettings.*.Local.json
 .DS_Store
 Thumbs.db
 Desktop.ini
+wwwroot/uploads/

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SafeLearnKids.Web.Models;
 
 public static class AdminUserStatus
@@ -15,7 +17,28 @@ public record AdminUserRow(
     int Children,
     DateTime CreatedAt,
     DateTime? LastLoginAt,
-    string Status);
+    string Status,
+    string? AvatarUrl);
+
+public class AdminUserFormViewModel
+{
+    public string? Id { get; set; }
+    public bool IsSelf { get; set; }
+
+    [Required(ErrorMessage = "Nhập họ và tên.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Họ và tên cần từ 2 đến 100 ký tự.")]
+    [Display(Name = "Họ và tên")]
+    public string FullName { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Nhập email.")]
+    [EmailAddress(ErrorMessage = "Email chưa đúng định dạng.")]
+    [StringLength(256, ErrorMessage = "Email không được vượt quá 256 ký tự.")]
+    [Display(Name = "Email")]
+    public string Email { get; set; } = string.Empty;
+
+    [Display(Name = "Vai trò")]
+    public string Role { get; set; } = "Parent";
+}
 
 public class AdminUsersViewModel
 {
