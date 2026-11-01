@@ -43,7 +43,7 @@ var BADGES=[
 function now(){return new Date().toISOString();}
 function seed(){return {
  v:1,theme:'light',session:null,kidsChild:null,pin:'1234',
- accounts:[{email:'ha.nguyen@gmail.com',pass:'matkhau123',name:'Nguyễn Thu Hà',role:'parent'},{email:'admin@safelearnkids.vn',pass:'admin12345',name:'Quản trị SafeLearn Kids',role:'admin'}],
+ accounts:[],
  lock:{},
  children:[
   {id:'c1',name:'Minh An',cls:3,init:'M',c:['#6A4CFF','#FF7AB6'],limit:60,used:32,extra:0,subjects:['toan','tiengviet','khoahoc','tienganh'],search:true},
@@ -70,7 +70,10 @@ function bind(){
   }
   state.session={email:u.email,name:u.name,role:u.role};save();
 }
-load();bind();
+load();
+// Remove credentials persisted by earlier mock-auth versions. Identity owns all passwords.
+state.accounts=[];state.lock={};if(!window.SL_USER)state.session=null;save();
+bind();
 var S={
  SUBJECTS:SUBJECTS,LESSONS:LESSONS,PATH:PATH,QUIZ:QUIZ,BADGES:BADGES,
  get:function(){return state;},

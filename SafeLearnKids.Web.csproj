@@ -5,6 +5,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>SafeLearnKids.Web</RootNamespace>
+    <UserSecretsId>SafeLearnKids.Web-7a0b03ea-7141-419b-a112-9ba1f75c1d78</UserSecretsId>
+    <!-- Reference documents and source copies are not application build inputs. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);InputContext/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +17,8 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
+    <!-- Override the vulnerable 9.0.11 transitive dependency from SqlClient. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.*">
       <PrivateAssets>all</PrivateAssets>

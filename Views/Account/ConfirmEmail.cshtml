@@ -1,0 +1,33 @@
+@model EmailConfirmationViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Xác minh tài khoản";
+    ViewData["Page"] = "confirm-email";
+    var hasLink = !string.IsNullOrWhiteSpace(Model.UserId) && Model.UserId.Length <= 450
+        && !string.IsNullOrWhiteSpace(Model.Code) && Model.Code.Length <= 8192;
+}
+<main id="main" class="auth-shell auth-shell-centered" tabindex="-1">
+    <section class="auth-card sl-card" aria-labelledby="confirm-title">
+        <partial name="_AuthBrand" />
+        <header class="auth-heading">
+            <h1 id="confirm-title" class="sl-h1">Xác minh tài khoản</h1>
+            <p class="sub">Chọn xác minh để hoàn tất đăng ký và tiếp tục đăng nhập.</p>
+        </header>
+        <div asp-validation-summary="ModelOnly" class="banner t-r auth-alert" role="alert" tabindex="-1" data-auth-feedback></div>
+        @if (hasLink && ViewData.ModelState.IsValid)
+        {
+            <form asp-action="ConfirmEmail" method="post" class="auth-form d-grid gap-3" data-auth-form data-submit-label="Đang xác minh…">
+                <input type="hidden" asp-for="UserId" />
+                <input type="hidden" asp-for="Code" />
+                <button type="submit" class="sl-btn sl-btn-p sl-btn-block">Xác minh tài khoản</button>
+                <p class="auth-submit-status hint" role="status" aria-live="polite" data-submit-status></p>
+            </form>
+        }
+        else if (!hasLink)
+        {
+            <p class="banner t-a auth-alert" role="status">Liên kết không hợp lệ. Hãy yêu cầu liên kết mới.</p>
+        }
+        <a href="~/check-email" class="sl-btn sl-btn-s sl-btn-block">Yêu cầu liên kết mới</a>
+        <a href="~/login" class="auth-link auth-footer">Quay lại đăng nhập</a>
+    </section>
+</main>

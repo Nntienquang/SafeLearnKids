@@ -1,5 +1,47 @@
+# Build output and restored libraries
 bin/
 obj/
 .vs/
 wwwroot/lib/
+
+# Local editor settings
 *.user
+*.suo
+*.sln.docstates
+/.vscode/
+/.idea/
+
+# Local agent context and reference material
+/AGENTS.md
+/.kilo/
+/.codex/
+/.agents/
+/InputContext/
+
+# Test output, logs and Python caches
+TestResults/
+coverage/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.log
+
+# Local secrets, mail and database files
+.env
+.env.*
+!.env.example
+!.env.*.example
+appsettings.Local.json
+appsettings.*.Local.json
+*.eml
+*.pfx
+*.p12
+*.mdf
+*.ndf
+*.ldf
+*.bak
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

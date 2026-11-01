@@ -4,54 +4,44 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SafeLearnKids.Web.Data;
 
-// Domain entities (ChildProfile, Subject, Lesson, ContentItem, Quiz, TimeRequest, ContentReport...) are added here
-// by the back-end sprints. The front end only depends on the ViewModels in /Models.
+// Reuse the existing Identity tables; SafeLearnDbContext maps business entities.
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {
     }
 
-    protected override void OnModelCreating(ModelBuilder builder)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(builder);
+        base.OnModelCreating(modelBuilder);
 
-        builder.Entity<ApplicationUser>(entity =>
+        modelBuilder.Entity<ApplicationUser>(entity =>
         {
-            entity.ToTable("Users");
-            entity.Property(e => e.FullName).HasMaxLength(100);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.ToTable("Users", "dbo");
+            entity.Property(user => user.Id).HasMaxLength(450);
+            entity.Property(user => user.FullName).HasMaxLength(100);
+            entity.Property(user => user.IsActive).HasDefaultValue(true);
+            entity.Property(user => user.CreatedAt).HasDefaultValueSql("sysutcdatetime()");
         });
-
-        builder.Entity<IdentityRole>(entity =>
+        modelBuilder.Entity<IdentityRole>(entity =>
         {
-            entity.ToTable("Roles");
+            entity.ToTable("Roles", "dbo");
+            entity.Property(role => role.Id).HasMaxLength(450);
         });
-
-        builder.Entity<IdentityUserRole<string>>(entity =>
+        modelBuilder.Entity<IdentityUserRole<string>>().ToTable("UserRoles", "dbo");
+        modelBuilder.Entity<IdentityUserClaim<string>>().ToTable("UserClaims", "dbo");
+        modelBuilder.Entity<IdentityRoleClaim<string>>().ToTable("RoleClaims", "dbo");
+        modelBuilder.Entity<IdentityUserLogin<string>>(entity =>
         {
-            entity.ToTable("UserRoles");
+            entity.ToTable("UserLogins", "dbo");
+            entity.Property(login => login.LoginProvider).HasMaxLength(128);
+            entity.Property(login => login.ProviderKey).HasMaxLength(128);
         });
-
-        builder.Entity<IdentityUserClaim<string>>(entity =>
+        modelBuilder.Entity<IdentityUserToken<string>>(entity =>
         {
-            entity.ToTable("UserClaims");
-        });
-
-        builder.Entity<IdentityUserLogin<string>>(entity =>
-        {
-            entity.ToTable("UserLogins");
-        });
-
-        builder.Entity<IdentityRoleClaim<string>>(entity =>
-        {
-            entity.ToTable("RoleClaims");
-        });
-
-        builder.Entity<IdentityUserToken<string>>(entity =>
-        {
-            entity.ToTable("UserTokens");
+            entity.ToTable("UserTokens", "dbo");
+            entity.Property(token => token.LoginProvider).HasMaxLength(128);
+            entity.Property(token => token.Name).HasMaxLength(128);
         });
     }
 }

@@ -1,0 +1,13 @@
+@{
+    Layout = "_Layout";
+    ViewData["Area"] = "public";
+    ViewData["AppStyle"] = "display:block";
+}
+@RenderBody()
+@section Styles {
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+}
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/auth.js" asp-append-version="true"></script>
+}
