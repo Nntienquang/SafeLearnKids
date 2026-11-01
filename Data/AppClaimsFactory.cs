@@ -18,6 +18,7 @@ public class AppClaimsFactory : UserClaimsPrincipalFactory<ApplicationUser, Iden
     {
         var identity = await base.GenerateClaimsAsync(user);
         identity.AddClaim(new Claim("FullName", user.FullName ?? user.UserName ?? string.Empty));
+        if (user.AvatarUrl is not null) identity.AddClaim(new Claim("AvatarUrl", user.AvatarUrl));
         return identity;
     }
 }

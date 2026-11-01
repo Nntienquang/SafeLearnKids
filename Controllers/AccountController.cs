@@ -160,6 +160,9 @@ public class AccountController(
                 var result = await users.ConfirmEmailAsync(user, token);
                 if (result.Succeeded)
                 {
+                    // Invited accounts start without a password, so they choose one now.
+                    if (!await users.HasPasswordAsync(user))
+                        return RedirectToAction(nameof(ResetPassword), new { email = user.Email, token = await email.PasswordSetupTokenAsync(user) });
                     TempData["Info"] = "Đã xác minh email. Bạn có thể đăng nhập.";
                     return RedirectToAction(nameof(Login));
                 }

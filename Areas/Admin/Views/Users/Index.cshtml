@@ -5,11 +5,16 @@
     ViewData["Nav"] = "users";
     ViewData["Crumb"] = Html.Raw("""Quản trị · Vận hành""");
     ViewData["Heading"] = """Người dùng""";
-    ViewData["Sub"] = """Tìm, khóa, mở khóa và phân quyền tài khoản (US-30).""";
+    ViewData["Sub"] = """Thêm, sửa, xóa, khóa và phân quyền tài khoản (US-30).""";
     var filter = new Dictionary<string, string?> { ["q"] = Model.Q, ["status"] = Model.Status, ["role"] = Model.Role };
 }
 @section Actions {
 <a class="sl-btn" asp-action="Export" asp-all-route-data="filter!"><i class="ic ic-download"></i>Xuất danh sách</a>
+<a class="sl-btn sl-btn-p" asp-action="Create">Thêm người dùng</a>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
 }
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:16px">
     <div class="sl-card kpi"><span class="muted b">Tổng tài khoản</span><div class="kpi-v">@Model.Total</div></div>
@@ -38,7 +43,7 @@
 @foreach (var row in Model.Rows)
 {
     <tr>
-        <td><div class="sl-row" style="gap:12px"><span class="av av-s" style="background:var(--grad)">@(row.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault(word => char.IsLetter(word[0]))?.Substring(0, 1).ToUpper() ?? "?")</span><div><div class="b">@row.Name</div><div class="muted" style="font-size:12.5px">@row.Email</div></div></div></td>
+        <td><div class="sl-row" style="gap:12px"><partial name="_Avatar" model="@(new AvatarViewModel(row.AvatarUrl, row.Name, "av-s", "var(--grad)"))" /><div><div class="b">@row.Name</div><div class="muted" style="font-size:12.5px">@row.Email</div></div></div></td>
         <td>@(row.Roles.Count > 0 ? string.Join(", ", row.Roles) : "—")</td>
         <td class="b">@row.Children</td>
         <td class="muted">@row.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>

@@ -32,6 +32,7 @@
 .icbtn{width:46px;height:46px;border-radius:15px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text-2);position:relative;flex:0 0 auto}
 .icbtn .dot{position:absolute;top:11px;right:12px;width:10px;height:10px;border-radius:5px;background:var(--rose);border:2px solid var(--surface)}
 .av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex:0 0 auto}
+img.av{object-fit:cover}
 .av-s{width:32px;height:32px;font-size:13px}
 .av-l{width:64px;height:64px;font-size:24px}
 .head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin:4px 0 24px}

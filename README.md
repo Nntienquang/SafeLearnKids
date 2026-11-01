@@ -39,7 +39,13 @@ Môi trường khác dùng `Bootstrap__AdminEmail`, `Bootstrap__AdminPassword`. 
 
 ## Quản lý người dùng
 
-`/admin-users` đọc trực tiếp từ SQL: tìm kiếm, lọc theo trạng thái/vai trò, phân trang, xuất CSV. `/admin-users/{id}` có khóa/mở khóa, đổi vai trò Parent/Admin, gửi lại email xác minh, gửi đặt lại mật khẩu, lịch sử đăng nhập và nhật ký quản trị. Khóa hoặc đổi vai trò kết thúc ngay mọi phiên của tài khoản đó. Admin không thể tự khóa hay tự đổi vai trò, nên hệ thống luôn còn ít nhất một Admin. Vai trò Child, Moderator, Teacher chỉ xem được tại đây. Thao tác quản trị ghi vào `dbo.AuditLogs`, đăng nhập ghi vào `dbo.LoginHistories`, đồng ý điều khoản khi đăng ký ghi vào `dbo.UserConsents`. Kiểm thử: `py scripts\smoke-admin-users.py` sau khi build.
+`/admin-users` đọc trực tiếp từ SQL: tìm kiếm, lọc theo trạng thái/vai trò, phân trang, xuất CSV. `/admin-users/{id}` có khóa/mở khóa, đổi vai trò Parent/Admin, gửi lại email xác minh, gửi đặt lại mật khẩu, lịch sử đăng nhập và nhật ký quản trị. Khóa hoặc đổi vai trò kết thúc ngay mọi phiên của tài khoản đó. Admin không thể tự khóa hay tự đổi vai trò, nên hệ thống luôn còn ít nhất một Admin. Vai trò Child, Moderator, Teacher chỉ xem được tại đây.
+
+Admin thêm người dùng ở `/admin-users/new`: tài khoản chưa có mật khẩu, người dùng nhận email mời, xác minh rồi tự đặt mật khẩu. `/admin-users/{id}/edit` sửa họ tên và email; đổi email kết thúc mọi phiên và yêu cầu xác minh lại địa chỉ mới, Admin không tự đổi email của mình ở đây. Xóa là vĩnh viễn và không thể tự xóa; tài khoản có hồ sơ bé hoặc được dữ liệu dùng chung tham chiếu sẽ bị từ chối, khi đó hãy khóa tài khoản.
+
+Ảnh đại diện nhận JPG, PNG, WebP tối đa 2 MB, xác định loại theo nội dung file, lưu trong `wwwroot/uploads/avatars` với tên ngẫu nhiên (không commit). Parent đổi ảnh ở `/settings`, Admin đổi cho mọi tài khoản ở trang chi tiết. Môi trường triển khai cần giữ thư mục này qua các lần deploy. Sau khi pull, chạy lại `scripts\ensure-identity-schema.sql` để thêm cột `Users.AvatarUrl`; thiếu cột này app không đọc được tài khoản.
+
+Thao tác quản trị ghi vào `dbo.AuditLogs`, đăng nhập ghi vào `dbo.LoginHistories`, đồng ý điều khoản khi đăng ký ghi vào `dbo.UserConsents`. Kiểm thử: `py scripts\smoke-admin-users.py` sau khi build.
 
 ## Email xác minh và khôi phục
 
@@ -76,7 +82,7 @@ Bản Debug nạp SDK static web assets manifest để CSS/JS trong wwwroot vẫ
 
 ## Tích hợp SQL Server
 
-`ApplicationDbContext` ánh xạ Identity vào `dbo.Users`, `dbo.Roles`, `dbo.UserRoles` hiện có, cùng `UserClaims`, `RoleClaims`, `UserLogins`, `UserTokens`. `scripts/ensure-identity-schema.sql` chỉ tạo bốn bảng phụ còn thiếu trong `hoctapchotre`, không tạo lại database hoặc sửa dữ liệu cũ; có thể chạy lại. Không dùng `EnsureCreated` hoặc migration tạo mới toàn schema trên DB đã có dữ liệu.
+`ApplicationDbContext` ánh xạ Identity vào `dbo.Users`, `dbo.Roles`, `dbo.UserRoles` hiện có, cùng `UserClaims`, `RoleClaims`, `UserLogins`, `UserTokens`. `scripts/ensure-identity-schema.sql` chỉ tạo bốn bảng phụ còn thiếu và cột `Users.AvatarUrl` trong `hoctapchotre`, không tạo lại database hoặc sửa dữ liệu cũ; có thể chạy lại. Không dùng `EnsureCreated` hoặc migration tạo mới toàn schema trên DB đã có dữ liệu.
 
 `Program.cs` cũng đăng ký `SafeLearnDbContext` khi chạy SQL để các module nghiệp vụ dùng cùng kết nối. Nhiều trang vẫn dùng dữ liệu demo/localStorage; chưa phải mọi module đã có backend SQL. `/settings` hiển thị tài khoản hiện tại và liên kết đổi mật khẩu thật; chỉnh sửa tên/email chưa triển khai nên tạm chỉ đọc. Không lưu mật khẩu trong localStorage; script xóa credential mock của bản trước khi tải trang.
 

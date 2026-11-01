@@ -1,0 +1,9 @@
+@model AvatarViewModel
+@if (Model.Url is not null)
+{
+    <img class="av @Model.Size" src="@Model.Url" alt="" />
+}
+else
+{
+    <span class="av @Model.Size" style="background:@Model.Background">@Model.Initial</span>
+}

@@ -14,6 +14,10 @@
         "LockUser" => "Khóa tài khoản",
         "UnlockUser" => "Mở khóa tài khoản",
         "ChangeRole" => "Đổi vai trò",
+        "CreateUser" => "Tạo tài khoản",
+        "UpdateUser" => "Sửa thông tin",
+        "ChangeAvatar" => "Đổi ảnh đại diện",
+        "RemoveAvatar" => "Gỡ ảnh đại diện",
         "ResendConfirmation" => "Gửi lại email xác minh",
         "SendPasswordReset" => "Gửi email đặt lại mật khẩu",
         _ => action
@@ -29,6 +33,7 @@
 }
 @section Actions {
 <a class="sl-btn" asp-action="Index"><i class="ic ic-arrowl"></i>Danh sách</a>
+<a class="sl-btn sl-btn-p" asp-action="Edit" asp-route-id="@user.Id">Sửa thông tin</a>
 }
 @if (TempData["Info"] is string info)
 {
@@ -41,6 +46,17 @@
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px">
     <div class="sl-card">
         <div class="card-h"><div class="card-t">Thông tin</div><partial name="_StatusChip" model="user.Status" /></div>
+        <div class="sl-row" style="gap:14px;margin-bottom:14px;flex-wrap:wrap">
+            <partial name="_Avatar" model="@(new AvatarViewModel(user.AvatarUrl, user.Name, "av-l", "var(--grad)"))" />
+            <form asp-action="Avatar" asp-route-id="@user.Id" method="post" enctype="multipart/form-data" class="sl-row" style="gap:10px;flex-wrap:wrap">
+                <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required aria-label="Chọn ảnh đại diện" style="max-width:220px" />
+                <button class="sl-btn sl-btn-sm" type="submit">Tải ảnh lên</button>
+            </form>
+            @if (user.AvatarUrl is not null)
+            {
+                <form asp-action="RemoveAvatar" asp-route-id="@user.Id" method="post"><button class="sl-btn sl-btn-sm" type="submit">Gỡ ảnh</button></form>
+            }
+        </div>
         <table class="tbl"><tbody>
             <tr><td class="muted">Vai trò</td><td class="b">@(user.Roles.Count > 0 ? string.Join(", ", user.Roles) : "—")</td></tr>
             <tr><td class="muted">Email</td><td>@(Model.EmailConfirmed ? "Đã xác minh" : "Chưa xác minh")</td></tr>
@@ -57,7 +73,7 @@
         <div class="card-h"><div class="card-t">Thao tác</div></div>
         @if (Model.IsSelf)
         {
-            <p class="muted">Đây là tài khoản của bạn nên không thể tự khóa hoặc đổi vai trò.</p>
+            <p class="muted">Đây là tài khoản của bạn nên không thể tự khóa, xóa hoặc đổi vai trò.</p>
         }
         <div class="sl-row" style="gap:10px;flex-wrap:wrap;margin-bottom:14px">
             @if (locked)
@@ -79,6 +95,12 @@
             @if (!Model.Disabled && Model.EmailConfirmed)
             {
                 <form asp-action="SendReset" asp-route-id="@user.Id" method="post"><button class="sl-btn" type="submit">Gửi email đặt lại mật khẩu</button></form>
+            }
+            @if (!Model.IsSelf)
+            {
+                <form asp-action="Delete" asp-route-id="@user.Id" method="post" data-confirm="Xóa vĩnh viễn @user.Name?" data-text="Không thể hoàn tác. Tài khoản đã có hồ sơ bé hoặc dữ liệu liên quan sẽ không xóa được." data-ok-label="Xóa tài khoản" data-danger="true">
+                    <button class="sl-btn sl-btn-d" type="submit">Xóa tài khoản</button>
+                </form>
             }
         </div>
         @if (Model.RoleEditable && !Model.IsSelf)
