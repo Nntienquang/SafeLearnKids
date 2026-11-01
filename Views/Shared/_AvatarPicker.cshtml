@@ -1,0 +1,17 @@
+@model AvatarViewModel
+<div class="av-pick" data-avatar-picker>
+    <img class="av" src="@Model.Url" alt="" hidden="@(Model.Url is null)" data-avatar-image />
+    <span class="av" style="background:@Model.Background" hidden="@(Model.Url is not null)" data-avatar-initial>@Model.Initial</span>
+    <div class="grow">
+        <div class="sl-row" style="gap:8px;flex-wrap:wrap">
+            <label class="file-pick">
+                <input type="file" name="file" accept="image/jpeg,image/png,image/webp" aria-label="Chọn ảnh đại diện" data-avatar-file />
+                <span class="sl-btn sl-btn-sm"><i class="ic ic-camera"></i>Chọn ảnh</span>
+            </label>
+            <button class="sl-btn sl-btn-sm sl-btn-g" type="button" hidden="@(Model.Url is null)" data-avatar-remove>Gỡ ảnh</button>
+            <button class="sl-btn sl-btn-sm sl-btn-g" type="button" hidden data-avatar-undo>Hoàn tác</button>
+        </div>
+        <div class="muted ud-hint" role="status" data-avatar-status>JPG, PNG hoặc WebP, tối đa 2 MB.</div>
+    </div>
+    <input type="hidden" name="removeAvatar" value="false" data-avatar-clear />
+</div>

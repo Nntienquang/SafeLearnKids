@@ -12,13 +12,13 @@
             <p class="sub">Nếu địa chỉ đủ điều kiện, bạn sẽ nhận được hướng dẫn xác minh tài khoản. Hãy kiểm tra cả thư rác.</p>
         </header>
         <p class="hint">Cần xác minh email trước khi đăng nhập. Nếu chưa nhận được thư, bạn có thể gửi lại yêu cầu.</p>
-        <form asp-action="ResendConfirmation" method="post" class="auth-form d-grid gap-3" data-auth-form data-submit-label="Đang gửi yêu cầu…">
+        <form asp-action="ResendConfirmation" method="post" class="auth-form" data-auth-form data-submit-label="Đang gửi yêu cầu…">
             <div class="field">
-                <label asp-for="Email" class="lab form-label"></label>
-                <input asp-for="Email" type="email" class="form-control inp" autocomplete="email" maxlength="256" required aria-describedby="Email-validation" />
+                <label asp-for="Email" class="lab"></label>
+                <input asp-for="Email" type="email" class="inp" autocomplete="email" maxlength="256" required aria-describedby="Email-validation" />
                 <span asp-validation-for="Email" id="Email-validation" class="err" aria-live="polite"></span>
             </div>
-            <button type="submit" class="sl-btn sl-btn-p sl-btn-block">Gửi lại yêu cầu xác minh</button>
+            <button type="submit" class="sl-btn sl-btn-p sl-btn-lg sl-btn-block">Gửi lại yêu cầu xác minh</button>
             <p class="auth-submit-status hint" role="status" aria-live="polite" data-submit-status></p>
         </form>
         <a href="~/login" class="auth-link auth-footer">Quay lại đăng nhập</a>

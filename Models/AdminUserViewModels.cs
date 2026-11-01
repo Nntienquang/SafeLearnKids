@@ -24,6 +24,7 @@ public class AdminUserFormViewModel
 {
     public string? Id { get; set; }
     public bool IsSelf { get; set; }
+    public string? AvatarUrl { get; set; }
 
     [Required(ErrorMessage = "Nhập họ và tên.")]
     [StringLength(100, MinimumLength = 2, ErrorMessage = "Họ và tên cần từ 2 đến 100 ký tự.")]

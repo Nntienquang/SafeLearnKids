@@ -1,42 +1,60 @@
 @model AdminUserFormViewModel
 @{
     var creating = Model.Id is null;
-    ViewData["Title"] = creating ? "Thêm người dùng" : "Sửa người dùng";
+    ViewData["Title"] = creating ? "Thêm người dùng" : "Sửa tài khoản";
     ViewData["Page"] = "admin-users";
     ViewData["Nav"] = "users";
     ViewData["Crumb"] = Html.Raw("""Quản trị · Người dùng""");
     ViewData["Heading"] = ViewData["Title"];
-    ViewData["Sub"] = creating ? "Người dùng nhận email mời, xác minh và tự đặt mật khẩu." : "Đổi email sẽ yêu cầu xác minh lại địa chỉ mới.";
+    ViewData["Sub"] = creating ? "Người dùng nhận email mời, xác minh và tự đặt mật khẩu." : Model.Email;
+    var back = creating ? Url.Action("Index") : Url.Action("Details", new { id = Model.Id });
 }
-@section Actions {
-<a class="sl-btn" href="@(creating ? Url.Action("Index") : Url.Action("Details", new { id = Model.Id }))"><i class="ic ic-arrowl"></i>Quay lại</a>
-}
-<form asp-action="@(creating ? "Create" : "Edit")" asp-route-id="@Model.Id" method="post" class="sl-card" style="max-width:560px;display:flex;flex-direction:column;gap:16px">
+<form asp-action="@(creating ? "Create" : "Edit")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="sl-card acc-form">
     <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
-    <div class="field">
-        <label asp-for="FullName" class="lab"></label>
-        <input asp-for="FullName" class="inp" autocomplete="off" required maxlength="100" />
-        <span asp-validation-for="FullName" class="err"></span>
-    </div>
-    <div class="field">
-        <label asp-for="Email" class="lab"></label>
-        <input asp-for="Email" class="inp" autocomplete="off" required maxlength="256" readonly="@Model.IsSelf" />
-        <span asp-validation-for="Email" class="err"></span>
-        @if (Model.IsSelf)
-        {
-            <span class="muted" style="font-size:12.5px">Bạn không thể tự đổi email của mình tại đây.</span>
-        }
-    </div>
-    @if (creating)
+    @if (!creating)
     {
-        <div class="field">
-            <label asp-for="Role" class="lab"></label>
-            <select asp-for="Role" class="inp">
-                <option value="Parent">Parent</option>
-                <option value="Admin">Admin</option>
-            </select>
-            <span asp-validation-for="Role" class="err"></span>
-        </div>
+        <section class="acc-sec">
+            <div class="card-t">Ảnh đại diện</div>
+            <partial name="_AvatarPicker" model="@(new AvatarViewModel(Model.AvatarUrl, Model.FullName, "", "var(--grad)"))" />
+            <span asp-validation-for="AvatarUrl" class="err"></span>
+        </section>
     }
-    <button class="sl-btn sl-btn-p" type="submit" style="align-self:flex-start">@(creating ? "Tạo và gửi lời mời" : "Lưu thay đổi")</button>
+    <section class="acc-sec">
+        <div class="card-t">Thông tin tài khoản</div>
+        <div class="acc-fields">
+            <div class="field">
+                <label asp-for="FullName" class="lab"></label>
+                <input asp-for="FullName" class="inp" autocomplete="off" required maxlength="100" />
+                <span asp-validation-for="FullName" class="err"></span>
+            </div>
+            <div class="field">
+                <label asp-for="Email" class="lab"></label>
+                <input asp-for="Email" class="inp" autocomplete="off" required maxlength="256" readonly="@Model.IsSelf" />
+                <span asp-validation-for="Email" class="err"></span>
+                @if (Model.IsSelf)
+                {
+                    <span class="muted ud-hint">Bạn không thể tự đổi email của mình tại đây.</span>
+                }
+                else if (!creating)
+                {
+                    <span class="muted ud-hint">Đổi email sẽ yêu cầu xác minh lại địa chỉ mới.</span>
+                }
+            </div>
+            @if (creating)
+            {
+                <div class="field">
+                    <label asp-for="Role" class="lab"></label>
+                    <select asp-for="Role" class="inp">
+                        <option value="Parent">Parent</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                    <span asp-validation-for="Role" class="err"></span>
+                </div>
+            }
+        </div>
+    </section>
+    <div class="acc-foot">
+        <a class="sl-btn" href="@back">Hủy</a>
+        <button class="sl-btn sl-btn-p" type="submit">@(creating ? "Tạo và gửi lời mời" : "Lưu thay đổi")</button>
+    </div>
 </form>

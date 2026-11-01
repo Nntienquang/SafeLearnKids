@@ -21,25 +21,25 @@
             {
                 <div class="banner t-r auth-alert" role="alert" tabindex="-1" data-auth-feedback>Không thể đăng nhập. Hãy kiểm tra email, mật khẩu hoặc thử lại sau.</div>
             }
-            <form asp-action="Login" method="post" class="auth-form d-grid gap-3" data-auth-form data-submit-label="Đang đăng nhập…">
+            <form asp-action="Login" method="post" class="auth-form" data-auth-form data-submit-label="Đang đăng nhập…">
                 <input type="hidden" asp-for="ReturnUrl" />
                 <div class="field">
-                    <label asp-for="Email" class="lab form-label"></label>
-                    <input asp-for="Email" type="email" class="form-control inp" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="ban@example.com" required aria-describedby="Email-validation" />
+                    <label asp-for="Email" class="lab"></label>
+                    <input asp-for="Email" type="email" class="inp" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="ban@example.com" required aria-describedby="Email-validation" />
                     <span asp-validation-for="Email" id="Email-validation" class="err" aria-live="polite"></span>
                 </div>
                 <div class="field">
-                    <label asp-for="Password" class="lab form-label"></label>
+                    <label asp-for="Password" class="lab"></label>
                     <div class="auth-password">
-                        <input asp-for="Password" class="form-control inp" autocomplete="current-password" required aria-describedby="Password-validation" />
+                        <input asp-for="Password" class="inp" autocomplete="current-password" required aria-describedby="Password-validation" />
                         <button type="button" class="auth-toggle" data-password-toggle="Password" aria-controls="Password" aria-label="Hiện mật khẩu" aria-pressed="false" hidden>Hiện</button>
                     </div>
                     <span asp-validation-for="Password" id="Password-validation" class="err" aria-live="polite"></span>
                 </div>
-                <div class="auth-options d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <div class="form-check auth-check">
-                        <input asp-for="RememberMe" class="form-check-input chk" />
-                        <label asp-for="RememberMe" class="form-check-label"></label>
+                <div class="auth-options">
+                    <div class="auth-check">
+                        <input asp-for="RememberMe" class="chk" />
+                        <label asp-for="RememberMe"></label>
                     </div>
                     <a href="~/recover" class="auth-link">Quên mật khẩu?</a>
                 </div>

@@ -61,16 +61,22 @@ def post(client, page, path, values=None):
     return client.post_form(path, values or {}, get_path=page)
 
 
+def profile(user):
+    """Current name and email, which the edit form posts with every save."""
+    return dict(zip(("FullName", "Email"), sql(f"SELECT FullName + N'|' + Email FROM dbo.Users WHERE Id=N'{user}';").split("|")))
+
+
 def audit_count(target, action):
     return sql(f"SELECT COUNT(*) FROM dbo.AuditLogs WHERE EntityId=N'{target}' AND Action=N'{action}';")
 
 
-def upload(client, page, path, name, content, content_type="image/png"):
+def upload(client, page, path, name, content, content_type="image/png", values=None):
     """Send one multipart file with the page's antiforgery token."""
     token = smoke.token_from(client.request(page)[2])
     boundary = uuid.uuid4().hex
-    parts = (f'--{boundary}\r\nContent-Disposition: form-data; name="__RequestVerificationToken"\r\n\r\n{token}\r\n'
-             f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\n'
+    fields = "".join(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'
+                     for key, value in {"__RequestVerificationToken": token, **(values or {})}.items())
+    parts = (fields + f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\n'
              f'Content-Type: {content_type}\r\n\r\n').encode() + content + f"\r\n--{boundary}--\r\n".encode()
     request = urllib.request.Request(client.url + path, data=parts,
                                      headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
@@ -127,21 +133,21 @@ def crud_checks(admin, url, directory, admin_id):
 
     png_url = None
     session = smoke.clone(invited)
-    check(upload(admin, page, f"{page}/avatar", "a.png", PNG) == 302 and avatar_of(invited_id).endswith(".png"), "Admin uploads an avatar")
+    check(upload(admin, edit, edit, "a.png", PNG, values=profile(invited_id)) == 302 and avatar_of(invited_id).endswith(".png"), "Admin uploads an avatar")
     png_url = avatar_of(invited_id)
     check(avatar_file(png_url).read_bytes() == PNG, "avatar bytes are stored")
     check(anonymous.opener.open(url + png_url, timeout=10).headers.get_content_type() == "image/png", "avatar is served as an image")
     check(png_url in session.request("/settings")[2], "avatar reaches the live session")
-    check(upload(admin, page, f"{page}/avatar", "a.png", b"<script>alert(1)</script>") == 302 and avatar_of(invited_id) == png_url, "script disguised as PNG is refused")
-    check(upload(admin, page, f"{page}/avatar", "a.svg", b"<svg xmlns='http://www.w3.org/2000/svg'/>", "image/svg+xml") == 302 and avatar_of(invited_id) == png_url, "SVG is refused")
-    check(upload(admin, page, f"{page}/avatar", "a.png", PNG + b"\0" * (2 * 1024 * 1024)) == 302 and avatar_of(invited_id) == png_url, "oversized avatar is refused")
+    check(upload(admin, edit, edit, "a.png", b"<script>alert(1)</script>", values=profile(invited_id)) == 200 and avatar_of(invited_id) == png_url, "script disguised as PNG is refused")
+    check(upload(admin, edit, edit, "a.svg", b"<svg xmlns='http://www.w3.org/2000/svg'/>", "image/svg+xml", values=profile(invited_id)) == 200 and avatar_of(invited_id) == png_url, "SVG is refused")
+    check(upload(admin, edit, edit, "a.png", PNG + b"\0" * (2 * 1024 * 1024), values=profile(invited_id)) == 200 and avatar_of(invited_id) == png_url, "oversized avatar is refused")
     check(upload(invited, "/settings", "/settings/avatar", "b.png", PNG) == 302 and avatar_of(invited_id) not in ("", png_url), "Parent replaces their own avatar")
     check(not avatar_file(png_url).exists(), "replaced avatar file is removed")
     check(upload(admin, "/admin-users", "/settings/avatar", "c.png", PNG) == 302 and avatar_of(admin_id) == "", "Admin cannot use the Parent avatar route")
-    check(post(invited, "/settings", "/settings/avatar/remove")[0] == 302 and avatar_of(invited_id) == "", "Parent removes their own avatar")
-    check(upload(admin, page, f"{page}/avatar", "d.png", PNG) == 302, "Admin uploads an avatar again")
+    check(post(invited, "/settings", "/settings/avatar", {"removeAvatar": "true"})[0] == 302 and avatar_of(invited_id) == "", "Parent removes their own avatar")
+    check(upload(admin, edit, edit, "d.png", PNG, values=profile(invited_id)) == 302, "Admin uploads an avatar again")
     png_url = avatar_of(invited_id)
-    check(post(admin, page, f"{page}/avatar/remove")[0] == 302 and avatar_of(invited_id) == "" and not avatar_file(png_url).exists(), "Admin removes an avatar")
+    check(post(admin, edit, edit, {**profile(invited_id), "removeAvatar": "true"})[0] == 302 and avatar_of(invited_id) == "" and not avatar_file(png_url).exists(), "Admin removes an avatar")
 
     check(admin.post_form(edit, {"FullName": "SQL smoke renamed", "Email": MOVED})[0] == 302
           and sql(f"SELECT COUNT(*) FROM dbo.Users WHERE Id=N'{invited_id}' AND Email=N'{MOVED}' AND UserName=N'{MOVED}' AND EmailConfirmed=0;") == "1", "Admin changes an email and it needs confirming")

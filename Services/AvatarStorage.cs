@@ -12,18 +12,16 @@ public sealed class AvatarStorage(IWebHostEnvironment environment, UserManager<A
 
     private string Directory => Path.Combine(environment.WebRootPath, "uploads", "avatars");
 
+    public async Task<bool> AcceptsAsync(IFormFile? file, CancellationToken cancellationToken) =>
+        await ReadImageAsync(file, cancellationToken) is not null;
+
     public async Task<bool> ReplaceAsync(ApplicationUser user, IFormFile? file, CancellationToken cancellationToken)
     {
-        if (file is null || file.Length is 0 or > MaxBytes) return false;
-        using var buffer = new MemoryStream();
-        await file.CopyToAsync(buffer, cancellationToken);
-        // Trust the bytes only: the browser's file name and type are attacker-controlled.
-        var extension = ImageExtension(buffer.GetBuffer().AsSpan(0, (int)buffer.Length));
-        if (extension is null) return false;
+        if (await ReadImageAsync(file, cancellationToken) is not { } image) return false;
 
         System.IO.Directory.CreateDirectory(Directory);
-        var name = Guid.NewGuid().ToString("N") + extension;
-        await File.WriteAllBytesAsync(Path.Combine(Directory, name), buffer.ToArray(), cancellationToken);
+        var name = Guid.NewGuid().ToString("N") + image.Extension;
+        await File.WriteAllBytesAsync(Path.Combine(Directory, name), image.Bytes, cancellationToken);
         var previous = user.AvatarUrl;
         user.AvatarUrl = PublicPath + name;
         if ((await users.UpdateAsync(user)).Succeeded)
@@ -49,6 +47,16 @@ public sealed class AvatarStorage(IWebHostEnvironment environment, UserManager<A
     {
         if (url?.StartsWith(PublicPath, StringComparison.Ordinal) == true)
             File.Delete(Path.Combine(Directory, Path.GetFileName(url)));
+    }
+
+    private static async Task<(byte[] Bytes, string Extension)?> ReadImageAsync(IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length is 0 or > MaxBytes) return null;
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer, cancellationToken);
+        var bytes = buffer.ToArray();
+        // Trust the bytes only: the browser's file name and type are attacker-controlled.
+        return ImageExtension(bytes) is { } extension ? (bytes, extension) : null;
     }
 
     private static string? ImageExtension(ReadOnlySpan<byte> bytes)
