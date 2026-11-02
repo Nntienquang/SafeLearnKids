@@ -61,6 +61,8 @@ public record AdminLoginRow(DateTime At, bool Succeeded, string? FailReason, str
 
 public record AdminAuditRow(DateTime At, string Action, string? Detail, string? Actor);
 
+public record AdminChildRow(string Name, string Grade, int? BirthYear, IReadOnlyList<string> Subjects, DateTime CreatedAt);
+
 public class AdminUserDetailViewModel
 {
     public required AdminUserRow User { get; init; }
@@ -69,6 +71,7 @@ public class AdminUserDetailViewModel
     public DateTimeOffset? LockedOutUntil { get; init; }
     public bool IsSelf { get; init; }
     public bool RoleEditable { get; init; }
+    public IReadOnlyList<AdminChildRow> Children { get; init; } = [];
     public IReadOnlyList<AdminLoginRow> Logins { get; init; } = [];
     public IReadOnlyList<AdminAuditRow> Audit { get; init; } = [];
 }

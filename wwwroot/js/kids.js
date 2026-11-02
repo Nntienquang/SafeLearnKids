@@ -48,8 +48,26 @@ if(P==='kids-picker'){
   var row=$('main > div[style*="gap:24px"]');
   row.innerHTML=cs.map(function(c){return '<a class="k-card" href="/kids-home" data-c="'+c.id+'" style="width:230px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px"><span class="av" style="width:112px;height:112px;font-size:44px;background:linear-gradient(135deg,'+c.c[0]+','+c.c[1]+')">'+esc(c.init)+'</span><div class="kf" style="font-size:28px">'+esc(c.name)+'</div><span class="k-note">Lớp '+c.cls+' · còn '+S.remaining(c)+' phút</span></a>';}).join('');
   row.addEventListener('click',function(e){var a=e.target.closest('[data-c]');if(!a)return;S.set(function(s){s.kidsChild=a.dataset.c;});});
-  var par=$('main > a.sl-btn');par.href='/pin?exit';par.innerHTML='<i class="ic ic-lock"></i>Dành cho ba mẹ (cần PIN)';
+  var par=$('main > a.sl-btn');par.innerHTML='<i class="ic ic-lock"></i>Dành cho ba mẹ (cần PIN)';
   S.set(function(s){s.kidsChild=null;});
+}
+
+/* ---------- exit: the parent area stays hidden until the PIN is right ---------- */
+if(P==='kids-exit'){
+  var buf='',dots=$$('#pin-dots span'),err=$('#pin-err');
+  $('#pin-back').href=S.get().kidsChild?'/kids-home':'/kids-picker';
+  function paintDots(){dots.forEach(function(d,i){d.style.background=i<buf.length?'var(--primary)':'transparent';});}
+  function say(msg){err.textContent=msg;err.classList.remove('hidden');buf='';paintDots();}
+  function submit(){
+    var lk=S.get().lock.pin||{fails:0,until:0};
+    if(lk.until>Date.now())return say('Đã khóa. Thử lại sau '+Math.ceil((lk.until-Date.now())/60000)+' phút.');
+    if(buf===S.get().pin){S.set(function(s){s.lock.pin={fails:0,until:0};s.kidsChild=null;});location.href='/parent-home';return;}
+    S.set(function(s){var l=s.lock.pin=s.lock.pin||{fails:0,until:0};l.fails++;if(l.fails>=5){l.until=Date.now()+5*60000;l.fails=0;}});
+    say(S.get().lock.pin.until>Date.now()?'Sai 5 lần. PIN bị khóa 5 phút.':'Sai PIN. Còn '+(5-S.get().lock.pin.fails)+' lần thử.');
+  }
+  function type(k){if(k==='back')buf=buf.slice(0,-1);else if(buf.length<4)buf+=k;paintDots();if(k!=='back'&&buf.length===4)setTimeout(submit,120);}
+  $$('[data-k]').forEach(function(b){b.addEventListener('click',function(e){e.__h=true;type(b.dataset.k);});});
+  document.addEventListener('keydown',function(e){if(/^\d$/.test(e.key))type(e.key);else if(e.key==='Backspace')type('back');});
 }
 
 /* ---------- home ---------- */
