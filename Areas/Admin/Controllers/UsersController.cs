@@ -211,8 +211,14 @@ public class UsersController(
         var row = (await ToRowsAsync([user], cancellationToken))[0];
         var logins = new List<AdminLoginRow>();
         var audit = new List<AdminAuditRow>();
+        var children = new List<AdminChildRow>();
         if (services.GetService<SafeLearnDbContext>() is { } business)
         {
+            children = await business.ChildProfiles.AsNoTracking().Where(child => child.ParentId == id && child.IsActive)
+                .OrderBy(child => child.CreatedAt).ThenBy(child => child.Id)
+                .Select(child => new AdminChildRow(child.DisplayName, child.GradeLevel.Name, child.BirthYear,
+                    child.ChildSubjects.OrderBy(item => item.Subject.SortOrder).Select(item => item.Subject.Name).ToList(), child.CreatedAt))
+                .ToListAsync(cancellationToken);
             logins = await business.LoginHistories.AsNoTracking().Where(item => item.UserId == id)
                 .OrderByDescending(item => item.CreatedAt).Take(10)
                 .Select(item => new AdminLoginRow(item.CreatedAt, item.Succeeded, item.FailReason, item.IpAddress))
@@ -231,6 +237,7 @@ public class UsersController(
             LockedOutUntil = user.LockoutEnd > DateTimeOffset.UtcNow ? user.LockoutEnd : null,
             IsSelf = id == ActorId,
             RoleEditable = RoleEditable(row.Roles),
+            Children = children,
             Logins = logins,
             Audit = audit
         });

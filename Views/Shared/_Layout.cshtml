@@ -1,7 +1,12 @@
+@inject SafeLearnKids.Web.Services.ChildProfileService ChildProfiles
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     var area = ViewData["Area"] as string ?? "public";
     var isKids = area == "kids";
     var title = ViewData["Title"] as string;
+    var children = User.IsInRole("Parent")
+        ? await ChildProfiles.ForParentAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value, Context.RequestAborted)
+        : null;
 }
 <!DOCTYPE html>
 <html lang="vi" data-bs-theme="light">
@@ -35,6 +40,11 @@
             role = User.IsInRole("Admin") ? "admin" : "parent",
             demo = string.Equals(User.Identity!.Name, "ha.nguyen@gmail.com", StringComparison.OrdinalIgnoreCase)
         }));
+        @if (children is not null)
+        {
+            <text>window.SL_CHILDREN = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(children, System.Text.Json.JsonSerializerOptions.Web));
+        window.SL_CSRF = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Antiforgery.GetAndStoreTokens(Context).RequestToken));</text>
+        }
     </script>
 }
 <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>

@@ -18,7 +18,7 @@ var P=UI.PAGE,st=S.get(),c=ch();
 
 /* ---------------- onboarding ---------------- */
 if(P==='onboarding'){
-  var n=$('#ob-n'),y=$('#ob-y'),cls=3,PAL=[['#6A4CFF','#FF7AB6'],['#22C55E','#38BDF8'],['#F59E0B','#FB7185'],['#14B8A6','#6A4CFF']];
+  var n=$('#ob-n'),y=$('#ob-y'),cls=3,PAL=S.PALETTE,busy=false;
   $$('.seg span').forEach(function(s){if(s.classList.contains('on'))cls=+s.textContent;});
   $('.seg').addEventListener('kl:select',function(e){cls=+e.detail.textContent;});
   var nx=$('#ob-next');
@@ -26,9 +26,14 @@ if(P==='onboarding'){
     if(!UI.field(n,n.value.trim().length<1?'Nhập tên hoặc biệt danh của bé.':n.value.trim().length>30?'Tên tối đa 30 ký tự.':''))return n.focus();
     if(y.value&&!UI.field(y,!/^(19|20)\d\d$/.test(y.value)||+y.value>2026||+y.value<2005?'Năm sinh không hợp lệ.':''))return y.focus();
     if(st.children.length>=4){UI.toast('Tối đa 4 hồ sơ','err');return;}
-    var id='c'+Date.now(),nm=n.value.trim();
-    S.set(function(s){s.children.push({id:id,name:nm,cls:cls,init:nm.charAt(0).toUpperCase(),c:PAL[s.children.length%4],limit:60,used:0,extra:0,subjects:['toan','tiengviet','khoahoc','tienganh'],search:true});s.assigned[id]=[];s.progress[id]={};s.stars[id]=0;s.streak[id]=0;s.badges[id]=[];s.parentChild=id;});
-    UI.toast('Đã tạo hồ sơ cho '+nm);setTimeout(function(){location.href='/parent-home';},400);});
+    if(busy)return;
+    var nm=n.value.trim(),subjects=['toan','tiengviet','khoahoc','tienganh'];
+    var add=function(id,init){
+      S.set(function(s){s.children.push({id:id,name:nm,cls:cls,birthYear:y.value?+y.value:null,init:init,c:PAL[s.children.length%4],limit:60,used:0,extra:0,subjects:subjects,search:true});s.assigned[id]=[];s.progress[id]={};s.stars[id]=0;s.streak[id]=0;s.badges[id]=[];s.parentChild=id;});
+      UI.toast('Đã tạo hồ sơ cho '+nm);setTimeout(function(){location.href='/parent-home';},400);};
+    if(!S.synced)return add('c'+Date.now(),nm.charAt(0).toUpperCase());
+    busy=true;
+    S.api('/children',{name:nm,cls:cls,birthYear:y.value?+y.value:null,subjects:subjects}).then(function(r){add(r.id,r.init);}).catch(function(err){busy=false;UI.toast(err.message,'err');});});
   if(!st.children.length){$$('a[href="/register"]').forEach(function(a){a.classList.add('hidden');});}
 }
 
@@ -56,44 +61,67 @@ if(P==='parent-home'){
 
 /* ---------------- profiles ---------------- */
 if(P==='profiles'){
-  var sel=c.id;
+  function card(x){var pct=Math.min(100,Math.round(x.used*100/(x.limit+x.extra)));
+    return '<div class="sl-card" data-id="'+x.id+'" style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px"><div class="sl-row" style="gap:14px"><span class="av av-l" style="background:linear-gradient(135deg,'+x.c[0]+','+x.c[1]+')">'+esc(x.init)+'</span><div class="grow"><div class="card-t" style="font-size:18px">'+esc(x.name)+'</div><div class="muted b" style="font-size:13px">Lớp '+x.cls+(x.birthYear?' · Sinh năm '+x.birthYear:'')+'</div></div></div><div><div class="sl-row" style="justify-content:space-between;font-size:13px;margin-bottom:6px"><span class="muted b">Hôm nay</span><span class="b">'+x.used+' / '+(x.limit+x.extra)+' phút</span></div><div class="bar bar-l"><i style="width:'+pct+'%"></i></div></div><div class="wrap" style="gap:8px">'+x.subjects.map(function(s){return '<span class="chip t-'+S.SUBJECTS[s].tone+'">'+S.SUBJECTS[s].name+'</span>';}).join('')+'</div><div class="sl-row" style="gap:8px;margin-top:auto"><button type="button" class="sl-btn sl-btn-sm grow" data-edit="'+x.id+'"><i class="ic ic-edit"></i>Sửa</button><a class="sl-btn sl-btn-sm grow" href="/time" data-pc="'+x.id+'"><i class="ic ic-clock"></i>Giờ học</a><a class="sl-btn sl-btn-sm sl-btn-p grow" href="/kids-picker">Vào học</a></div></div>';}
+  function chip(k,on){return '<button type="button" class="chip '+(on?'t-'+S.SUBJECTS[k].tone:'t-n')+'" data-sj="'+k+'" aria-pressed="'+on+'" style="border:0;cursor:pointer">'+(on?'<i class="ic ic-check"></i>':'')+S.SUBJECTS[k].name+'</button>';}
   function render(){
-    var cs=S.get().children,cur=S.child(sel);
-    var cards=cs.map(function(x){var pct=Math.min(100,Math.round(x.used*100/(x.limit+x.extra)));
-      return '<div class="sl-card" data-id="'+x.id+'" style="flex:1 1 320px;min-width:0;'+(x.id===sel?'outline:2px solid var(--primary);':'')+'display:flex;flex-direction:column;gap:16px"><div class="sl-row" style="gap:14px"><span class="av av-l" style="background:linear-gradient(135deg,'+x.c[0]+','+x.c[1]+')">'+esc(x.init)+'</span><div class="grow"><div class="card-t" style="font-size:18px">'+esc(x.name)+'</div><div class="muted b" style="font-size:13px">Lớp '+x.cls+'</div></div></div><div><div class="sl-row" style="justify-content:space-between;font-size:13px;margin-bottom:6px"><span class="muted b">Hôm nay</span><span class="b">'+x.used+' / '+(x.limit+x.extra)+' phút</span></div><div class="bar bar-l"><i style="width:'+pct+'%"></i></div></div><div class="wrap" style="gap:8px">'+x.subjects.map(function(s){return '<span class="chip t-'+S.SUBJECTS[s].tone+'">'+S.SUBJECTS[s].name+'</span>';}).join('')+'</div><div class="sl-row" style="gap:8px"><button type="button" class="sl-btn sl-btn-sm grow" data-edit="'+x.id+'"><i class="ic ic-edit"></i>Sửa</button><a class="sl-btn sl-btn-sm grow" href="/time" data-pc="'+x.id+'"><i class="ic ic-clock"></i>Giờ học</a><a class="sl-btn sl-btn-sm sl-btn-p grow" href="/kids-picker">Vào học</a></div></div>';}).join('');
+    var cs=S.get().children;
     var add=cs.length<4?'<a class="empty" href="/onboarding" style="flex:1 1 320px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px"><span class="ib t-n" style="width:56px;height:56px"><i class="ic ic-plus"></i></span><div class="b" style="color:var(--text-2)">Thêm bé thứ '+(cs.length+1)+'</div><div style="font-size:13px">Mỗi tài khoản có tối đa 4 hồ sơ.</div></a>':'';
-    var chips=Object.keys(S.SUBJECTS).map(function(k){var on=cur.subjects.indexOf(k)>-1;return '<button type="button" class="chip '+(on?'t-'+S.SUBJECTS[k].tone:'t-n')+'" data-sj="'+k+'" aria-pressed="'+on+'" style="border:0;cursor:pointer">'+(on?'<i class="ic ic-check"></i>':'')+S.SUBJECTS[k].name+'</button>';}).join('');
-    body('<div style="display:flex;flex-wrap:wrap;gap:16px">'+cards+add+'</div><form id="pf" novalidate class="sl-card" style="margin-top:16px"><div class="card-h"><div><div class="card-t">Sửa hồ sơ · '+esc(cur.name)+'</div><div class="card-s">Thay đổi có hiệu lực ngay ở lần vào học tiếp theo.</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:8px"><div class="field"><label class="lab" for="pf1">Tên hiển thị</label><input id="pf1" class="inp" value="'+esc(cur.name)+'" maxlength="30"></div><div class="field"><span class="lab">Lớp</span><div class="seg" id="pf-cls">'+[1,2,3,4,5].map(function(i){return '<span class="'+(i===cur.cls?'on':'')+'">'+i+'</span>';}).join('')+'</div></div><div class="field"><span class="lab">Môn được học</span><div class="wrap" style="gap:8px" id="pf-sj">'+chips+'</div></div><div class="field"><span class="lab">Cho phép tìm kiếm</span><div class="sl-row" style="gap:10px"><span class="switch'+(cur.search?' on':'')+'" id="pf-search"></span><span class="muted" style="font-size:13px">Chỉ tìm trong bài đã giao</span></div></div></div><div class="sl-row" style="justify-content:space-between;margin-top:20px"><button class="sl-btn sl-btn-d sl-btn-sm" type="button" id="pf-del"><i class="ic ic-trash"></i>Xóa hồ sơ và dữ liệu</button><div class="sl-row" style="gap:10px"><button class="sl-btn sl-btn-p" type="submit">Lưu thay đổi</button></div></div></form>');
-    $$('.switch',$('.main')).forEach(function(s){s.setAttribute('role','switch');s.tabIndex=0;s.setAttribute('aria-checked',s.classList.contains('on'));s.setAttribute('aria-label','Cho phép tìm kiếm');});
-    $$('[data-edit]').forEach(function(b){b.addEventListener('click',function(e){e.__h=true;sel=b.dataset.edit;S.set(function(s){s.parentChild=sel;});render();$('#pf').scrollIntoView({behavior:'smooth'});});});
+    body('<div style="display:flex;flex-wrap:wrap;gap:16px">'+cs.map(card).join('')+add+'</div>');
+    $$('[data-edit]').forEach(function(b){b.addEventListener('click',function(e){e.__h=true;edit(S.child(b.dataset.edit));});});
     $$('[data-pc]').forEach(function(a){a.addEventListener('click',function(){S.set(function(s){s.parentChild=a.dataset.pc;});});});
-    $$('[data-sj]').forEach(function(b){b.addEventListener('click',function(){var k=b.dataset.sj;S.set(function(s){var x=S.child(sel),i=s.children.filter(function(z){return z.id===sel;})[0];var j=i.subjects.indexOf(k);if(j>-1){if(i.subjects.length<2){UI.toast('Cần ít nhất 1 môn','err');return;}i.subjects.splice(j,1);}else i.subjects.push(k);});render();});});
-    $('#pf-del').addEventListener('click',function(e){e.__h=true;if(S.get().children.length<2){UI.toast('Cần giữ ít nhất 1 hồ sơ','err');return;}
-      UI.confirm({title:'Xóa hồ sơ '+cur.name+'?',text:'Toàn bộ lịch sử học và điểm quiz sẽ bị xóa vĩnh viễn.',ok:'Xóa hồ sơ',danger:true,icon:'trash'}).then(function(ok){if(!ok)return;S.set(function(s){s.children=s.children.filter(function(z){return z.id!==cur.id;});delete s.assigned[cur.id];delete s.progress[cur.id];s.parentChild=s.children[0].id;if(s.kidsChild===cur.id)s.kidsChild=null;});sel=S.get().parentChild;UI.toast('Đã xóa hồ sơ');render();});});
-    $('#pf').addEventListener('submit',function(e){e.preventDefault();var n=$('#pf1');if(!UI.field(n,!n.value.trim()?'Nhập tên của bé.':''))return n.focus();
-      var cl=+$('#pf-cls .on').textContent,se=$('#pf-search').classList.contains('on');
-      S.set(function(s){var i=s.children.filter(function(z){return z.id===sel;})[0];i.name=n.value.trim();i.init=i.name.charAt(0).toUpperCase();i.cls=cl;i.search=se;});UI.toast('Đã lưu hồ sơ');render();});
+  }
+  /* The dialog edits a copy: nothing reaches the profile until Save succeeds. */
+  function edit(cur){
+    var subjects=cur.subjects.slice(),remove=false,year=new Date().getFullYear();
+    var fail=function(ov,msg){var e=$('#pf-err',ov);e.textContent=msg;e.classList.remove('hidden');};
+    UI.modal({title:'Sửa hồ sơ · '+cur.name,tone:'p',icon:'edit',ok:'Lưu thay đổi',
+      html:'<div style="display:flex;flex-direction:column;gap:16px"><div class="field"><label class="lab" for="pf1">Tên hiển thị</label><input id="pf1" class="inp" value="'+esc(cur.name)+'" maxlength="30" autocomplete="off"></div><div class="field"><label class="lab" for="pf2">Năm sinh (không bắt buộc)</label><input id="pf2" class="inp" type="number" min="2005" max="'+year+'" value="'+(cur.birthYear||'')+'"></div><div class="field"><span class="lab">Lớp</span><div class="seg" id="pf-cls">'+[1,2,3,4,5].map(function(i){return '<span role="button" tabindex="0" class="'+(i===cur.cls?'on':'')+'">'+i+'</span>';}).join('')+'</div></div><div class="field"><span class="lab">Môn được học</span><div class="wrap" style="gap:8px" id="pf-sj">'+Object.keys(S.SUBJECTS).map(function(k){return chip(k,subjects.indexOf(k)>-1);}).join('')+'</div></div><div class="field"><span class="lab">Cho phép tìm kiếm</span><div class="sl-row" style="gap:10px"><span class="switch'+(cur.search?' on':'')+'" id="pf-search" role="switch" tabindex="0" aria-checked="'+!!cur.search+'" aria-label="Cho phép tìm kiếm"></span><span class="muted" style="font-size:13px">Chỉ tìm trong bài đã giao</span></div></div><span class="err hidden" id="pf-err" role="alert"></span>'+(S.get().children.length>1?'<div class="sl-row" style="justify-content:space-between;gap:12px;padding-top:14px;border-top:1px solid var(--line)"><span class="muted" style="font-size:12.5px">Xóa hồ sơ sẽ xóa cả dữ liệu học tập của bé.</span><button type="button" class="sl-btn sl-btn-d sl-btn-sm" id="pf-del" data-x="0"><i class="ic ic-trash"></i>Xóa hồ sơ</button></div>':'')+'</div>',
+      ready:function(ov){
+        var del=$('#pf-del',ov);if(del)del.addEventListener('click',function(){remove=true;});
+        $('#pf-sj',ov).addEventListener('click',function(e){var b=e.target.closest('[data-sj]');if(!b)return;var k=b.dataset.sj,i=subjects.indexOf(k);if(i>-1)subjects.splice(i,1);else subjects.push(k);b.outerHTML=chip(k,i<0);});
+        $$('input',ov).forEach(function(i){i.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('[data-x="1"]',ov).click();}});});
+      },
+      submit:function(ov){
+        var n=$('#pf1',ov),y=$('#pf2',ov),nm=n.value.trim(),by=y.value?+y.value:null;
+        $('#pf-err',ov).classList.add('hidden');
+        if(!UI.field(n,nm?'':'Nhập tên của bé.')){n.focus();return false;}
+        if(!UI.field(y,by!==null&&(by<2005||by>year)?'Năm sinh không hợp lệ.':'')){y.focus();return false;}
+        if(!subjects.length){fail(ov,'Chọn ít nhất 1 môn.');return false;}
+        var cl=+$('#pf-cls .on',ov).textContent,se=$('#pf-search',ov).classList.contains('on');
+        var keep=function(){S.set(function(s){var i=s.children.filter(function(z){return z.id===cur.id;})[0];i.name=nm;i.init=nm.charAt(0).toUpperCase();i.cls=cl;i.birthYear=by;i.subjects=subjects;i.search=se;});UI.toast('Đã lưu hồ sơ');render();return true;};
+        if(!S.synced)return keep();
+        return S.api('/children/'+cur.id,{name:nm,cls:cl,birthYear:by,subjects:subjects}).then(keep).catch(function(err){fail(ov,err.message);return false;});
+      }}).then(function(){if(remove)drop(cur);});
+  }
+  function drop(cur){
+    var gone=function(){S.set(function(s){s.children=s.children.filter(function(z){return z.id!==cur.id;});delete s.assigned[cur.id];delete s.progress[cur.id];if(s.parentChild===cur.id)s.parentChild=s.children[0].id;if(s.kidsChild===cur.id)s.kidsChild=null;});UI.toast('Đã xóa hồ sơ');render();return true;};
+    UI.modal({title:'Xóa hồ sơ '+cur.name+'?',text:'Toàn bộ lịch sử học và điểm quiz sẽ bị xóa vĩnh viễn, không thể hoàn tác.',ok:'Xóa hồ sơ',danger:true,icon:'trash',
+      html:'<div class="field"><label class="lab" for="pf-del-n">Nhập "'+esc(cur.name)+'" để xác nhận</label><input id="pf-del-n" class="inp" autocomplete="off"></div>',
+      submit:function(ov){var n=$('#pf-del-n',ov);
+        if(!UI.field(n,n.value.trim()===cur.name?'':'Tên chưa khớp.')){n.focus();return false;}
+        if(!S.synced)return gone();
+        return S.api('/children/'+cur.id+'/delete').then(gone).catch(function(err){UI.field(n,err.message);return false;});}});
   }
   render();
 }
 
 /* ---------------- pin ---------------- */
 if(P==='pin'){
-  var exit=new URLSearchParams(location.search).has('exit'),buf='';
+  var buf='';
   var dots=$$('.sl-row[style*="gap:14px"] > span[style*="width:18px"]'),err=$('.err'),keys=$$('.icbtn').filter(function(k){return /^\d$/.test(k.textContent.trim())||k.querySelector('.ic-arrowl');});
   var prev=$('.sl-card[style*="surface-2"]');
   function paint(){dots.forEach(function(d,i){d.style.background=i<buf.length?'var(--primary)':'var(--surface-2)';});}
   function fail(){var lk=S.get().lock.pin||{fails:0,until:0};return lk;}
   function submit(){
     var lk=fail();if(lk.until>Date.now()){err.textContent='Đã khóa. Thử lại sau '+Math.ceil((lk.until-Date.now())/60000)+' phút.';err.classList.remove('hidden');buf='';paint();return;}
-    if(buf===S.get().pin){S.set(function(s){s.lock.pin={fails:0,until:0};});err.classList.add('hidden');UI.toast('PIN đúng');if(exit){S.set(function(s){s.kidsChild=null;});setTimeout(function(){location.href='/parent-home';},350);}buf='';paint();}
+    if(buf===S.get().pin){S.set(function(s){s.lock.pin={fails:0,until:0};});err.classList.add('hidden');UI.toast('PIN đúng');buf='';paint();}
     else{S.set(function(s){var l=s.lock.pin=s.lock.pin||{fails:0,until:0};l.fails++;if(l.fails>=5){l.until=Date.now()+5*60000;l.fails=0;}});var left=5-(S.get().lock.pin.fails||0);err.textContent=S.get().lock.pin.until>Date.now()?'Sai 5 lần. PIN bị khóa 5 phút.':'Sai PIN. Còn '+left+' lần thử.';err.classList.remove('hidden');buf='';paint();}
   }
   err.classList.add('hidden');err.setAttribute('role','alert');
   keys.forEach(function(k){k.classList.add('pin-key');k.setAttribute('role','button');k.tabIndex=0;k.setAttribute('aria-label',k.querySelector('.ic-arrowl')?'Xóa':'Số '+k.textContent.trim());k.addEventListener('click',function(){if(k.querySelector('.ic-arrowl'))buf=buf.slice(0,-1);else if(buf.length<4)buf+=k.textContent.trim();paint();if(buf.length===4)setTimeout(submit,120);});});
   document.addEventListener('keydown',function(e){if(e.target.closest&&e.target.closest('input'))return;if(/^\d$/.test(e.key)&&buf.length<4){buf+=e.key;paint();if(buf.length===4)setTimeout(submit,120);}else if(e.key==='Backspace'){buf=buf.slice(0,-1);paint();}});
   paint();
-  if(exit){var h=$('.head .sl-h1');h.textContent='Nhập PIN để thoát chế độ trẻ';setHead(null,'Chỉ ba mẹ biết mã PIN này.');}
   // change PIN
   var cur=$('input[aria-label="PIN hiện tại"]'),nw=$('input[aria-label="PIN mới"]');cur.value='';nw.value='';cur.classList.remove('f');nw.classList.remove('f');[cur,nw].forEach(function(i){i.maxLength=4;i.inputMode='numeric';i.placeholder='••••';i.classList.add('inp');});
   UI.byText('button','Cập nhật').addEventListener('click',function(e){e.__h=true;

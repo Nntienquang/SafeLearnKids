@@ -5,7 +5,9 @@ The bootstrap check runs InMemory. Build first. Removes only its generated data.
 """
 
 import importlib.util
+import json
 from pathlib import Path
+import re
 import socket
 import sys
 import tempfile
@@ -28,6 +30,8 @@ PASSWORD = f"AdminTest1{RUN}"
 FORMULA_NAME = "=HYPERLINK(1) smoke"
 INVITED = f"sql-smoke-invited-{RUN}@example.invalid"
 MOVED = f"sql-smoke-moved-{RUN}@example.invalid"
+OTHER = f"sql-smoke-other-{RUN}@example.invalid"
+CHILD = "<img src=x>"
 PNG = bytes.fromhex("89504E470D0A1A0A") + b"\0" * 32
 
 
@@ -92,6 +96,89 @@ def avatar_of(user):
 
 def avatar_file(url):
     return smoke.ROOT / "wwwroot" / url.lstrip("/")
+
+
+def child_post(client, path, values=None, csrf=True):
+    """Send JSON the way store.js does, with the token the page hands to scripts."""
+    body = client.request("/profiles")[2] if csrf else ""
+    match = re.search(r'window\.SL_CSRF = ("[^"]+")', body)
+    headers = {"Content-Type": "application/json"}
+    if match:
+        headers["RequestVerificationToken"] = json.loads(match.group(1))
+    request = urllib.request.Request(client.url + path, data=json.dumps(values or {}).encode(), headers=headers)
+    try:
+        response = client.opener.open(request, timeout=10)
+    except urllib.error.HTTPError as error:
+        response = error
+    return response.code, response.read().decode("utf-8", "replace")
+
+
+def child_values(name, **extra):
+    return {"name": name, "cls": 2, "subjects": ["toan", "tiengviet"], **extra}
+
+
+def child_id(parent, name):
+    return sql(f"SELECT Id FROM dbo.ChildProfiles WHERE ParentId=N'{parent}' AND DisplayName=N'{name}';")
+
+
+def children_checks(admin, url, directory, parent_id, other_id):
+    parent, other = smoke.Client(url), smoke.Client(url)
+    check(parent.post_form("/login", {"Email": PARENT, "Password": PASSWORD})[0] == 302
+          and other.post_form("/login", {"Email": OTHER, "Password": PASSWORD})[0] == 302, "both parents sign in")
+    # A cached script would keep writing to localStorage and never reach SQL.
+    check("/js/parent.js?v=" in parent.request("/onboarding", raw=True)[2], "onboarding loads the current parent script")
+    status, _, body = parent.request("/kids-exit")
+    check(status == 200 and "Nhập PIN" in body and "sl-nav" not in body, "leaving child mode shows no parent menu")
+    page = f"/admin-users/{parent_id}"
+    check("Phụ huynh chưa thêm hồ sơ bé" in admin.request(page)[2], "Admin sees a parent has no children yet")
+    check(smoke.Client(url).request("/children", child_values("Khach"))[0] in (302, 400), "anonymous users cannot add a child")
+    check(child_post(parent, "/children", child_values("Khong token"), csrf=False)[0] == 400 and child_id(parent_id, "Khong token") == "", "adding a child requires CSRF")
+    check(child_post(admin, "/children", child_values("Quan tri"))[0] in (302, 400) and child_id(parent_id, "Quan tri") == "", "Admin cannot use the parent child route")
+    check(child_post(parent, "/children", child_values(" "))[0] == 400, "blank child name is refused")
+    check(child_post(parent, "/children", child_values("A" * 31))[0] == 400, "long child name is refused")
+    check(child_post(parent, "/children", {**child_values("Lop sai"), "cls": 9})[0] == 400, "unknown grade is refused")
+    check(child_post(parent, "/children", {**child_values("Khong mon"), "subjects": []})[0] == 409, "a child needs a subject")
+    check(child_post(parent, "/children", {**child_values("Mon la"), "subjects": ["hack"]})[0] == 409, "unknown subject is refused")
+    check(child_post(parent, "/children", child_values("Nam sai", birthYear=1990))[0] == 409, "bad birth year is refused")
+
+    status, body = child_post(parent, "/children", child_values(CHILD, birthYear=2018, parentId=other_id))
+    created = child_id(parent_id, CHILD)
+    check(status == 200 and json.loads(body)["id"] == created, "Parent adds a child to SQL")
+    check(child_id(other_id, CHILD) == "", "a forged parent id is ignored")
+    check(sql(f"SELECT COUNT(*) FROM dbo.ChildSubjects WHERE ChildProfileId={created};") == "2"
+          and sql(f"SELECT g.Level FROM dbo.ChildProfiles c JOIN dbo.GradeLevels g ON g.Id=c.GradeLevelId WHERE c.Id={created};") == "2"
+          and sql(f"SELECT BirthYear FROM dbo.ChildProfiles WHERE Id={created};") == "2018", "grade, subjects and birth year are stored")
+    check(f'"id":"{created}"' in parent.request("/profiles")[2], "the profile reaches the parent pages from SQL")
+    check(f'"id":"{created}"' not in other.request("/profiles")[2], "another parent never receives the profile")
+    status, _, body = admin.request(page)
+    check(status == 200 and "Hồ sơ của bé (1)" in body and CHILD in body and "Lớp 2" in body and "Sinh năm 2018" in body and "Tiếng Việt" in body, "Admin sees the child under its parent")
+    check(CHILD not in admin.request(page, raw=True)[2], "child name is encoded on the admin page")
+    check(CHILD not in parent.request("/profiles", raw=True)[2], "child name is encoded in the parent page script")
+    check(CHILD not in admin.request(f"/admin-users/{other_id}")[2], "Admin sees the child under no other parent")
+    check(re.search(r">\s*1\s*<", table(admin.request("/admin-users?q=" + PARENT)[2])), "the user list counts the child")
+    check(child_post(parent, "/children", child_values(CHILD))[0] == 409, "duplicate child name is refused")
+
+    path = f"/children/{created}"
+    check(child_post(other, path, child_values("Cuop"))[0] == 404 and child_id(parent_id, "Cuop") == "", "another parent cannot edit the child")
+    check(child_post(other, f"{path}/delete")[0] == 404 and child_id(parent_id, CHILD) == created, "another parent cannot delete the child")
+    check(child_post(parent, f"{path}/delete")[0] == 409 and child_id(parent_id, CHILD) == created, "the last profile is kept")
+    sql(f"INSERT dbo.ChildSubjects(ChildProfileId, SubjectId) SELECT {created}, Id FROM dbo.Subjects WHERE Code=N'LIFESKILL';")
+    status, _ = child_post(parent, path, {"name": "Ban moi", "cls": 4, "birthYear": 2019, "subjects": ["tienganh"]})
+    check(status == 200 and child_id(parent_id, "Ban moi") == created
+          and sql(f"SELECT g.Level FROM dbo.ChildProfiles c JOIN dbo.GradeLevels g ON g.Id=c.GradeLevelId WHERE c.Id={created};") == "4", "Parent edits the child")
+    codes = sql(f"SELECT s.Code FROM dbo.ChildSubjects cs JOIN dbo.Subjects s ON s.Id=cs.SubjectId WHERE cs.ChildProfileId={created} ORDER BY s.Code;").split()
+    check(codes == ["ENGLISH", "LIFESKILL"], "editing replaces offered subjects and keeps others")
+    check(sql(f"SELECT BirthYear FROM dbo.ChildProfiles WHERE Id={created};") == "2019", "editing updates the birth year")
+    check("Ban moi" in admin.request(page)[2], "Admin sees the edit")
+
+    for number in (2, 3, 4):
+        check(child_post(parent, "/children", child_values(f"Be {number}"))[0] == 200, f"Parent adds child {number}")
+    check(child_post(parent, "/children", child_values("Be 5"))[0] == 409 and child_id(parent_id, "Be 5") == "", "a fifth child is refused")
+    check(child_post(parent, path, child_values("Be 2"))[0] == 409, "renaming onto a sibling is refused")
+    check(child_post(parent, f"{path}/delete")[0] == 204 and child_id(parent_id, "Ban moi") == ""
+          and sql(f"SELECT COUNT(*) FROM dbo.ChildSubjects WHERE ChildProfileId={created};") == "0", "Parent deletes a child and its subjects")
+    check("Ban moi" not in admin.request(page)[2], "Admin no longer sees the deleted child")
+    sql(f"DELETE FROM dbo.ChildProfiles WHERE ParentId=N'{parent_id}';")
 
 
 def crud_checks(admin, url, directory, admin_id):
@@ -264,6 +351,8 @@ def sql_checks(url, directory):
         _, _, body = admin.request(page)
         check("Khóa tài khoản" in body and "Lịch sử đăng nhập" in body and "Thành công" in body, "details page shows history and actions")
         check(PASSWORD not in body and "PasswordHash" not in body, "details page exposes no secrets")
+        register(smoke.Client(url), directory, OTHER, "SQL smoke other")
+        children_checks(admin, url, directory, parent_id, user_id(OTHER))
         generated.append(crud_checks(admin, url, directory, admin_id))
 
 
@@ -289,7 +378,7 @@ def main():
             sql_checks(free_url(), directory)
             bootstrap_checks(free_url(), directory)
     finally:
-        emails = ",".join(f"N'{item}'" for item in (ADMIN, PARENT, INVITED, MOVED))
+        emails = ",".join(f"N'{item}'" for item in (ADMIN, PARENT, INVITED, MOVED, OTHER))
         ids = f"SELECT Id FROM dbo.Users WHERE Email IN ({emails})"
         for url in sql(f"SELECT AvatarUrl FROM dbo.Users WHERE Email IN ({emails}) AND AvatarUrl IS NOT NULL;").split():
             avatar_file(url).unlink(missing_ok=True)

@@ -84,7 +84,7 @@ Bản Debug nạp SDK static web assets manifest để CSS/JS trong wwwroot vẫ
 
 `ApplicationDbContext` ánh xạ Identity vào `dbo.Users`, `dbo.Roles`, `dbo.UserRoles` hiện có, cùng `UserClaims`, `RoleClaims`, `UserLogins`, `UserTokens`. `scripts/ensure-identity-schema.sql` chỉ tạo bốn bảng phụ còn thiếu và cột `Users.AvatarUrl` trong `hoctapchotre`, không tạo lại database hoặc sửa dữ liệu cũ; có thể chạy lại. Không dùng `EnsureCreated` hoặc migration tạo mới toàn schema trên DB đã có dữ liệu.
 
-`Program.cs` cũng đăng ký `SafeLearnDbContext` khi chạy SQL để các module nghiệp vụ dùng cùng kết nối. Nhiều trang vẫn dùng dữ liệu demo/localStorage; chưa phải mọi module đã có backend SQL. `/settings` hiển thị tài khoản hiện tại và liên kết đổi mật khẩu thật; chỉnh sửa tên/email chưa triển khai nên tạm chỉ đọc. Không lưu mật khẩu trong localStorage; script xóa credential mock của bản trước khi tải trang.
+`Program.cs` cũng đăng ký `SafeLearnDbContext` khi chạy SQL để các module nghiệp vụ dùng cùng kết nối. Nhiều trang vẫn dùng dữ liệu demo/localStorage; chưa phải mọi module đã có backend SQL. Riêng hồ sơ bé (tên, lớp, năm sinh, môn) lưu trong `dbo.ChildProfiles` và `dbo.ChildSubjects`: layout đưa danh sách của phụ huynh đang đăng nhập vào `store.js`, Admin xem tại `/admin-users/{id}`. Giới hạn giờ học, tiến độ và cài đặt tìm kiếm của bé vẫn nằm ở localStorage; chế độ InMemory giữ toàn bộ hồ sơ bé ở localStorage. `/settings` hiển thị tài khoản hiện tại và liên kết đổi mật khẩu thật; chỉnh sửa tên/email chưa triển khai nên tạm chỉ đọc. Không lưu mật khẩu trong localStorage; script xóa credential mock của bản trước khi tải trang.
 
 Kiểm tra lại luồng thật trong cùng terminal đã cấu hình `ConnectionStrings__DefaultConnection` (cần Python 3 và quyền Windows vào SQL):
 

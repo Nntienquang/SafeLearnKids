@@ -10,6 +10,9 @@ public class LearnController : Controller
     [HttpGet("kids-picker")]
     public IActionResult Picker() => View();
 
+    [HttpGet("kids-exit")]
+    public IActionResult Exit() => View();
+
     [HttpGet("kids-home")]
     public IActionResult Home() => View();
 

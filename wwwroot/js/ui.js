@@ -9,14 +9,14 @@ window.UI=UI;
 /* ---------- guards ---------- */
 UI.guard=function(){
   if(window.SL_USER){ /* server mode: [Authorize] already enforced */
-    if(AREA==='kids'&&PAGE!=='kids-picker'&&!S.get().kidsChild){location.replace('/kids-picker');return false;}
+    if(AREA==='kids'&&PAGE!=='kids-picker'&&PAGE!=='kids-exit'&&!S.get().kidsChild){location.replace('/kids-picker');return false;}
     if(AREA==='parent'&&PAGE!=='onboarding'&&!S.get().children.length){location.replace('/onboarding');return false;}
     return true;}
   var s=S.get().session;
   var need=AREA==='parent'||AREA==='kids'?'parent':AREA==='admin'?'admin':null;
   if(need&&(!s||s.role!==need)){location.replace('/login?next='+encodeURIComponent(location.pathname.split('/').pop()+location.search));return false;}
   if(AREA==='parent'&&PAGE!=='onboarding'&&!S.get().children.length){location.replace('/onboarding');return false;}
-  if(AREA==='kids'&&PAGE!=='kids-picker'&&!S.get().kidsChild){location.replace('/kids-picker');return false;}
+  if(AREA==='kids'&&PAGE!=='kids-picker'&&PAGE!=='kids-exit'&&!S.get().kidsChild){location.replace('/kids-picker');return false;}
   return true;
 };
 if(!UI.guard())return;
@@ -51,8 +51,12 @@ UI.modal=function(o){
     var prev=document.activeElement;
     function close(v){ov.remove();document.removeEventListener('keydown',key);if(prev&&prev.focus)prev.focus();res(v);}
     function key(e){if(e.key==='Escape')close(null);if(e.key==='Tab'){var f=$$('button,input,select,textarea,[tabindex="0"]',ov);if(!f.length)return;var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}}
-    ov.addEventListener('click',function(e){if(e.target===ov)close(null);var b=e.target.closest('[data-x]');if(b)close(b.dataset.x==='1'?(o.value?o.value(ov):true):false);});
-    document.addEventListener('keydown',key);APP.appendChild(ov);var f=$('[data-x="1"],[data-x="0"],input,textarea',ov);f&&f.focus();
+    var busy=false;
+    ov.addEventListener('click',function(e){if(e.target===ov&&!o.submit)close(null);var b=e.target.closest('[data-x]');if(!b)return;
+      /* o.submit keeps the dialog open until it succeeds, so errors stay beside the form. */
+      if(b.dataset.x==='1'&&o.submit){if(busy)return;var r=o.submit(ov);if(r===false)return;busy=b.disabled=true;Promise.resolve(r).then(function(ok){busy=b.disabled=false;if(ok)close(true);});return;}
+      close(b.dataset.x==='1'?(o.value?o.value(ov):true):false);});
+    document.addEventListener('keydown',key);APP.appendChild(ov);var f=$('[data-x="1"],[data-x="0"],input,textarea',ov);f&&f.focus();if(o.ready)o.ready(ov);
   });
 };
 UI.confirm=function(o){return UI.modal(o).then(function(v){return v===true;});};

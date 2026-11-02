@@ -133,6 +133,20 @@
         }
     </div>
 </div>
+@if (user.Roles.Contains("Parent") || Model.Children.Count > 0)
+{
+    <div class="sl-card" style="margin-bottom:16px">
+        <div class="card-h"><div class="card-t">Hồ sơ của bé (@Model.Children.Count)</div></div>
+        @foreach (var child in Model.Children)
+        {
+            <div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)"><div class="grow"><div class="b">@child.Name</div><div class="muted" style="font-size:12.5px">@child.Grade@(child.BirthYear is null ? "" : $" · Sinh năm {child.BirthYear}")@(child.Subjects.Count == 0 ? "" : $" · {string.Join(", ", child.Subjects)}")</div></div><span class="muted" style="font-size:12.5px">@child.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div>
+        }
+        @if (Model.Children.Count == 0)
+        {
+            <div class="empty">Phụ huynh chưa thêm hồ sơ bé</div>
+        }
+    </div>
+}
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
     <div class="sl-card">
         <div class="card-h"><div class="card-t">Lịch sử đăng nhập</div></div>

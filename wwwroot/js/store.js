@@ -8,6 +8,7 @@ var SUBJECTS={
   khoahoc:{name:'Khoa học',tone:'a',icon:'flask',c:['#F59E0B','#FB7185']},
   tienganh:{name:'Tiếng Anh',tone:'r',icon:'globe',c:['#F43F5E','#FB923C']}
 };
+var PALETTE=[['#6A4CFF','#FF7AB6'],['#22C55E','#38BDF8'],['#F59E0B','#FB7185'],['#14B8A6','#6A4CFF']];
 var LESSONS=[
  {id:'sove1000',title:'Số đến 1000',subj:'toan',cls:3,kind:'Video',mins:10,c:['#6A4CFF','#38BDF8']},
  {id:'congtru',title:'Cộng trừ trong 1000',subj:'toan',cls:3,kind:'Video',mins:12,c:['#4F46E5','#22B8CF']},
@@ -70,12 +71,26 @@ function bind(){
   }
   state.session={email:u.email,name:u.name,role:u.role};save();
 }
+/* SQL owns the profiles; usage, progress and colours stay local until those modules move too. */
+function sync(){
+  var rows=window.SL_CHILDREN;if(!rows)return;
+  var old={},ids={};state.children.forEach(function(c){old[c.id]=c;});
+  state.children=rows.map(function(r,i){ids[r.id]=1;
+    ['assigned','progress','stars','streak','badges'].forEach(function(k){if(state[k][r.id]==null)state[k][r.id]=k==='assigned'?[]:k==='progress'?{}:k==='badges'?[]:0;});
+    return Object.assign({c:PALETTE[i%4],limit:60,used:0,extra:0,search:true},old[r.id],r);});
+  if(!ids[state.parentChild])state.parentChild=rows.length?rows[0].id:null;
+  if(!ids[state.kidsChild])state.kidsChild=null;
+  save();
+}
 load();
 // Remove credentials persisted by earlier mock-auth versions. Identity owns all passwords.
 state.accounts=[];state.lock={};if(!window.SL_USER)state.session=null;save();
 bind();
+sync();
 var S={
- SUBJECTS:SUBJECTS,LESSONS:LESSONS,PATH:PATH,QUIZ:QUIZ,BADGES:BADGES,
+ SUBJECTS:SUBJECTS,LESSONS:LESSONS,PATH:PATH,QUIZ:QUIZ,BADGES:BADGES,PALETTE:PALETTE,
+ synced:!!window.SL_CHILDREN,
+ api:function(url,data){return fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','RequestVerificationToken':window.SL_CSRF},body:JSON.stringify(data||{})}).then(function(r){return r.json().catch(function(){return {};}).then(function(b){if(!r.ok)throw new Error(b.error||'Chưa thể lưu. Vui lòng thử lại.');return b;});});},
  get:function(){return state;},
  set:function(fn){fn(state);save();document.dispatchEvent(new CustomEvent('kl:change'));},
  reset:function(){state=seed();save();},
