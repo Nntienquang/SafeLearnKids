@@ -38,6 +38,9 @@ UPLOADS = "UU" + RUN[:22]
 VIDEOS = [f"v{RUN[i:i + 10]}" for i in (0, 10, 20)]
 API_VIDEOS = [f"a{RUN[i:i + 10]}" for i in (0, 7, 14)]
 TAG = f"src-{RUN[:12]}"
+SINGLE, NOEMBED, GONE, BADWORD, QUICK = (f"{letter}{RUN[i:i + 10]}" for letter, i in (("s", 1), ("n", 3), ("g", 5), ("b", 7), ("q", 9)))
+API_SINGLE, API_GONE = f"k{RUN[11:21]}", f"m{RUN[13:23]}"
+SINGLES = [SINGLE, NOEMBED, GONE, BADWORD, QUICK, API_SINGLE, API_GONE]
 created_urls = []
 
 
@@ -76,6 +79,14 @@ class FakeYouTube(BaseHTTPRequestHandler):
             titles = ["Học đếm số cho bé", f"Video có {KEYWORD} lạ", "Bài hát thiếu nhi"]
             entries = "\n".join(ENTRY.format(id=id, title=title, day=i + 1) for i, (id, title) in enumerate(zip(VIDEOS, titles)))
             return self.reply(200, FEED.format(entries=entries), "application/atom+xml")
+        if url.path == "/oembed":
+            video = urllib.parse.parse_qs(urllib.parse.urlsplit(query.get("url", "")).query).get("v", [""])[0]
+            if video == NOEMBED:
+                return self.reply(401, "Unauthorized", "text/plain")
+            if video not in (SINGLE, BADWORD, QUICK):
+                return self.reply(404, "Not Found", "text/plain")
+            title = f"Video có {KEYWORD}" if video == BADWORD else f"Bài hát lẻ {video}"
+            return self.reply(200, json.dumps({"title": title, "author_name": "Kenh le", "type": "video"}), "application/json")
         if url.path.startswith("/v3/"):
             if query.get("key") != KEY:
                 return self.reply(400, json.dumps({"error": "bad key"}), "application/json")
@@ -93,7 +104,9 @@ class FakeYouTube(BaseHTTPRequestHandler):
                     body["nextPageToken"] = "page2"
                 return self.reply(200, json.dumps(body), "application/json")
             if url.path == "/v3/videos":
-                items = [{"id": id, "contentDetails": {"duration": "PT4M5S"}, "status": {"embeddable": id != API_VIDEOS[2]}} for id in query.get("id", "").split(",")]
+                items = [{"id": id, "contentDetails": {"duration": "PT4M5S"}, "status": {"embeddable": id != API_VIDEOS[2]},
+                          "snippet": {"title": f"Video API {id}", "channelTitle": "Kenh API", "publishedAt": "2026-10-06T08:00:00Z"}}
+                         for id in query.get("id", "").split(",") if id != API_GONE]
                 return self.reply(200, json.dumps({"items": items}), "application/json")
         self.reply(404, "", "text/plain")
 
@@ -236,6 +249,48 @@ def feed_checks(url, directory):
         check(sql(f"SELECT COUNT(*) FROM dbo.AuditLogs WHERE ActorId=N'{admin_id}' AND EntityType IN (N'ContentSource', N'SourceVideo');") != "0", "source decisions are audited")
 
 
+def single_checks(url, directory):
+    """A single video added by link, without a key (title from oEmbed)."""
+    with smoke.running_app(url, directory, {"YouTube__OEmbedUrl": FAKE + "/oembed", "YouTube__ApiKey": ""}):
+        admin, parent = smoke.Client(url), smoke.Client(url)
+        for client, email in ((admin, ADMIN), (parent, PARENT)):
+            check(client.post_form("/login", {"Email": email, "Password": PASSWORD})[0] == 302, f"{email.split('-')[3]} signs in to the single-video run")
+        videos = "/admin-videos"
+        add = lambda link, *extra: form(admin, videos, "/admin-videos/add", [("url", link), *extra])
+        count = lambda video: sql(f"SELECT COUNT(*) FROM dbo.SourceVideos WHERE VideoId=N'{video}';")
+        check(admin.request(videos)[0] == 200 and "Thêm video lẻ" in admin.request(videos)[2], "the review page offers adding a single video")
+        check(admin.request("/admin-videos/add", [("url", f"https://youtu.be/{SINGLE}")])[0] == 400 and count(SINGLE) == "0", "adding a video requires CSRF")
+        check(form(parent, "/library", "/admin-videos/add", [("url", f"https://youtu.be/{SINGLE}")])[0] in (302, 403) and count(SINGLE) == "0",
+              "parents cannot add videos")
+        add(f"https://www.youtube.com/channel/{CHANNEL}")
+        check("liên kết của một video" in admin.request(videos)[2], "a channel link is not a single video")
+        status, headers, _ = add(f"https://youtu.be/{SINGLE}?t=42")
+        check(status == 302 and video_status(SINGLE) == "Pending", "a youtu.be link adds the video, waiting for review")
+        # The title is Vietnamese; sqlcmd prints in the console code page, so compare its ASCII tail inside SQL.
+        check(sql(f"SELECT COUNT(*) FROM dbo.SourceVideos WHERE VideoId=N'{SINGLE}' AND Title LIKE N'% {SINGLE}' AND ReviewNote LIKE N'%Kenh le%';") == "1",
+              "without a key the title and channel come from oEmbed")
+        check(sql(f"SELECT CASE WHEN ThumbnailUrl=N'https://i.ytimg.com/vi/{SINGLE}/hqdefault.jpg' THEN 1 ELSE 0 END FROM dbo.SourceVideos WHERE VideoId=N'{SINGLE}';") == "1"
+              and sql(f"SELECT COUNT(*) FROM dbo.SourceVideoSources l JOIN dbo.SourceVideos v ON v.Id=l.SourceVideoId WHERE v.VideoId=N'{SINGLE}';") == "0",
+              "the thumbnail is YouTube's own and the video belongs to no source")
+        add(f"https://www.youtube.com/watch?v={SINGLE}&list=PLx")
+        check(count(SINGLE) == "1" and "đã có trong hệ thống" in admin.request(f"{videos}?status=all&q={SINGLE}")[2], "adding the same video again keeps one copy")
+        add(f"https://www.youtube.com/shorts/{NOEMBED}")
+        check(count(NOEMBED) == "0" and "không cho phát trong trang khác" in admin.request(videos)[2], "a video that cannot be embedded is refused")
+        add(f"https://m.youtube.com/watch?v={GONE}")
+        check(count(GONE) == "0" and "không tìm thấy video" in admin.request(videos)[2], "a deleted or private video is refused")
+        add(f"https://www.youtube.com/embed/{BADWORD}")
+        check(video_status(BADWORD) == "Blocked" and sql(f"SELECT COUNT(*) FROM dbo.SourceVideos WHERE VideoId=N'{BADWORD}' AND ReviewNote LIKE N'%{KEYWORD}%';") == "1",
+              "a title with a blocked keyword is blocked straight away")
+        add(QUICK, ("approve", "true"))
+        quick = sql(f"SELECT Id FROM dbo.SourceVideos WHERE VideoId=N'{QUICK}';")
+        check(video_status(QUICK) == "Approved" and sql(f"SELECT CASE WHEN ReviewedById IS NOT NULL THEN 1 ELSE 0 END FROM dbo.SourceVideos WHERE VideoId=N'{QUICK}';") == "1",
+              "a bare video id with approve-now is approved by the admin")
+        editor = "/admin-lesson/" + sql("SELECT TOP 1 Id FROM dbo.Lessons ORDER BY Id;")
+        check(f'<option value="{quick}">' in admin.request(editor, raw=True)[2], "an approved single video can be picked in the lesson editor")
+        admin_id = sql(f"SELECT Id FROM dbo.Users WHERE Email=N'{ADMIN}';")
+        check(sql(f"SELECT COUNT(*) FROM dbo.AuditLogs WHERE ActorId=N'{admin_id}' AND Action=N'AddVideo';") == "3", "adding videos is audited")
+
+
 def api_checks(url, directory):
     logs = []
     with smoke.running_app(url, directory, {"YouTube__ApiBaseUrl": FAKE + "/v3", "YouTube__ApiKey": KEY}, logs):
@@ -253,6 +308,11 @@ def api_checks(url, directory):
         quota = source_id(QUOTA)
         form(admin, f"/admin-sources/{quota}", f"/admin-sources/{quota}/sync")
         check("hạn mức" in admin.request(f"/admin-sources/{quota}")[2], "an exhausted quota is explained")
+        form(admin, "/admin-videos", "/admin-videos/add", [("url", f"https://www.youtube.com/watch?v={API_SINGLE}")])
+        check(sql(f"SELECT Title + N'|' + CAST(DurationSec AS varchar) FROM dbo.SourceVideos WHERE VideoId=N'{API_SINGLE}';") == f"Video API {API_SINGLE}|245",
+              "with a key a single video gets its title and duration from the Data API")
+        form(admin, "/admin-videos", "/admin-videos/add", [("url", f"https://youtu.be/{API_GONE}")])
+        check(sql(f"SELECT COUNT(*) FROM dbo.SourceVideos WHERE VideoId=N'{API_GONE}';") == "0", "with a key an unknown video is refused")
     check(KEY not in "".join(logs), "the API key never reaches the logs")
 
 
@@ -266,6 +326,7 @@ def main():
         with tempfile.TemporaryDirectory(prefix="safelearn-private-mail-") as temporary:
             directory = Path(temporary)
             feed_checks(f"http://127.0.0.1:{free_port()}", directory)
+            single_checks(f"http://127.0.0.1:{free_port()}", directory)
             api_checks(f"http://127.0.0.1:{free_port()}", directory)
     finally:
         server.shutdown()
@@ -276,7 +337,7 @@ def main():
         sql(f"DELETE FROM dbo.Lessons WHERE Title=N'{TAG}';")
         sql(f"DELETE FROM dbo.ParentSources WHERE ParentId IN ({ids}) OR SourceId IN (SELECT Id FROM dbo.ContentSources WHERE ExternalId IN ({externals}) OR Url LIKE N'https://example.org/hoc-{RUN[:8]}%');")
         sql(f"DELETE FROM dbo.ContentSources WHERE ExternalId IN ({externals}) OR Url LIKE N'https://example.org/hoc-{RUN[:8]}%' OR SuggestedById IN ({ids});")
-        video_ids = ", ".join(f"N'{item}'" for item in VIDEOS + API_VIDEOS)
+        video_ids = ", ".join(f"N'{item}'" for item in VIDEOS + API_VIDEOS + SINGLES)
         sql(f"DELETE FROM dbo.SourceVideos WHERE VideoId IN ({video_ids});")
         sql(f"DELETE FROM dbo.BlockedKeywords WHERE Keyword=N'{KEYWORD}';")
         sql(f"DELETE FROM dbo.AuditLogs WHERE ActorId IN ({ids}) OR EntityId IN ({ids});")

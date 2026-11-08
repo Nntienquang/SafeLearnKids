@@ -18,9 +18,14 @@ public sealed class YouTubeOptions
     // YouTube's public Atom feed lists a channel's or playlist's latest 15 videos without a key.
     public string FeedBaseUrl { get; set; } = "https://www.youtube.com/feeds/videos.xml";
     public int MaxVideosPerSync { get; set; } = 200;
+    // Without a key, a single video's title comes from YouTube's public oEmbed endpoint.
+    public string OEmbedUrl { get; set; } = "https://www.youtube.com/oembed";
 }
 
 public record SyncResult(int Found, int Added, int Blocked, string? Error);
+
+// One video looked up by id. Embeddable is false when the owner does not allow it to play inside other sites.
+public record VideoLookup(string? Title, string? Channel, int? DurationSec, DateTime? PublishedAt, bool Embeddable, string? Error);
 
 public sealed class SourceSyncService(IHttpClientFactory http, IOptions<YouTubeOptions> options, ILogger<SourceSyncService> logger)
 {
@@ -58,6 +63,60 @@ public sealed class SourceSyncService(IHttpClientFactory http, IOptions<YouTubeO
         await db.SaveChangesAsync(cancellationToken);
         return result;
     }
+
+    // A single video added by an admin. With a key: title, channel, duration and the embed flag from the Data API.
+    // Without a key: title and channel from oEmbed, which answers 401/403 for videos that cannot be embedded.
+    public async Task<VideoLookup> LookupVideoAsync(string videoId, CancellationToken cancellationToken)
+    {
+        if (!SourceUrl.VideoId().IsMatch(videoId)) return new(null, null, null, null, false, SourceUrl.NotVideo);
+        try
+        {
+            if (UsesApi)
+            {
+                using var document = await JsonAsync($"videos?part=snippet,contentDetails,status&id={videoId}", cancellationToken);
+                var items = document.RootElement.GetProperty("items");
+                if (items.GetArrayLength() == 0) return new(null, null, null, null, false, NotFoundVideo);
+                var video = items[0];
+                var snippet = video.TryGetProperty("snippet", out var part) ? part : default;
+                int? seconds = null;
+                if (video.TryGetProperty("contentDetails", out var details) && details.TryGetProperty("duration", out var duration))
+                {
+                    try
+                    {
+                        seconds = (int)XmlConvert.ToTimeSpan(duration.GetString() ?? "").TotalSeconds;
+                    }
+                    catch (FormatException)
+                    {
+                    }
+                }
+                var embeddable = !video.TryGetProperty("status", out var status) || !status.TryGetProperty("embeddable", out var flag) || flag.GetBoolean();
+                return new(Text(snippet, "title"), Text(snippet, "channelTitle"), seconds, Date(Text(snippet, "publishedAt")), embeddable, null);
+            }
+            var watch = Uri.EscapeDataString($"https://www.youtube.com/watch?v={videoId}");
+            using var response = await http.CreateClient(ClientName).GetAsync($"{options.Value.OEmbedUrl}?url={watch}&format=json", HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) return new(null, null, null, null, false, null);
+            if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest) return new(null, null, null, null, false, NotFoundVideo);
+            if (!response.IsSuccessStatusCode) return new(null, null, null, null, false, $"YouTube trả về lỗi {(int)response.StatusCode}. Hãy thử lại sau.");
+            await using var body = await ReadLimitedAsync(response, cancellationToken);
+            using var oembed = await JsonDocument.ParseAsync(body, cancellationToken: cancellationToken);
+            return new(Text(oembed.RootElement, "title"), Text(oembed.RootElement, "author_name"), null, null, true, null);
+        }
+        catch (SyncFailure failure)
+        {
+            return new(null, null, null, null, false, failure.Message);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException or KeyNotFoundException)
+        {
+            // The request URL may carry the API key, so only the exception type is logged.
+            logger.LogWarning("Could not look up a YouTube video: {Error}", exception.GetType().Name);
+            return new(null, null, null, null, false, "Không kết nối được tới YouTube hoặc dữ liệu không đọc được. Hãy thử lại sau.");
+        }
+    }
+
+    private const string NotFoundVideo = "YouTube không tìm thấy video này (có thể đã bị xóa hoặc để riêng tư).";
+
+    private static string? Text(JsonElement element, string name) =>
+        element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString()?.Trim() : null;
 
     private async Task<List<Entry>> FetchAsync(ContentSource source, CancellationToken cancellationToken)
     {
@@ -152,6 +211,11 @@ public sealed class SourceSyncService(IHttpClientFactory http, IOptions<YouTubeO
                 HttpStatusCode.BadRequest when UsesApi => "API key YouTube không hợp lệ.",
                 _ => $"YouTube trả về lỗi {(int)response.StatusCode}. Hãy thử lại sau."
             });
+        return await ReadLimitedAsync(response, cancellationToken);
+    }
+
+    private static async Task<Stream> ReadLimitedAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         var limited = new MemoryStream();
         var buffer = new byte[81920];

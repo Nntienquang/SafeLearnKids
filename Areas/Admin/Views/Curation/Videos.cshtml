@@ -5,7 +5,7 @@
     ViewData["Nav"] = "videos";
     ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
     ViewData["Heading"] = """Duyệt video""";
-    ViewData["Sub"] = """Video chỉ phát cho bé khi video đã duyệt và nguồn của nó đang được duyệt (US-20).""";
+    ViewData["Sub"] = """Video chỉ phát cho bé khi video đã duyệt và nguồn của nó (nếu có) đang được duyệt. Video lẻ không thuộc nguồn nào (US-20).""";
     var filter = new Dictionary<string, string?> { ["status"] = Model.Status, ["source"] = Model.Source?.ToString(), ["q"] = Model.Q };
     int Count(string status) => Model.Counts.TryGetValue(status, out var count) ? count : 0;
 }
@@ -17,6 +17,17 @@
 {
     <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
 }
+<form method="post" asp-action="AddVideo" class="sl-card" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+    <div class="card-t">Thêm video lẻ</div>
+    <p class="muted" style="margin:0;font-size:12.5px">Dùng khi chỉ cần một video mà không thêm cả kênh. Hệ thống tự lấy tiêu đề, kiểm tra video có cho phát trong trang khác không và có chứa từ khóa bị chặn không.</p>
+    <div class="sl-row" style="gap:10px;flex-wrap:wrap">
+        <label class="sr-only" for="video-url">Liên kết video YouTube</label>
+        <input class="inp grow" id="video-url" name="url" required maxlength="300" autocomplete="off" style="min-width:240px"
+               placeholder="https://www.youtube.com/watch?v=... hoặc https://youtu.be/..." />
+        <label class="sl-row" style="gap:8px;font-size:13.5px"><input type="checkbox" name="approve" value="true" />Duyệt luôn</label>
+        <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-plus"></i>Thêm video</button>
+    </div>
+</form>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:16px">
     @foreach (var status in VideoStatus.All)
     {
