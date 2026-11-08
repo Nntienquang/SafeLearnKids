@@ -1,0 +1,116 @@
+@model SourceDetailViewModel
+@using SafeLearnKids.Web.Services
+@{
+    var source = Model.Source;
+    ViewData["Title"] = source.Name;
+    ViewData["Page"] = "admin-curate-sql";
+    ViewData["Nav"] = "curate";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nguồn nội dung""");
+    ViewData["Heading"] = source.Name;
+    ViewData["Sub"] = $"{SourceStatus.PlatformLabel(source.Platform)} · {source.Videos} video";
+    var latest = Model.Assessments.FirstOrDefault();
+    var canSync = source.Platform != "Website" && source.Status is SourceStatus.Suggested or SourceStatus.Approved;
+}
+@section Actions {
+<a class="sl-btn" asp-action="Index"><i class="ic ic-arrowl"></i>Danh sách</a>
+<a class="sl-btn" asp-action="Videos" asp-route-source="@source.Id" asp-route-status="all"><i class="ic ic-playc"></i>Video của nguồn</a>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div class="ud-grid">
+    <div class="sl-card">
+        <div class="sl-row" style="gap:8px;flex-wrap:wrap"><span class="chip @SourceStatus.Tone(source.Status)">@SourceStatus.Label(source.Status)</span><span class="chip t-n">@SourceStatus.PlatformLabel(source.Platform)</span></div>
+        <p style="margin:12px 0 0;overflow-wrap:anywhere"><a href="@source.Url" target="_blank" rel="noopener noreferrer">@source.Url</a></p>
+        <dl class="ud-facts">
+            <div class="ud-fact"><dt>Video</dt><dd>@source.Videos (@source.PendingVideos chờ duyệt)</dd></div>
+            <div class="ud-fact"><dt>Gia đình đang chặn</dt><dd>@Model.FamiliesBlocking</dd></div>
+            <div class="ud-fact"><dt>Đồng bộ gần nhất</dt><dd>@(source.LastSyncedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa")</dd></div>
+            <div class="ud-fact"><dt>Thêm lúc</dt><dd>@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")@(source.SuggestedBy is null ? "" : " · " + source.SuggestedBy)</dd></div>
+        </dl>
+        @if (source.LastSyncError is not null)
+        {
+            <div class="banner t-r" style="margin-top:12px;font-size:13px">Lần đồng bộ gần nhất lỗi: @source.LastSyncError</div>
+        }
+        @if (Model.ReviewNote is not null)
+        {
+            <div class="muted" style="margin-top:12px;font-size:13px">Ghi chú duyệt: @Model.ReviewNote@(Model.ReviewedBy is null ? "" : " · " + Model.ReviewedBy)</div>
+        }
+        <form asp-action="Edit" asp-route-id="@source.Id" method="post" style="margin-top:16px;display:flex;flex-direction:column;gap:10px">
+            <label class="lab" for="source-name">Tên nguồn</label>
+            <input class="inp" id="source-name" name="name" value="@source.Name" maxlength="150" required />
+            <label class="lab" for="source-description">Mô tả</label>
+            <textarea class="inp ta" id="source-description" name="description" rows="2" maxlength="500">@Model.Description</textarea>
+            <div class="sl-row" style="justify-content:flex-end"><button class="sl-btn" type="submit">Lưu thông tin</button></div>
+        </form>
+    </div>
+    <div class="sl-col" style="gap:16px">
+        <div class="sl-card">
+            <div class="card-h" style="margin-bottom:6px"><div class="card-t">Quyết định</div></div>
+            @if (source.Status is SourceStatus.Suggested or SourceStatus.Suspended or SourceStatus.Rejected)
+            {
+                <form asp-action="SetStatus" asp-route-id="@source.Id" method="post" style="margin-bottom:10px">
+                    <input type="hidden" name="to" value="@SourceStatus.Approved" />
+                    <button class="sl-btn sl-btn-p sl-btn-block" type="submit">Duyệt nguồn</button>
+                </form>
+            }
+            @if (source.Status != SourceStatus.Rejected)
+            {
+                var to = source.Status == SourceStatus.Approved ? SourceStatus.Suspended : SourceStatus.Rejected;
+                <form asp-action="SetStatus" asp-route-id="@source.Id" method="post" style="display:flex;flex-direction:column;gap:8px">
+                    <input type="hidden" name="to" value="@to" />
+                    <label class="lab" for="decision-note">Lý do @(to == SourceStatus.Suspended ? "tạm ngưng" : "từ chối")</label>
+                    <textarea class="inp ta" id="decision-note" name="note" rows="2" maxlength="500" required></textarea>
+                    <button class="sl-btn sl-btn-d sl-btn-block" type="submit">@(to == SourceStatus.Suspended ? "Tạm ngưng nguồn" : "Từ chối nguồn")</button>
+                </form>
+            }
+            @if (canSync)
+            {
+                <form asp-action="Sync" asp-route-id="@source.Id" method="post" style="margin-top:10px">
+                    <button class="sl-btn sl-btn-block" type="submit"><i class="ic ic-refresh"></i>Đồng bộ video</button>
+                </form>
+            }
+        </div>
+        <div class="sl-card">
+            <div class="card-h" style="margin-bottom:6px"><div class="card-t">Đánh giá tự động</div><span class="chip t-v"><i class="ic ic-sparkles"></i>Theo quy tắc</span></div>
+            @if (latest is not null)
+            {
+                <div class="sl-row" style="gap:10px;margin:6px 0"><div class="bar grow"><i style="width:@(latest.Score)%;background:@(latest.Score >= SourceAssessor.ApproveAt ? "var(--green)" : latest.Score < SourceAssessor.RejectBelow ? "var(--rose)" : "var(--sun)")"></i></div><span class="b">@latest.Score.ToString("0")/100</span></div>
+                <div style="white-space:pre-line;font-size:13.5px;line-height:1.7;color:var(--text-2)">@latest.Summary</div>
+                <div class="muted" style="font-size:12px;margin-top:6px">@latest.ModelName · @latest.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm") · @(latest.Status switch { "Accepted" => "quản trị viên đồng ý", "Dismissed" => "quản trị viên quyết định khác", _ => "chờ quyết định" })@(latest.DecidedBy is null ? "" : " · " + latest.DecidedBy)</div>
+            }
+            else
+            {
+                <p class="muted" style="font-size:13.5px">Chưa đánh giá. Nên đồng bộ video trước để có thêm dữ liệu.</p>
+            }
+            <div class="banner t-a" style="font-size:13px;font-weight:600;margin:12px 0"><i class="ic ic-alert"></i>Đây chỉ là gợi ý. Quyết định cuối cùng thuộc về quản trị viên.</div>
+            <form asp-action="Assess" asp-route-id="@source.Id" method="post"><button class="sl-btn sl-btn-block" type="submit"><i class="ic ic-sparkles"></i>@(latest is null ? "Đánh giá" : "Đánh giá lại")</button></form>
+        </div>
+        @if (source.Status != SourceStatus.Approved)
+        {
+            <div class="sl-card">
+                <div class="card-t">Xóa nguồn</div>
+                <p class="muted" style="margin:6px 0 12px;font-size:13px">Video đã đồng bộ được giữ lại nếu còn dùng trong bài học hoặc thuộc nguồn khác.</p>
+                <form asp-action="Delete" asp-route-id="@source.Id" method="post" data-confirm="Xóa nguồn @source.Name?" data-text="Lựa chọn chặn/cho phép của các gia đình với nguồn này cũng bị xóa." data-ok-label="Xóa nguồn" data-danger="true">
+                    <button class="sl-btn sl-btn-d sl-btn-block" type="submit"><i class="ic ic-trash"></i>Xóa nguồn</button>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+<div class="sl-card">
+    <div class="card-h"><div class="card-t">Video gần đây</div><a class="sl-btn sl-btn-sm" asp-action="Videos" asp-route-source="@source.Id" asp-route-status="all">Xem tất cả</a></div>
+    @foreach (var video in Model.Videos)
+    {
+        <partial name="_VideoRow" model="video" />
+    }
+    @if (Model.Videos.Count == 0)
+    {
+        <div class="empty" style="margin-top:12px">Chưa có video. @(canSync ? "Bấm Đồng bộ video để lấy danh sách." : "")</div>
+    }
+</div>

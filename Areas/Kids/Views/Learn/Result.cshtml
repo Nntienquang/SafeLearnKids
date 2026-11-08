@@ -1,11 +1,82 @@
+@model QuizResultViewModel
 @{
-    ViewData["Title"] = """Kết quả quiz""";
-    ViewData["Page"] = "kids-result";
+    ViewData["Title"] = "Kết quả: " + Model.Title;
+    ViewData["Page"] = "kids-result-sql";
+    var stars = QuizRules.Stars(Model.Score);
+    var heading = Model.Score >= 100 ? $"Tuyệt vời, {Model.ChildName}!" : Model.Passed ? $"Giỏi quá, {Model.ChildName}!" : $"Cố lên, {Model.ChildName}!";
 }
-<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px"><div class="k-card" style="max-width:760px;align-self:center;width:100%;padding:40px;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center">
-<span style="width:96px;height:96px;border-radius:48px;background:#FFE7A3;color:#B45309;display:flex;align-items:center;justify-content:center"><i class="ic ic-trophy ic-xl"></i></span>
-<div class="kf" style="font-size:44px">Giỏi quá, Minh An!</div>
-<div class="sl-row" style="gap:26px"><div><div class="kf" style="font-size:48px;color:var(--primary-text)">4/5</div><span class="k-note">câu đúng</span></div><div><div class="kf" style="font-size:48px;color:#B45309">+40</div><span class="k-note">điểm sao</span></div></div>
-<div class="sl-row" style="gap:6px;font-size:34px;color:#FFB020"><i class="ic ic-star ic-lg"></i><i class="ic ic-star ic-lg"></i><i class="ic ic-star ic-lg"></i><i class="ic ic-star ic-lg"></i><i class="ic ic-star ic-lg" style="color:var(--line)"></i></div>
-<div class="banner t-p" style="font-weight:700"><i class="ic ic-sparkles"></i>Huy hiệu mới: Siêu chăm chỉ!</div>
-<div class="sl-row" style="gap:12px;flex-wrap:wrap;justify-content:center"><a class="sl-btn sl-btn-lg" href="~/kids-quiz"><i class="ic ic-refresh"></i>Làm lại</a><a class="k-btn" href="~/kids-home">Về trang học</a></div></div></main>
+<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px">
+<div class="k-card" style="max-width:760px;align-self:center;width:100%;padding:36px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center">
+    <span style="width:96px;height:96px;border-radius:48px;background:#FFE7A3;color:#B45309;display:flex;align-items:center;justify-content:center" aria-hidden="true"><i class="ic ic-trophy ic-xl"></i></span>
+    <h1 class="kf" style="font-size:40px;margin:0">@heading</h1>
+    <div class="sl-row" style="gap:26px">
+        <div><div class="kf" style="font-size:48px;color:var(--primary-text)">@Model.Correct/@Model.Total</div><span class="k-note">câu đúng</span></div>
+        <div><div class="kf" style="font-size:48px;color:#B45309">@Model.Score.ToString("0.#")%</div><span class="k-note">điểm (đạt từ @Model.PassPercent%)</span></div>
+    </div>
+    <div class="sl-row" style="gap:6px;color:#FFB020" role="img" aria-label="@stars trên 5 sao">
+        @for (var i = 0; i < 5; i++)
+        {
+            <i class="ic ic-star ic-lg" style="@(i < stars ? "" : "color:var(--line)")"></i>
+        }
+    </div>
+    @if (TempData["Badge"] is string badge)
+    {
+        <a class="banner t-p" role="status" href="/kids-badges" style="font-weight:700"><i class="ic ic-sparkles"></i>@badge</a>
+    }
+    @if (Model.TimedOut)
+    {
+        <div class="banner t-a" style="font-weight:700"><i class="ic ic-clock"></i>Hết giờ làm bài nên các câu chưa nộp được tính là chưa trả lời.</div>
+    }
+    @if (Model.Late)
+    {
+        <div class="banner t-a" style="font-weight:700"><i class="ic ic-cal"></i>Con nộp sau hạn @Model.DueDate?.ToString("dd/MM"). Lần sau con làm sớm hơn nhé.</div>
+    }
+    <p class="k-note" style="margin:0">@(Model.Passed ? "Con đã đạt bài tập này." : "Con xem lại giải thích bên dưới rồi làm lại nhé.")</p>
+    <div class="sl-row" style="gap:12px;flex-wrap:wrap;justify-content:center">
+        @if (Model.CanRetry)
+        {
+            <a class="sl-btn sl-btn-lg" href="/kids-quiz?id=@Model.QuizId"><i class="ic ic-refresh"></i>Làm lại</a>
+        }
+        <a class="sl-btn sl-btn-lg" href="/kids-lesson?id=@Model.LessonId"><i class="ic ic-book"></i>Xem lại bài học</a>
+        <a class="k-btn" href="/kids-home">Về trang học</a>
+    </div>
+</div>
+<section class="sl-col" style="gap:14px;max-width:960px;align-self:center;width:100%" aria-label="Đáp án và giải thích">
+    <h2 class="kf" style="font-size:26px;margin:0">Xem lại đáp án</h2>
+    @foreach (var question in Model.Questions)
+    {
+        <article class="k-card" style="display:flex;flex-direction:column;gap:12px;border-color:@(question.Correct ? "#22C55E" : "var(--rose)")">
+            <div class="sl-row" style="gap:10px">
+                <span class="ib @(question.Correct ? "t-g" : "t-r")" aria-hidden="true"><i class="ic ic-@(question.Correct ? "check" : "x")"></i></span>
+                <div class="b grow" style="font-size:18px">Câu @question.Number: @question.Text</div>
+                <span class="sr-only">@(question.Correct ? "Đúng" : question.Answered ? "Chưa đúng" : "Chưa trả lời")</span>
+            </div>
+            <ul style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
+                @foreach (var option in question.Options)
+                {
+                    <li class="sl-row" style="gap:8px;padding:10px 12px;border-radius:14px;font-weight:700;border:2px solid @(option.IsCorrect ? "#22C55E" : option.Chosen ? "var(--rose)" : "var(--line)");@(option.IsCorrect ? "background:rgba(34,197,94,.12)" : "")">
+                        <i class="ic ic-@(option.IsCorrect ? "checkc" : option.Chosen ? "x" : "chevr")" aria-hidden="true"></i>
+                        <span class="grow">@option.Text</span>
+                        @if (option.Chosen)
+                        {
+                            <span class="k-note">Con chọn</span>
+                        }
+                        @if (option.IsCorrect)
+                        {
+                            <span class="sr-only">(đáp án đúng)</span>
+                        }
+                    </li>
+                }
+            </ul>
+            @if (!question.Answered)
+            {
+                <p class="k-note" style="margin:0">Con chưa trả lời câu này.</p>
+            }
+            @if (question.Explanation is not null)
+            {
+                <div class="banner t-p" style="font-weight:600"><i class="ic ic-info"></i>@question.Explanation</div>
+            }
+        </article>
+    }
+</section>
+</main>

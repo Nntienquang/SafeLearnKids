@@ -167,7 +167,8 @@ def children_checks(admin, url, directory, parent_id, other_id):
     check(status == 200 and child_id(parent_id, "Ban moi") == created
           and sql(f"SELECT g.Level FROM dbo.ChildProfiles c JOIN dbo.GradeLevels g ON g.Id=c.GradeLevelId WHERE c.Id={created};") == "4", "Parent edits the child")
     codes = sql(f"SELECT s.Code FROM dbo.ChildSubjects cs JOIN dbo.Subjects s ON s.Id=cs.SubjectId WHERE cs.ChildProfileId={created} ORDER BY s.Code;").split()
-    check(codes == ["ENGLISH", "LIFESKILL"], "editing replaces offered subjects and keeps others")
+    # Every catalog subject is offered now, so a save replaces the whole set.
+    check(codes == ["ENGLISH"], "editing replaces the subjects")
     check(sql(f"SELECT BirthYear FROM dbo.ChildProfiles WHERE Id={created};") == "2019", "editing updates the birth year")
     check("Ban moi" in admin.request(page)[2], "Admin sees the edit")
 

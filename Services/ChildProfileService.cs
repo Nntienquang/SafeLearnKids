@@ -16,16 +16,11 @@ public sealed class ChildProfileService(IServiceProvider services)
     private const string SaveFailed = "Chưa thể lưu hồ sơ. Vui lòng thử lại.";
     private const string NameTaken = "Đã có bé dùng tên này.";
 
-    // Keys used by store.js for each row of dbo.Subjects.
-    private static readonly Dictionary<string, string> SubjectCodes = new()
-    {
-        ["toan"] = "MATH",
-        ["tiengviet"] = "VIET",
-        ["khoahoc"] = "SCIENCE",
-        ["tienganh"] = "ENGLISH"
-    };
-
     private SafeLearnDbContext? Db => services.GetService<SafeLearnDbContext>();
+
+    // Subject keys, names and colours for the parent and child pages; null without SQL.
+    public async Task<IReadOnlyList<SubjectLook>?> SubjectsAsync(CancellationToken cancellationToken) =>
+        Db is { } db ? await SubjectCatalog.LooksAsync(db, cancellationToken) : null;
 
     public async Task<IReadOnlyList<ParentChildRow>?> ForParentAsync(string parentId, CancellationToken cancellationToken)
     {
@@ -42,7 +37,14 @@ public sealed class ChildProfileService(IServiceProvider services)
                 Codes = child.ChildSubjects.Select(item => item.Subject.Code).ToList()
             })
             .ToListAsync(cancellationToken);
-        return children.Select(child => ToRow(child.Id, child.DisplayName, child.Level, child.BirthYear, child.Codes)).ToList();
+        var rows = new List<ParentChildRow>();
+        foreach (var child in children)
+        {
+            var today = await StudyTimeService.StatusAsync(db, child.Id, cancellationToken);
+            rows.Add(ToRow(child.Id, child.DisplayName, child.Level, child.BirthYear, child.Codes.Select(SubjectCatalog.Key))
+                with { Limit = today.LimitMinutes + today.ExtraMinutes, Used = today.UsedMinutes });
+        }
+        return rows;
     }
 
     public async Task<ChildSaveResult> CreateAsync(string parentId, ChildProfileInput input, CancellationToken cancellationToken)
@@ -59,7 +61,8 @@ public sealed class ChildProfileService(IServiceProvider services)
             if (await db.ChildProfiles.AnyAsync(child => child.ParentId == parentId && child.DisplayName == name, cancellationToken))
                 return new(null, NameTaken);
             if (await GradeIdAsync(db, input.Cls, cancellationToken) is not { } gradeId) return new(null, SaveFailed);
-            var subjects = await SubjectsAsync(db, input.Subjects, cancellationToken);
+            var (subjects, problem) = await ResolveSubjectsAsync(db, input.Subjects, [], cancellationToken);
+            if (problem is not null) return new(null, problem);
             var child = new ChildProfile
             {
                 ParentId = parentId,
@@ -92,14 +95,14 @@ public sealed class ChildProfileService(IServiceProvider services)
         if (await db.ChildProfiles.AnyAsync(item => item.ParentId == parentId && item.Id != id && item.DisplayName == name, cancellationToken))
             return new(null, NameTaken);
         if (await GradeIdAsync(db, input.Cls, cancellationToken) is not { } gradeId) return new(null, SaveFailed);
-        var chosen = await SubjectsAsync(db, input.Subjects, cancellationToken);
-        var managed = await SubjectsAsync(db, SubjectCodes.Keys, cancellationToken);
+        // A subject hidden by the admins can stay on a child who already has it, but cannot be added.
+        var (chosen, problem) = await ResolveSubjectsAsync(db, input.Subjects, child.ChildSubjects.Select(item => item.SubjectId).ToList(), cancellationToken);
+        if (problem is not null) return new(null, problem);
 
         child.DisplayName = name;
         child.GradeLevelId = gradeId;
         child.BirthYear = input.BirthYear;
-        // Subjects the parent form does not offer, such as life skills, stay as they are.
-        db.ChildSubjects.RemoveRange(child.ChildSubjects.Where(item => managed.ContainsValue(item.SubjectId) && !chosen.ContainsValue(item.SubjectId)));
+        db.ChildSubjects.RemoveRange(child.ChildSubjects.Where(item => !chosen.ContainsValue(item.SubjectId)));
         foreach (var subjectId in chosen.Values.Where(subjectId => child.ChildSubjects.All(item => item.SubjectId != subjectId)))
             child.ChildSubjects.Add(new ChildSubject { SubjectId = subjectId });
         try
@@ -129,25 +132,30 @@ public sealed class ChildProfileService(IServiceProvider services)
     private static string? Validate(ChildProfileInput input)
     {
         if (input.Subjects.Count == 0) return "Cần ít nhất 1 môn.";
-        if (input.Subjects.Any(key => !SubjectCodes.ContainsKey(key))) return "Môn học không hợp lệ.";
         return input.BirthYear is { } year && (year < MinBirthYear || year > DateTime.UtcNow.Year) ? "Năm sinh không hợp lệ." : null;
     }
 
     private static Task<int?> GradeIdAsync(SafeLearnDbContext db, int level, CancellationToken cancellationToken) =>
         db.GradeLevels.Where(grade => grade.Level == level).Select(grade => (int?)grade.Id).FirstOrDefaultAsync(cancellationToken);
 
-    private static async Task<Dictionary<string, int>> SubjectsAsync(SafeLearnDbContext db, IEnumerable<string> keys, CancellationToken cancellationToken)
+    private static async Task<(Dictionary<string, int> Subjects, string? Problem)> ResolveSubjectsAsync(
+        SafeLearnDbContext db, IEnumerable<string> keys, IReadOnlyCollection<int> kept, CancellationToken cancellationToken)
     {
-        var wanted = keys.Distinct().ToDictionary(key => SubjectCodes[key]);
-        var codes = wanted.Keys.ToList();
-        var rows = await db.Subjects.Where(subject => codes.Contains(subject.Code)).Select(subject => new { subject.Code, subject.Id }).ToListAsync(cancellationToken);
-        return rows.ToDictionary(row => wanted[row.Code], row => row.Id);
+        var rows = await db.Subjects.AsNoTracking().Select(subject => new { subject.Id, subject.Code, subject.Name, subject.IsActive }).ToListAsync(cancellationToken);
+        var chosen = new Dictionary<string, int>();
+        foreach (var key in keys.Distinct())
+        {
+            var row = rows.FirstOrDefault(item => SubjectCatalog.Key(item.Code) == key);
+            if (row is null) return (chosen, "Môn học không hợp lệ.");
+            if (!row.IsActive && !kept.Contains(row.Id)) return (chosen, $"Môn {row.Name} đang tạm ẩn nên chưa chọn được.");
+            chosen[key] = row.Id;
+        }
+        return (chosen, null);
     }
 
     private static ParentChildRow ToRow(int id, string name, int level, int? birthYear, IEnumerable<string> subjects)
     {
-        var keys = subjects.Select(item => SubjectCodes.ContainsKey(item) ? item : SubjectCodes.FirstOrDefault(pair => pair.Value == item).Key)
-            .OfType<string>().ToList();
+        var keys = subjects.Distinct().ToList();
         var initial = new StringInfo(name).SubstringByTextElements(0, 1).ToUpperInvariant();
         return new ParentChildRow(id.ToString(CultureInfo.InvariantCulture), name, level, birthYear, initial, keys);
     }

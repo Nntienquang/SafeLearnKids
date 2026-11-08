@@ -1,0 +1,69 @@
+@model QuizFormViewModel
+@{
+    var editing = Model.Id is not null;
+    ViewData["Title"] = editing ? "Sửa bài tập" : "Tạo bài tập";
+    ViewData["Page"] = "admin-questions-sql";
+    ViewData["Nav"] = "questions";
+    ViewData["Crumb"] = Html.Raw("""<a href="/admin-questions">Câu hỏi và bài tập</a> <i class='ic ic-chevr'></i> """ + System.Net.WebUtility.HtmlEncode(Model.LessonTitle));
+    ViewData["Heading"] = editing ? "Sửa bài tập" : "Tạo bài tập";
+    ViewData["Sub"] = "Chọn câu hỏi đã duyệt của bài " + Model.LessonTitle + ". Bé được chấm điểm tự động khi nộp.";
+}
+<form method="post" class="sl-card acc-form" asp-action="@(editing ? "EditQuiz" : "CreateQuiz")" asp-route-id="@Model.Id">
+    <input type="hidden" asp-for="LessonId" />
+    <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+    <section class="acc-sec">
+        <div class="field">
+            <label asp-for="Title" class="lab"></label>
+            <input asp-for="Title" class="inp" maxlength="150" required autocomplete="off" />
+            <span asp-validation-for="Title" class="err"></span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px">
+            <div class="field" style="flex:1 1 160px">
+                <label asp-for="PassPercent" class="lab"></label>
+                <input asp-for="PassPercent" class="inp" type="number" min="0" max="100" required />
+                <span asp-validation-for="PassPercent" class="err"></span>
+            </div>
+            <div class="field" style="flex:2 1 260px">
+                <label asp-for="TimeLimitMinutes" class="lab"></label>
+                <input asp-for="TimeLimitMinutes" class="inp" type="number" min="1" max="@QuizRules.MaxTimeLimitMinutes" />
+                <span asp-validation-for="TimeLimitMinutes" class="err"></span>
+            </div>
+            <div class="field" style="flex:1 1 180px">
+                <label asp-for="Status" class="lab"></label>
+                <select asp-for="Status" class="inp">
+                    <option value="@QuestionStatus.Draft">Nháp (bé chưa thấy)</option>
+                    <option value="@QuestionStatus.Published">Đang mở</option>
+                    <option value="@QuestionStatus.Archived">Lưu trữ</option>
+                </select>
+                <span asp-validation-for="Status" class="err"></span>
+            </div>
+        </div>
+        <label class="sl-row" style="gap:10px"><input asp-for="Shuffle" type="checkbox" /><span>Xáo trộn thứ tự câu hỏi cho mỗi lần làm</span></label>
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+            <legend class="lab" style="margin-bottom:6px">Câu hỏi trong bài tập (@Model.QuestionIds.Count đã chọn)</legend>
+            @if (Model.Locked)
+            {
+                <div class="banner t-a" style="margin-bottom:8px"><i class="ic ic-lock"></i>Đã có bé làm bài này nên danh sách câu hỏi được giữ nguyên để mọi kết quả được chấm trên cùng bộ câu. Muốn đổi câu hỏi, hãy tạo bài tập mới.</div>
+            }
+            <div class="sl-col" style="gap:8px">
+                @foreach (var question in Model.Available)
+                {
+                    var chosen = Model.QuestionIds.Contains(question.Id);
+                    <label class="sl-row" style="gap:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);@(question.Status != QuestionStatus.Published ? "opacity:.6" : "")">
+                        <input type="checkbox" name="QuestionIds" value="@question.Id" checked="@chosen" disabled="@Model.Locked" />
+                        <span class="grow" style="min-width:0"><span class="b">@question.Text</span><br /><span class="muted" style="font-size:12.5px">@QuestionType.Label(question.Type) · độ khó @question.Difficulty/3@(question.Status != QuestionStatus.Published ? " · " + QuestionStatus.Label(question.Status) + " (bé sẽ không thấy câu này)" : "")</span></span>
+                    </label>
+                }
+                @if (Model.Available.Count == 0)
+                {
+                    <div class="empty">Bài này chưa có câu hỏi đã duyệt. <a asp-action="Index" asp-route-lesson="@Model.LessonId">Soạn hoặc duyệt câu hỏi</a> trước.</div>
+                }
+            </div>
+            <span asp-validation-for="QuestionIds" class="err"></span>
+        </fieldset>
+    </section>
+    <div class="acc-foot">
+        <a class="sl-btn" asp-action="Index" asp-route-lesson="@Model.LessonId">Hủy</a>
+        <button class="sl-btn sl-btn-p" type="submit">@(editing ? "Lưu bài tập" : "Tạo bài tập")</button>
+    </div>
+</form>

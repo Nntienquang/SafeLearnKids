@@ -1,0 +1,46 @@
+@model IReadOnlyList<AdminBadgeRow>
+@{
+    ViewData["Title"] = """Huy hiệu""";
+    ViewData["Page"] = "admin-paths-sql";
+    ViewData["Nav"] = "paths";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
+    ViewData["Heading"] = """Huy hiệu""";
+    ViewData["Sub"] = """Bé tự nhận huy hiệu khi đạt mốc: số bài xong, số ngày học liên tiếp, số bài tập đạt 100% hoặc tổng số phút học (US-43, 44).""";
+}
+@section Actions {
+<a class="sl-btn" asp-action="Paths"><i class="ic ic-layers"></i>Lộ trình</a>
+<a class="sl-btn sl-btn-p" asp-action="CreateBadge"><i class="ic ic-plus"></i>Huy hiệu mới</a>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+    @foreach (var badge in Model)
+    {
+        <div class="sl-card sl-col" style="gap:8px;@(badge.IsActive ? "" : "opacity:.65")">
+            <div class="sl-row" style="gap:10px">
+                <span class="ib t-v" aria-hidden="true"><i class="ic ic-@BadgeCriteria.Icon(badge.Icon, badge.CriteriaType)"></i></span>
+                <div class="grow"><div class="b">@badge.Name</div><div class="muted" style="font-size:12px">@badge.Code</div></div>
+                <span class="chip @(badge.IsActive ? "t-g" : "t-n")">@(badge.IsActive ? "Đang dùng" : "Tạm ẩn")</span>
+            </div>
+            <div style="font-size:13.5px">@badge.Description</div>
+            <div class="muted" style="font-size:12.5px">@BadgeCriteria.Label(badge.CriteriaType): @badge.Threshold · @badge.Awarded bé đã nhận</div>
+            <div class="sl-row" style="gap:6px;justify-content:flex-end">
+                <a class="sl-btn sl-btn-sm" asp-action="EditBadge" asp-route-id="@badge.Id">Sửa</a>
+                @if (badge.Awarded == 0)
+                {
+                    <form asp-action="DeleteBadge" asp-route-id="@badge.Id" method="post" data-confirm="Xóa huy hiệu @badge.Name?" data-text="Huy hiệu sẽ bị xóa vĩnh viễn." data-ok-label="Xóa" data-danger="true"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Xóa huy hiệu @badge.Name"><i class="ic ic-trash"></i></button></form>
+                }
+            </div>
+        </div>
+    }
+</div>
+@if (Model.Count == 0)
+{
+    <div class="empty">Chưa có huy hiệu.</div>
+}

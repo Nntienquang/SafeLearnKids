@@ -1,0 +1,65 @@
+@model QuizResultViewModel
+@{
+    ViewData["Title"] = "Bài làm: " + Model.Title;
+    ViewData["Page"] = "quiz-result-sql";
+    ViewData["Nav"] = "history";
+    ViewData["Crumb"] = Html.Raw($"""<a href="/history?child={Model.ChildId}#quizzes">Lịch sử học</a> <i class='ic ic-chevr'></i> """ + System.Net.WebUtility.HtmlEncode(Model.ChildName));
+    ViewData["Heading"] = Model.Title;
+    ViewData["Sub"] = $"{Model.ChildName} · nộp lúc {Model.SubmittedAt.ToLocalTime():dd/MM/yyyy HH:mm} · bài {Model.LessonTitle}";
+}
+@section Actions {
+<a class="sl-btn" href="/history?child=@Model.ChildId#quizzes"><i class="ic ic-arrowl"></i>Lịch sử học</a>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+    <div class="sl-card" style="flex:1 1 260px;min-width:0">
+        <div class="card-t" style="margin-bottom:12px">Kết quả</div>
+        <div class="sl-row" style="gap:18px;flex-wrap:wrap">
+            <div><div class="b" style="font-size:30px">@Model.Score.ToString("0.#")%</div><div class="muted" style="font-size:12.5px">điểm, đạt từ @Model.PassPercent%</div></div>
+            <div><div class="b" style="font-size:30px">@Model.Correct/@Model.Total</div><div class="muted" style="font-size:12.5px">câu đúng</div></div>
+        </div>
+        <div class="sl-row" style="gap:8px;flex-wrap:wrap;margin-top:12px">
+            <span class="chip @(Model.Passed ? "t-g" : "t-a")">@(Model.Passed ? "Đạt" : "Chưa đạt")</span>
+            @if (Model.DueDate is { } due)
+            {
+                <span class="chip @(Model.Late ? "t-a" : "t-n")">Hạn nộp @due.ToString("dd/MM/yyyy")@(Model.Late ? " · nộp muộn" : "")</span>
+            }
+            @if (Model.TimedOut)
+            {
+                <span class="chip t-a">Hết giờ làm bài</span>
+            }
+        </div>
+        <a class="sl-btn sl-btn-sm" style="margin-top:14px" href="/lesson-detail/@Model.LessonId#quizzes"><i class="ic ic-book"></i>Mở bài học</a>
+    </div>
+    <section class="sl-col" style="flex:3 1 520px;min-width:0;gap:12px" aria-label="Đáp án và giải thích">
+        @foreach (var question in Model.Questions)
+        {
+            <article class="sl-card" style="border-color:@(question.Correct ? "var(--green)" : "var(--rose)")">
+                <div class="sl-row" style="gap:10px">
+                    <span class="ib @(question.Correct ? "t-g" : "t-r")" aria-hidden="true"><i class="ic ic-@(question.Correct ? "check" : "x")"></i></span>
+                    <div class="b grow">Câu @question.Number: @question.Text</div>
+                    <span class="chip @(question.Correct ? "t-g" : question.Answered ? "t-r" : "t-n")">@(question.Correct ? "Đúng" : question.Answered ? "Sai" : "Bỏ trống")</span>
+                </div>
+                <ul style="list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px">
+                    @foreach (var option in question.Options)
+                    {
+                        <li class="sl-row" style="gap:8px;padding:8px 10px;border-radius:10px;font-size:13.5px;border:1px solid @(option.IsCorrect ? "var(--green)" : option.Chosen ? "var(--rose)" : "var(--line)");@(option.IsCorrect ? "background:rgba(34,197,94,.1)" : "")">
+                            <span class="grow">@option.Text</span>
+                            @if (option.Chosen)
+                            {
+                                <span class="chip t-n">Bé chọn</span>
+                            }
+                            @if (option.IsCorrect)
+                            {
+                                <span class="sr-only">(đáp án đúng)</span>
+                            }
+                        </li>
+                    }
+                </ul>
+                @if (question.Explanation is not null)
+                {
+                    <p style="margin:10px 0 0;font-size:13.5px"><span class="b">Giải thích:</span> @question.Explanation</p>
+                }
+            </article>
+        }
+    </section>
+</div>

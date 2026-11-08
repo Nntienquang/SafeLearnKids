@@ -1,0 +1,68 @@
+@model VideosViewModel
+@{
+    ViewData["Title"] = """Duyệt video""";
+    ViewData["Page"] = "admin-curate-sql";
+    ViewData["Nav"] = "videos";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
+    ViewData["Heading"] = """Duyệt video""";
+    ViewData["Sub"] = """Video chỉ phát cho bé khi video đã duyệt và nguồn của nó đang được duyệt (US-20).""";
+    var filter = new Dictionary<string, string?> { ["status"] = Model.Status, ["source"] = Model.Source?.ToString(), ["q"] = Model.Q };
+    int Count(string status) => Model.Counts.TryGetValue(status, out var count) ? count : 0;
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:16px">
+    @foreach (var status in VideoStatus.All)
+    {
+        <a class="sl-card kpi" asp-action="Videos" asp-route-status="@status" asp-route-source="@Model.Source" style="@(Model.Status == status ? "outline:2px solid var(--primary)" : "")"><span class="muted b">@VideoStatus.Label(status)</span><div class="kpi-v">@Count(status)</div></a>
+    }
+</div>
+<form method="get" asp-action="Videos" class="sl-row" style="gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <input class="inp inp-sm grow" style="min-width:220px" type="search" name="q" value="@Model.Q" maxlength="200" aria-label="Tìm video" placeholder="Tìm theo tiêu đề hoặc mã video" />
+    <select class="inp inp-sm" style="width:auto" name="status" aria-label="Lọc theo trạng thái">
+        <option value="all" selected="@(Model.Status == "all")">Mọi trạng thái</option>
+        @foreach (var status in VideoStatus.All)
+        {
+            <option value="@status" selected="@(Model.Status == status)">@VideoStatus.Label(status)</option>
+        }
+    </select>
+    <select class="inp inp-sm" style="width:auto" name="source" aria-label="Lọc theo nguồn">
+        <option value="">Mọi nguồn</option>
+        @foreach (var source in Model.SourceOptions)
+        {
+            <option value="@source.Id" selected="@(Model.Source == source.Id)">@source.Name</option>
+        }
+    </select>
+    <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-search"></i>Lọc</button>
+</form>
+<div class="sl-card">
+    <div class="muted">@Model.Matching video</div>
+    @foreach (var video in Model.Rows)
+    {
+        <partial name="_VideoRow" model="video" />
+    }
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="empty" style="margin-top:12px">Không có video phù hợp</div>
+    }
+</div>
+@if (Model.TotalPages > 1)
+{
+    <div class="sl-row" style="gap:10px;margin-top:16px;justify-content:flex-end;align-items:center">
+        <span class="muted">Trang @Model.Page/@Model.TotalPages</span>
+        @if (Model.Page > 1)
+        {
+            <a class="sl-btn sl-btn-sm" asp-action="Videos" asp-all-route-data="filter!" asp-route-page="@(Model.Page - 1)">Trước</a>
+        }
+        @if (Model.Page < Model.TotalPages)
+        {
+            <a class="sl-btn sl-btn-sm" asp-action="Videos" asp-all-route-data="filter!" asp-route-page="@(Model.Page + 1)">Sau</a>
+        }
+    </div>
+}

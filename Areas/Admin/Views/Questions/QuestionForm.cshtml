@@ -1,0 +1,98 @@
+@model QuestionFormViewModel
+@{
+    var editing = Model.Id is not null;
+    ViewData["Title"] = editing ? "Sửa câu hỏi" : "Câu hỏi mới";
+    ViewData["Page"] = "admin-questions-sql";
+    ViewData["Nav"] = "questions";
+    ViewData["Crumb"] = Html.Raw("""<a href="/admin-questions">Câu hỏi và bài tập</a> <i class='ic ic-chevr'></i> """ + System.Net.WebUtility.HtmlEncode(Model.LessonTitle));
+    ViewData["Heading"] = editing ? "Sửa câu hỏi" : "Câu hỏi mới";
+    ViewData["Sub"] = "Bài: " + Model.LessonTitle;
+    var trueFalse = Model.Type == QuestionType.TrueFalse;
+}
+<form method="post" class="sl-card acc-form" asp-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id">
+    <input type="hidden" asp-for="LessonId" />
+    <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+    @if (Model.Origin == QuestionOrigin.AiSuggested)
+    {
+        <div class="banner t-p"><i class="ic ic-sparkles"></i>Câu hỏi gợi ý (@Model.AiModelName). Kiểm tra nội dung và đáp án trước khi duyệt.</div>
+    }
+    @if (Model.Locked)
+    {
+        <div class="banner t-a"><i class="ic ic-lock"></i>Đã có bé trả lời câu này nên loại câu hỏi và các đáp án được giữ nguyên để kết quả cũ vẫn đúng. Bạn vẫn sửa được nội dung, giải thích và trạng thái.</div>
+    }
+    <section class="acc-sec">
+        <div class="field">
+            <label asp-for="Text" class="lab"></label>
+            <textarea asp-for="Text" class="inp ta" rows="2" maxlength="500" required></textarea>
+            <span asp-validation-for="Text" class="err"></span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px">
+            <div class="field" style="flex:1 1 200px">
+                <label asp-for="Type" class="lab"></label>
+                <select asp-for="Type" class="inp" disabled="@Model.Locked" id="q-type">
+                    @foreach (var type in QuestionType.All)
+                    {
+                        <option value="@type">@QuestionType.Label(type)</option>
+                    }
+                </select>
+                @if (Model.Locked)
+                {
+                    <input type="hidden" asp-for="Type" />
+                }
+            </div>
+            <div class="field" style="flex:1 1 140px">
+                <label asp-for="Difficulty" class="lab"></label>
+                <select asp-for="Difficulty" class="inp">
+                    <option value="1">1 · Dễ</option>
+                    <option value="2">2 · Vừa</option>
+                    <option value="3">3 · Khó</option>
+                </select>
+            </div>
+            <div class="field" style="flex:1 1 180px">
+                <label asp-for="Status" class="lab"></label>
+                <select asp-for="Status" class="inp">
+                    @foreach (var status in QuestionStatus.All.Where(status => status != QuestionStatus.InReview || Model.Status == QuestionStatus.InReview))
+                    {
+                        <option value="@status">@QuestionStatus.Label(status)</option>
+                    }
+                </select>
+                <span asp-validation-for="Status" class="err"></span>
+            </div>
+        </div>
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+            <legend class="lab" style="margin-bottom:6px">Đáp án (chọn đáp án đúng)</legend>
+            <div data-options="choice" class="sl-col" style="gap:8px" hidden="@trueFalse">
+                @for (var i = 0; i < QuizRules.MaxOptions; i++)
+                {
+                    <label class="sl-row" style="gap:10px">
+                        <input type="radio" name="Correct" value="@i" checked="@(!trueFalse && Model.Correct == i)" disabled="@(Model.Locked || trueFalse)" aria-label="Đáp án @(i + 1) là đúng" />
+                        <input class="inp grow" name="Options[@i]" value="@(trueFalse ? "" : Model.Options.ElementAtOrDefault(i))" maxlength="300" placeholder="Đáp án @(i + 1)@(i >= 2 ? " (không bắt buộc)" : "")" readonly="@Model.Locked" disabled="@trueFalse" aria-label="Đáp án @(i + 1)" />
+                    </label>
+                }
+            </div>
+            <div data-options="truefalse" class="sl-row" style="gap:10px;flex-wrap:wrap" hidden="@(!trueFalse)">
+                @for (var i = 0; i < 2; i++)
+                {
+                    <label class="sl-row" style="gap:10px;padding:10px 14px;border-radius:14px;border:1px solid var(--line);font-weight:600">
+                        <input type="radio" name="Correct" value="@i" checked="@(trueFalse && Model.Correct == i)" disabled="@(Model.Locked || !trueFalse)" />@(i == 0 ? "Đúng" : "Sai")
+                    </label>
+                }
+            </div>
+            @if (Model.Locked)
+            {
+                <input type="hidden" name="Correct" value="@Model.Correct" />
+            }
+            <span asp-validation-for="Options" class="err"></span>
+            <span asp-validation-for="Correct" class="err"></span>
+        </fieldset>
+        <div class="field">
+            <label asp-for="Explanation" class="lab"></label>
+            <textarea asp-for="Explanation" class="inp ta" rows="2" maxlength="500" placeholder="Bé xem sau khi nộp bài: vì sao đáp án này đúng"></textarea>
+            <span asp-validation-for="Explanation" class="err"></span>
+        </div>
+    </section>
+    <div class="acc-foot">
+        <a class="sl-btn" asp-action="Index" asp-route-lesson="@Model.LessonId">Hủy</a>
+        <button class="sl-btn sl-btn-p" type="submit">@(editing ? "Lưu câu hỏi" : "Thêm câu hỏi")</button>
+    </div>
+</form>

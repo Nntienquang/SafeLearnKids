@@ -1,0 +1,53 @@
+@model QuestionRow
+@{
+    var pending = ViewData["Pending"] is true;
+}
+<article class="sl-col" style="gap:8px;padding:14px;border-radius:16px;border:1px solid @(Model.Status == QuestionStatus.InReview ? "var(--primary)" : "var(--line)");margin-top:12px;@(Model.Status == QuestionStatus.Archived ? "opacity:.6" : "")">
+    <div class="sl-row" style="gap:8px;flex-wrap:wrap">
+        <div class="b grow" style="min-width:200px">@Model.Text</div>
+        <span class="chip @(Model.Origin == QuestionOrigin.AiSuggested ? "t-v" : "t-n")" title="@Model.AiModel">@(Model.Origin == QuestionOrigin.AiSuggested ? "Gợi ý" : "Soạn tay")</span>
+        <span class="chip @QuestionStatus.Tone(Model.Status)">@QuestionStatus.Label(Model.Status)</span>
+    </div>
+    <div class="muted" style="font-size:12.5px">@QuestionType.Label(Model.Type) · độ khó @Model.Difficulty/3@(Model.Quizzes > 0 ? $" · dùng trong {Model.Quizzes} bài tập" : "")@(Model.AiModel is null ? "" : " · " + Model.AiModel)</div>
+    <ul style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px">
+        @foreach (var answer in Model.Answers)
+        {
+            <li class="sl-row" style="gap:8px;padding:8px 10px;border-radius:10px;border:1px solid @(answer.Correct ? "var(--green)" : "var(--line)");font-size:13.5px;@(answer.Correct ? "background:rgba(34,197,94,.1)" : "")">
+                <i class="ic ic-@(answer.Correct ? "checkc" : "chevr")" style="color:var(--@(answer.Correct ? "green" : "text-3"))" aria-hidden="true"></i>
+                <span>@answer.Text</span>
+                @if (answer.Correct)
+                {
+                    <span class="sr-only">(đáp án đúng)</span>
+                }
+            </li>
+        }
+    </ul>
+    @if (Model.Explanation is not null)
+    {
+        <div style="font-size:13px"><span class="b">Giải thích:</span> @Model.Explanation</div>
+    }
+    <div class="sl-row" style="gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <a class="sl-btn sl-btn-sm" asp-action="Edit" asp-route-id="@Model.Id">Sửa</a>
+        @if (Model.Status == QuestionStatus.InReview)
+        {
+            <form asp-action="Status" asp-route-id="@Model.Id" method="post"><input type="hidden" name="pending" value="@pending.ToString().ToLowerInvariant()" /><button class="sl-btn sl-btn-sm" type="submit" name="action" value="reject">Từ chối</button></form>
+            <form asp-action="Status" asp-route-id="@Model.Id" method="post"><input type="hidden" name="pending" value="@pending.ToString().ToLowerInvariant()" /><button class="sl-btn sl-btn-sm sl-btn-p" type="submit" name="action" value="approve">Duyệt</button></form>
+        }
+        else if (Model.Status == QuestionStatus.Draft)
+        {
+            <form asp-action="Status" asp-route-id="@Model.Id" method="post"><button class="sl-btn sl-btn-sm sl-btn-p" type="submit" name="action" value="approve">Duyệt</button></form>
+        }
+        else if (Model.Status == QuestionStatus.Published)
+        {
+            <form asp-action="Status" asp-route-id="@Model.Id" method="post" data-confirm="Lưu trữ câu hỏi?" data-text="Bài tập đang mở sẽ bỏ qua câu này ở lần làm sau." data-ok-label="Lưu trữ"><button class="sl-btn sl-btn-sm" type="submit" name="action" value="archive">Lưu trữ</button></form>
+        }
+        else
+        {
+            <form asp-action="Status" asp-route-id="@Model.Id" method="post"><button class="sl-btn sl-btn-sm" type="submit" name="action" value="draft">Khôi phục</button></form>
+        }
+        @if (Model.Quizzes == 0 && Model.Status != QuestionStatus.Published)
+        {
+            <form asp-action="Delete" asp-route-id="@Model.Id" method="post" data-confirm="Xóa câu hỏi này?" data-text="Câu hỏi sẽ bị xóa vĩnh viễn." data-ok-label="Xóa" data-danger="true"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Xóa câu hỏi"><i class="ic ic-trash"></i></button></form>
+        }
+    </div>
+</article>

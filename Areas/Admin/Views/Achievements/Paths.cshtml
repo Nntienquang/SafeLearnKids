@@ -1,0 +1,69 @@
+@model IReadOnlyList<AdminPathRow>
+@{
+    ViewData["Title"] = """Lộ trình học""";
+    ViewData["Page"] = "admin-paths-sql";
+    ViewData["Nav"] = "paths";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
+    ViewData["Heading"] = """Lộ trình học""";
+    ViewData["Sub"] = """Chuỗi bài theo thứ tự cho một mục tiêu của một môn và lớp. Phụ huynh chọn lộ trình cho bé (US-42).""";
+    var subjects = ViewData["Subjects"] as IReadOnlyList<SubjectRowOption> ?? [];
+}
+@section Actions {
+<a class="sl-btn" asp-action="Badges"><i class="ic ic-trophy"></i>Huy hiệu</a>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<form method="get" asp-action="CreatePath" class="sl-card sl-row" style="gap:10px;flex-wrap:wrap;margin-bottom:16px">
+    <span class="b grow" style="min-width:160px">Tạo lộ trình mới</span>
+    <label class="sr-only" for="new-subject">Môn học</label>
+    <select class="inp" id="new-subject" name="subject" style="width:auto">
+        @foreach (var subject in subjects)
+        {
+            <option value="@subject.Id">@subject.Name</option>
+        }
+    </select>
+    <label class="sr-only" for="new-grade">Lớp</label>
+    <select class="inp" id="new-grade" name="grade" style="width:auto">
+        @for (var level = 1; level <= 5; level++)
+        {
+            <option value="@level">Lớp @level</option>
+        }
+    </select>
+    <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-plus"></i>Tiếp tục</button>
+</form>
+<div class="sl-card" style="padding:6px 0;overflow-x:auto">
+    <table class="tbl">
+        <thead><tr><th>Lộ trình</th><th>Môn · Lớp</th><th>Số bài</th><th>Bé đang theo</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var path in Model)
+            {
+                <tr>
+                    <td class="b">@path.Name</td>
+                    <td>@path.Subject · Lớp @path.Grade</td>
+                    <td>@path.Lessons</td>
+                    <td>@path.Children</td>
+                    <td><span class="chip @(path.IsActive ? "t-g" : "t-n")">@(path.IsActive ? "Đang dùng" : "Tạm ẩn")</span></td>
+                    <td>
+                        <div class="sl-row" style="gap:6px;justify-content:flex-end">
+                            <a class="sl-btn sl-btn-sm" asp-action="EditPath" asp-route-id="@path.Id">Sửa</a>
+                            @if (path.Children == 0)
+                            {
+                                <form asp-action="DeletePath" asp-route-id="@path.Id" method="post" data-confirm="Xóa lộ trình @path.Name?" data-text="Lộ trình sẽ bị xóa vĩnh viễn." data-ok-label="Xóa" data-danger="true"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Xóa lộ trình @path.Name"><i class="ic ic-trash"></i></button></form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty">Chưa có lộ trình.</div></td></tr>
+            }
+        </tbody>
+    </table>
+</div>

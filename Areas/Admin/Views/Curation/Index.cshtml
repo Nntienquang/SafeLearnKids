@@ -1,16 +1,68 @@
+@model SourcesViewModel
 @{
-    ViewData["Title"] = """Tuyển chọn kênh và AI đánh giá""";
-    ViewData["Page"] = "admin-curate";
+    ViewData["Title"] = """Nguồn nội dung""";
+    ViewData["Page"] = "admin-curate-sql";
     ViewData["Nav"] = "curate";
     ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
-    ViewData["Heading"] = """Tuyển chọn kênh và AI đánh giá""";
-    ViewData["Sub"] = """Duyệt kênh YouTube phụ huynh đề xuất, AI chỉ chấm sơ bộ (US-12, 32).""";
+    ViewData["Heading"] = """Nguồn nội dung""";
+    ViewData["Sub"] = """Thêm, duyệt, tạm ngưng và đồng bộ kênh, danh sách phát YouTube (US-17 đến US-19, US-22).""";
+    int Count(string status) => Model.Counts.TryGetValue(status, out var count) ? count : 0;
 }
 @section Actions {
-<button class="sl-btn sl-btn-p" type="button"><i class="ic ic-sparkles"></i>Chấm lại bằng AI</button>
+<form asp-action="SyncApproved" method="post" data-confirm="Đồng bộ mọi nguồn đã duyệt?" data-text="Video mới sẽ vào hàng chờ duyệt." data-ok-label="Đồng bộ"><button class="sl-btn" type="submit"><i class="ic ic-refresh"></i>Đồng bộ nguồn đã duyệt</button></form>
+<a class="sl-btn sl-btn-p" asp-action="Create"><i class="ic ic-plus"></i>Thêm nguồn</a>
 }
-<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="sl-card" style="flex:2 1 520px;min-width:0;padding:6px 0"><table class="tbl"><thead><tr><th>Kênh đề xuất</th><th>Điểm AI</th><th>Trạng thái</th><th></th></tr></thead><tbody>
-<tr><td><div class="b">Khoa học cho bé</div><div class="muted" style="font-size:12.5px">76 video · @@khoahoccho_be</div></td><td><div class="sl-row" style="gap:10px"><div class="bar" style="width:90px"><i style="width:88%;background:var(--green)"></i></div><span class="b">88</span></div></td><td><span class="chip t-a">Chờ duyệt</span></td><td style="text-align:right"><button class="sl-btn sl-btn-sm" type="button">Xem</button></td></tr><tr><td><div class="b">Vui học tiếng Anh</div><div class="muted" style="font-size:12.5px">54 video · @@vuihoctienganh</div></td><td><div class="sl-row" style="gap:10px"><div class="bar" style="width:90px"><i style="width:42%;background:var(--rose)"></i></div><span class="b">42</span></div></td><td><span class="chip t-r">Nghi vấn</span></td><td style="text-align:right"><button class="sl-btn sl-btn-sm" type="button">Xem</button></td></tr><tr><td><div class="b">Toán tư duy Kids</div><div class="muted" style="font-size:12.5px">110 video · @@toantuduy</div></td><td><div class="sl-row" style="gap:10px"><div class="bar" style="width:90px"><i style="width:91%;background:var(--green)"></i></div><span class="b">91</span></div></td><td><span class="chip t-g">Đã duyệt</span></td><td style="text-align:right"><button class="sl-btn sl-btn-sm" type="button">Xem</button></td></tr></tbody></table></div>
-<div class="sl-card" style="flex:1 1 340px;min-width:0"><div class="sl-row" style="gap:8px;margin-bottom:10px"><span class="chip t-v"><i class="ic ic-sparkles"></i>Nhận xét AI</span></div><div class="b">Khoa học cho bé · 88/100</div><ul style="margin:10px 0 0;padding-left:18px;color:var(--text-2);line-height:1.8;font-size:14px"><li>Ngôn ngữ phù hợp lớp 2–4</li><li>Không có quảng cáo trong video mẫu</li><li>2 video cần xem lại: thí nghiệm lửa</li></ul>
-<div class="banner t-a" style="font-size:13px;font-weight:600;margin-top:14px"><i class="ic ic-alert"></i>AI chỉ gợi ý. Quyết định cuối cùng thuộc về quản trị viên.</div>
-<div class="sl-row" style="gap:8px;margin-top:14px"><button class="sl-btn sl-btn-d grow" type="button">Từ chối</button><button class="sl-btn sl-btn-p grow" type="button">Duyệt kênh</button></div></div></div>
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:16px">
+    @foreach (var status in SourceStatus.All)
+    {
+        <a class="sl-card kpi" asp-action="Index" asp-route-status="@status" style="@(Model.Status == status ? "outline:2px solid var(--primary)" : "")"><span class="muted b">@SourceStatus.Label(status)</span><div class="kpi-v">@Count(status)</div></a>
+    }
+</div>
+<form method="get" asp-action="Index" class="sl-row" style="gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <input class="inp inp-sm grow" style="min-width:220px" type="search" name="q" value="@Model.Q" maxlength="150" aria-label="Tìm nguồn" placeholder="Tìm theo tên hoặc liên kết" />
+    <select class="inp inp-sm" style="width:auto" name="status" aria-label="Lọc theo trạng thái">
+        <option value="">Mọi trạng thái</option>
+        @foreach (var status in SourceStatus.All)
+        {
+            <option value="@status" selected="@(Model.Status == status)">@SourceStatus.Label(status)</option>
+        }
+    </select>
+    <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-search"></i>Lọc</button>
+</form>
+<div class="sl-card" style="padding:6px 0;overflow-x:auto">
+    <table class="tbl">
+        <thead><tr><th>Nguồn</th><th>Loại</th><th>Video</th><th>Điểm tự động</th><th>Đồng bộ</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td><div class="b">@row.Name</div><div class="muted" style="font-size:12.5px;overflow-wrap:anywhere">@row.Url@(row.SuggestedBy is null ? "" : " · đề xuất bởi " + row.SuggestedBy)</div></td>
+                    <td>@SourceStatus.PlatformLabel(row.Platform)</td>
+                    <td class="b">@row.Videos @if (row.PendingVideos > 0)
+                    {
+                        <span class="chip t-a" style="margin-left:6px">@row.PendingVideos chờ</span>
+                    }</td>
+                    <td>@(row.Score is { } score ? $"{score:0}/100" : "—")</td>
+                    <td class="muted" style="font-size:12.5px">@(row.LastSyncedAt?.ToLocalTime().ToString("dd/MM HH:mm") ?? "Chưa")@if (row.LastSyncError is not null)
+                    {
+                        <span class="chip t-r" style="margin-left:6px" title="@row.LastSyncError">Lỗi</span>
+                    }</td>
+                    <td><span class="chip @SourceStatus.Tone(row.Status)">@SourceStatus.Label(row.Status)</span></td>
+                    <td style="text-align:right"><a class="sl-btn sl-btn-sm" asp-action="Details" asp-route-id="@row.Id">Xem</a></td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">Không có nguồn phù hợp</div></td></tr>
+            }
+        </tbody>
+    </table>
+</div>

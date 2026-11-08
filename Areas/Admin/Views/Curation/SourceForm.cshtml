@@ -1,0 +1,34 @@
+@model SourceFormViewModel
+@{
+    ViewData["Title"] = """Thêm nguồn nội dung""";
+    ViewData["Page"] = "admin-curate-sql";
+    ViewData["Nav"] = "curate";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nguồn nội dung""");
+    ViewData["Heading"] = """Thêm nguồn nội dung""";
+    ViewData["Sub"] = """Nguồn mới ở trạng thái chờ duyệt; video chỉ đến được với bé khi cả nguồn và video được duyệt.""";
+}
+<form asp-action="Create" method="post" class="sl-card acc-form">
+    <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+    <section class="acc-sec">
+        <div class="field">
+            <label asp-for="Url" class="lab"></label>
+            <input asp-for="Url" class="inp" autocomplete="off" required maxlength="300" placeholder="https://www.youtube.com/playlist?list=... hoặc https://www.youtube.com/channel/UC..." />
+            <span class="muted ud-hint">Hỗ trợ danh sách phát YouTube, kênh dạng /channel/UC... và website (chỉ để ghi nhận, không đồng bộ).</span>
+            <span asp-validation-for="Url" class="err"></span>
+        </div>
+        <div class="field">
+            <label asp-for="Name" class="lab"></label>
+            <input asp-for="Name" class="inp" autocomplete="off" required maxlength="150" />
+            <span asp-validation-for="Name" class="err"></span>
+        </div>
+        <div class="field">
+            <label asp-for="Description" class="lab"></label>
+            <textarea asp-for="Description" class="inp ta" rows="3" maxlength="500" placeholder="Nội dung chính, độ tuổi phù hợp"></textarea>
+            <span asp-validation-for="Description" class="err"></span>
+        </div>
+    </section>
+    <div class="acc-foot">
+        <a class="sl-btn" asp-action="Index">Hủy</a>
+        <button class="sl-btn sl-btn-p" type="submit">Thêm nguồn</button>
+    </div>
+</form>

@@ -29,6 +29,21 @@ builder.Services.AddScoped<AccountEmailService>();
 builder.Services.AddScoped<AccountActivityLog>();
 builder.Services.AddScoped<AvatarStorage>();
 builder.Services.AddScoped<ChildProfileService>();
+builder.Services.AddScoped<LessonFileStorage>();
+builder.Services.Configure<YouTubeOptions>(builder.Configuration.GetSection("YouTube"));
+// Request URLs carry the YouTube API key, so HttpClient must not log them.
+builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+builder.Services.AddHttpClient(SourceSyncService.ClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("SafeLearnKids/1.0");
+});
+builder.Services.AddScoped<SourceSyncService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<KidContext>();
+// US-40: Ai:ApiKey stays empty in appsettings.json; set it with user-secrets. Without it suggestions come from the offline generator.
+builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Ai"));
+builder.Services.AddScoped<QuestionSuggester>();
 builder.Services.AddSingleton<AccountEmailQueue>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<AccountEmailQueue>());
 

@@ -1,14 +1,123 @@
+@model CatalogIndexViewModel
+@using SafeLearnKids.Web.Services
 @{
     ViewData["Title"] = """Môn học và bài học""";
-    ViewData["Page"] = "admin-catalog";
+    ViewData["Page"] = "admin-catalog-sql";
     ViewData["Nav"] = "catalog";
     ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
     ViewData["Heading"] = """Môn học và bài học""";
-    ViewData["Sub"] = """Danh mục môn theo lớp và danh sách bài (US-06, 07).""";
+    ViewData["Sub"] = """Danh mục môn theo lớp, bài học, nội dung và nhãn (US-11 đến US-14).""";
+    var filter = new Dictionary<string, string?>
+    {
+        ["subject"] = Model.Subject?.ToString(), ["grade"] = Model.Grade?.ToString(), ["status"] = Model.Status,
+        ["type"] = Model.Type, ["tag"] = Model.Tag?.ToString(), ["q"] = Model.Q
+    };
+    var current = Model.Subjects.FirstOrDefault(item => item.Id == Model.Subject);
 }
 @section Actions {
-<button class="sl-btn" type="button"><i class="ic ic-plus"></i>Thêm môn</button><a class="sl-btn sl-btn-p" href="~/admin-lesson"><i class="ic ic-plus"></i>Bài học mới</a>
+<a class="sl-btn" asp-action="CreateSubject"><i class="ic ic-plus"></i>Thêm môn</a>
+<a class="sl-btn sl-btn-p" asp-action="CreateLesson" asp-route-subject="@Model.Subject"><i class="ic ic-plus"></i>Bài học mới</a>
 }
-<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="sl-card" style="flex:1 1 260px;min-width:0"><div class="card-t" style="margin-bottom:10px">Môn học</div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;background:var(--primary-soft);"><span class="ib t-p" style="width:36px;height:36px"><i class="ic ic-calc"></i></span><span class="b grow">Toán</span><span class="muted b">86</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="ib t-g" style="width:36px;height:36px"><i class="ic ic-pen"></i></span><span class="b grow">Tiếng Việt</span><span class="muted b">94</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="ib t-a" style="width:36px;height:36px"><i class="ic ic-flask"></i></span><span class="b grow">Khoa học</span><span class="muted b">58</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="ib t-r" style="width:36px;height:36px"><i class="ic ic-globe"></i></span><span class="b grow">Tiếng Anh</span><span class="muted b">64</span></div></div>
-<div class="sl-card" style="flex:3 1 560px;min-width:0;padding:6px 0"><table class="tbl"><thead><tr><th>Bài học · Toán</th><th>Lớp</th><th>Nội dung</th><th>Trạng thái</th><th></th></tr></thead><tbody>
-<tr><td><div class="sl-row" style="gap:12px"><span class="ib t-p"><i class="ic ic-playc"></i></span><div class="b">Bảng nhân 5</div></div></td><td>Lớp 3</td><td class="b">3</td><td><span class="chip t-g">Đã xuất bản</span></td><td style="text-align:right"><a class="sl-btn sl-btn-sm" href="~/admin-lesson">Sửa</a></td></tr><tr><td><div class="sl-row" style="gap:12px"><span class="ib t-p"><i class="ic ic-book"></i></span><div class="b">Phân số cơ bản</div></div></td><td>Lớp 3</td><td class="b">2</td><td><span class="chip t-g">Đã xuất bản</span></td><td style="text-align:right"><a class="sl-btn sl-btn-sm" href="~/admin-lesson">Sửa</a></td></tr><tr><td><div class="sl-row" style="gap:12px"><span class="ib t-p"><i class="ic ic-playc"></i></span><div class="b">Hình học: chu vi</div></div></td><td>Lớp 3</td><td class="b">2</td><td><span class="chip t-a">Bản nháp</span></td><td style="text-align:right"><a class="sl-btn sl-btn-sm" href="~/admin-lesson">Sửa</a></td></tr><tr><td><div class="sl-row" style="gap:12px"><span class="ib t-p"><i class="ic ic-book"></i></span><div class="b">Số đến 10.000</div></div></td><td>Lớp 3</td><td class="b">3</td><td><span class="chip t-a">Bản nháp</span></td><td style="text-align:right"><a class="sl-btn sl-btn-sm" href="~/admin-lesson">Sửa</a></td></tr><tr><td><div class="sl-row" style="gap:12px"><span class="ib t-p"><i class="ic ic-playc"></i></span><div class="b">Bảng chia</div></div></td><td>Lớp 3</td><td class="b">3</td><td><span class="chip t-n">Lưu trữ</span></td><td style="text-align:right"><a class="sl-btn sl-btn-sm" href="~/admin-lesson">Sửa</a></td></tr></tbody></table></div></div>
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+    <nav class="sl-card" style="flex:1 1 260px;min-width:0" aria-label="Môn học">
+        <div class="card-t" style="margin-bottom:10px">Môn học</div>
+        <a class="sl-row" asp-action="Index" style="gap:12px;padding:10px 12px;border-radius:14px;@(Model.Subject is null ? "background:var(--primary-soft)" : "")"><span class="ib t-n" style="width:36px;height:36px"><i class="ic ic-layers"></i></span><span class="b grow">Tất cả môn</span></a>
+        @foreach (var subject in Model.Subjects)
+        {
+            var look = SubjectCatalog.Look(subject.Code, subject.Name, subject.ColorKey, subject.IconKey, subject.IsActive);
+            <div class="sl-row" style="gap:8px;padding:6px 8px 6px 12px;border-radius:14px;@(subject.Id == Model.Subject ? "background:var(--primary-soft)" : "")">
+                <a class="sl-row grow" asp-action="Index" asp-route-subject="@subject.Id" style="gap:12px;min-width:0">
+                    <span class="ib t-@look.Tone" style="width:36px;height:36px"><i class="ic ic-@look.Icon"></i></span>
+                    <span style="min-width:0"><span class="b" style="display:block">@subject.Name</span><span class="muted" style="font-size:12px">@(subject.Grades.Count == 0 ? "Chưa có lớp" : "Lớp " + string.Join(", ", subject.Grades))@(subject.IsActive ? "" : " · Đang ẩn")</span></span>
+                </a>
+                <span class="muted b">@subject.Lessons</span>
+                <a class="icbtn" style="width:34px;height:34px" asp-action="EditSubject" asp-route-id="@subject.Id" aria-label="Sửa môn @subject.Name" title="Sửa môn"><i class="ic ic-edit"></i></a>
+            </div>
+        }
+    </nav>
+    <div style="flex:3 1 560px;min-width:0">
+        <form method="get" asp-action="Index" class="sl-row" style="gap:10px;margin-bottom:14px;flex-wrap:wrap">
+            @if (Model.Subject is not null)
+            {
+                <input type="hidden" name="subject" value="@Model.Subject" />
+            }
+            <input class="inp inp-sm grow" style="min-width:200px" type="search" name="q" value="@Model.Q" maxlength="200" aria-label="Tìm bài học" placeholder="Tìm theo tên hoặc mục tiêu" />
+            <select class="inp inp-sm" style="width:auto" name="grade" aria-label="Lọc theo lớp">
+                <option value="">Mọi lớp</option>
+                @for (var level = 1; level <= 5; level++)
+                {
+                    <option value="@level" selected="@(Model.Grade == level)">Lớp @level</option>
+                }
+            </select>
+            <select class="inp inp-sm" style="width:auto" name="type" aria-label="Lọc theo loại bài">
+                <option value="">Mọi loại</option>
+                @foreach (var type in LessonKind.Types)
+                {
+                    <option value="@type" selected="@(Model.Type == type)">@LessonKind.TypeLabel(type)</option>
+                }
+            </select>
+            <select class="inp inp-sm" style="width:auto" name="status" aria-label="Lọc theo trạng thái">
+                <option value="">Mọi trạng thái</option>
+                @foreach (var status in LessonStatus.All)
+                {
+                    <option value="@status" selected="@(Model.Status == status)">@LessonStatus.Label(status)</option>
+                }
+            </select>
+            <select class="inp inp-sm" style="width:auto" name="tag" aria-label="Lọc theo nhãn">
+                <option value="">Mọi nhãn</option>
+                @foreach (var tag in Model.Tags)
+                {
+                    <option value="@tag.Id" selected="@(Model.Tag == tag.Id)">@tag.Name</option>
+                }
+            </select>
+            <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-search"></i>Lọc</button>
+        </form>
+        <div class="sl-card" style="padding:6px 0;overflow-x:auto">
+            <table class="tbl">
+                <thead><tr><th>Bài học@(current is null ? "" : " · " + current.Name)</th><th>Lớp</th><th>Loại</th><th>Nội dung</th><th>Trạng thái</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td>
+                                <div class="b">@row.Title</div>
+                                <div class="muted" style="font-size:12.5px">@row.Subject@(row.Tags.Count == 0 ? "" : " · " + string.Join(", ", row.Tags))</div>
+                            </td>
+                            <td>Lớp @row.Grade</td>
+                            <td>@LessonKind.TypeLabel(row.LessonType)</td>
+                            <td class="b">@row.Contents</td>
+                            <td><span class="chip @LessonStatus.Tone(row.Status)">@LessonStatus.Label(row.Status)</span></td>
+                            <td style="text-align:right"><a class="sl-btn sl-btn-sm" asp-action="EditLesson" asp-route-id="@row.Id">Sửa</a></td>
+                        </tr>
+                    }
+                    @if (Model.Rows.Count == 0)
+                    {
+                        <tr><td colspan="6"><div class="empty">Không có bài học phù hợp</div></td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (Model.TotalPages > 1)
+        {
+            <div class="sl-row" style="gap:10px;margin-top:16px;justify-content:flex-end;align-items:center">
+                <span class="muted">Trang @Model.Page/@Model.TotalPages · @Model.Matching bài</span>
+                @if (Model.Page > 1)
+                {
+                    <a class="sl-btn sl-btn-sm" asp-action="Index" asp-all-route-data="filter!" asp-route-page="@(Model.Page - 1)">Trước</a>
+                }
+                @if (Model.Page < Model.TotalPages)
+                {
+                    <a class="sl-btn sl-btn-sm" asp-action="Index" asp-all-route-data="filter!" asp-route-page="@(Model.Page + 1)">Sau</a>
+                }
+            </div>
+        }
+    </div>
+</div>

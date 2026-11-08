@@ -47,6 +47,98 @@ Admin thêm người dùng ở `/admin-users/new`: tài khoản chưa có mật 
 
 Thao tác quản trị ghi vào `dbo.AuditLogs`, đăng nhập ghi vào `dbo.LoginHistories`, đồng ý điều khoản khi đăng ký ghi vào `dbo.UserConsents`. Kiểm thử: `py scripts\smoke-admin-users.py` sau khi build.
 
+## Môn học, bài học và thư viện (Sprint 2)
+
+`/admin-catalog` quản lý môn học (tên, mô tả, màu, biểu tượng, thứ tự, ẩn/hiện) và các lớp áp dụng trong `dbo.SubjectGrades`; mã môn không đổi được sau khi tạo vì hồ sơ bé dùng nó làm khóa. Bài học chỉ tạo được ở lớp mà môn áp dụng. `/admin-lesson/{id}` sửa bài, gắn nhãn (tạo nhãn mới tự động), thêm nội dung theo thứ tự: bài đọc, video đã duyệt trong `dbo.SourceVideos`, tài liệu PDF hoặc ảnh JPG/PNG/WebP tối đa 5 MB (kiểm tra theo nội dung tệp, lưu trong `wwwroot/uploads/lessons`). Trạng thái: Bản nháp → Chờ duyệt → Đã xuất bản → Lưu trữ; xuất bản cần ít nhất 1 nội dung, môn đang dùng và mọi video còn được duyệt. Hai người sửa cùng bài thì bản lưu sau bị từ chối (RowVersion). Chỉ xóa được bài nháp hoặc đã lưu trữ chưa được dùng ở nơi khác; môn đã có bài hoặc bé đang học thì chỉ ẩn được. Mọi thao tác ghi `dbo.AuditLogs`.
+
+`/library` của phụ huynh chỉ hiện bài đã xuất bản thuộc môn đang dùng, lọc theo môn, lớp, loại, nhãn và tìm kiếm; `/lesson-detail/{id}` hiện bài đọc, tệp và video YouTube đã duyệt qua trình phát `youtube-nocookie`. Danh sách môn chọn cho bé lấy từ `dbo.Subjects`: môn đang ẩn không thêm mới được nhưng bé đã có vẫn giữ. Giao bài cho bé và báo cáo nội dung thuộc Sprint 4–5. Kiểm thử: `py scripts\smoke-catalog.py` sau khi build.
+
+## Nguồn nội dung an toàn (Sprint 3)
+
+`/admin-curate` quản lý nguồn: dán liên kết danh sách phát (`list=...`), kênh dạng `youtube.com/channel/UC...` hoặc website (chỉ ghi nhận, không tải). Liên kết dạng `@tên-kênh` chưa hỗ trợ. Nguồn mới ở trạng thái chờ duyệt; Admin duyệt, từ chối (cần lý do) hoặc tạm ngưng (cần lý do). Đồng bộ lấy danh sách video mới vào `dbo.SourceVideos` ở trạng thái chờ duyệt; tiêu đề chứa từ khóa trong `dbo.BlockedKeywords` (từ khóa chung) bị chặn tự động. `/admin-videos` là hàng chờ duyệt/chặn từng video. Một video chỉ phát cho bé khi video đã duyệt và ít nhất một nguồn chứa nó đang được duyệt; tạm ngưng nguồn sẽ gỡ video khỏi thư viện và chặn xuất bản bài dùng video đó.
+
+"Đánh giá tự động" ghi vào `dbo.CurationSuggestions` với `ModelName = rule-v1`: bộ quy tắc minh bạch dựa trên loại nguồn, từ khóa bị chặn, từ ngữ không phù hợp và tiêu đề video, giải thích từng điểm cộng/trừ. Đây không phải mô hình AI; quản trị viên quyết định, và quyết định đó đóng gợi ý là đồng ý hoặc không.
+
+Phụ huynh ở `/sources` chặn hoặc cho phép lại từng nguồn đã duyệt cho riêng gia đình mình (`dbo.ParentSources`) và đề xuất nguồn mới (tối đa 5 đề xuất chờ duyệt mỗi gia đình), xem lý do nếu bị từ chối.
+
+**YouTube API key.** Để trống thì đồng bộ dùng RSS công khai của YouTube (15 video mới nhất, không có thời lượng). Có key thì dùng YouTube Data API v3: đọc toàn bộ danh sách tải lên (tối đa 200 video mỗi lần), lấy thời lượng và tự chặn video YouTube không cho nhúng. Bật **YouTube Data API v3** trong Google Cloud, tạo API key, rồi đặt riêng trên máy (không ghi vào `appsettings.json`/Git):
+
+```powershell
+dotnet user-secrets set "YouTube:ApiKey" "<api-key>"
+```
+
+Môi trường khác dùng biến `YouTube__ApiKey`. Key không được ghi vào log. Kiểm thử: `py scripts\smoke-sources.py` sau khi build (dùng YouTube giả cục bộ, không cần mạng hay key thật).
+
+## Trang học của bé (Sprint 4)
+
+Bé không có tài khoản riêng: phụ huynh đăng nhập, bấm **Chế độ trẻ**, chọn bé. Lựa chọn lưu trong cookie `.SafeLearnKids.Kid` và mỗi request đều kiểm tra bé thuộc phụ huynh đang đăng nhập; quay về màn hình chọn bé là xóa cookie. Bé chỉ mở được bài đã xuất bản thuộc môn đang dùng, và (a) đúng lớp và môn ba mẹ chọn cho bé, hoặc (b) được giao riêng. Video theo cùng quy tắc với thư viện (video và nguồn được duyệt, gia đình không chặn nguồn).
+
+- Phụ huynh giao bài ở `/lesson-detail/{id}`: chọn bé, hạn (từ hôm nay đến 1 năm), lời nhắn; mỗi bé chỉ có một bài giao đang mở cho mỗi bài học; hủy được (`dbo.Assignments`).
+- `/kids-home`: bài ba mẹ giao, "Học tiếp", các môn của bé kèm số bài đã xong, bài yêu thích.
+- `/kids-lesson?id=` chia bài thành từng phần nội dung theo thứ tự; "Con xong phần này rồi" lưu tiến độ vào `dbo.LessonActivities`, lần sau học tiếp từ phần đang dở. Server tự đếm số phần, chỉ cho hoàn thành khi đã học hết; hoàn thành cũng đóng bài được giao. Thời gian học cộng mỗi 30 giây khi trang đang mở (mỗi lần tối đa 60 giây).
+- Yêu thích lưu ở `dbo.Favorites`. `/kids-search` chỉ tìm trong bài bé được mở, ghi `dbo.SearchLogs`; từ khóa bị chặn (chung hoặc của gia đình) không trả kết quả.
+
+Công tắc "Cho phép tìm kiếm" vẫn lưu ở trình duyệt (chưa có cột trong SQL). Giờ học ở Sprint 5, bài tập ở Sprint 6, huy hiệu ở Sprint 7. Kiểm thử: `py scripts\smoke-learning.py` sau khi build.
+
+## Thời gian học và giám sát (Sprint 5)
+
+`/time` đặt cho từng bé: số phút mỗi ngày (mặc định 60 khi chưa đặt), số phút riêng từng thứ, khung giờ được học, nhắc nghỉ sau mỗi N phút (`dbo.TimeLimitPolicies`, `dbo.TimeLimitOverrides`). Trang bài học của bé báo thời gian mỗi 30 giây (mỗi lần tối đa 60 giây) vào `dbo.DailyUsages` và `dbo.LearningSessions`; khi hết phút hoặc ngoài khung giờ, server chặn mọi trang học của bé và chuyển tới `/kids-time-up`. Ngày và khung giờ tính theo giờ máy chủ. Chỉ thời gian trên trang bài học được tính.
+
+Bé xin thêm 5/10/15/30 phút ở trang hết giờ (một yêu cầu chờ tại một thời điểm, tối đa 3 lần/ngày, không xin được khi đang ngoài khung giờ); phụ huynh cho thêm (không quá số bé xin) hoặc từ chối ở `/time`. Yêu cầu từ ngày trước tự hết hạn. Thông báo cho phụ huynh ghi vào `dbo.Notifications` (trang xem thông báo thuộc Sprint 8).
+
+`/history` theo từng bé: bài đã học (tiến độ, thời gian xem), số phút 14 ngày, tìm kiếm (kể cả từ khóa bị chặn), báo cáo của bé; xuất CSV. Bé báo cáo bài ở trang học, phụ huynh báo cáo ở thư viện (`dbo.ContentReports`). `/admin-reports`: nhận xem, giữ nội dung hoặc gỡ (chặn video, hoặc lưu trữ bài nếu báo cáo về bài), bắt buộc ghi kết quả; gia đình nhận thông báo và thấy kết quả trong lịch sử. Kiểm thử: `py scripts\smoke-time.py` sau khi build.
+
+## Câu hỏi và bài tập (Sprint 6)
+
+- **Ngân hàng câu hỏi (US-35)**, `/admin-questions`: chọn bài học, soạn câu trắc nghiệm (2–4 đáp án, đúng 1 đáp án đúng) hoặc Đúng/Sai, độ khó 1–3, giải thích đáp án (`dbo.Questions`, `dbo.QuestionOptions`). Trạng thái: Nháp, Chờ duyệt, Đã duyệt, Lưu trữ.
+  - Câu đã có bé trả lời thì khóa loại câu và đáp án để kết quả cũ vẫn đúng; vẫn sửa được nội dung, giải thích và trạng thái.
+  - Câu đang nằm trong bài tập hoặc đã có người trả lời thì không xóa được, chỉ lưu trữ.
+  - Loại "MultiChoice" trong bảng không được dùng, vì `dbo.QuizAttemptAnswers` chỉ lưu một đáp án mỗi câu.
+- **Bài tập (US-36)**, `/admin-quizzes/new?lesson=`: chọn câu đã duyệt của bài, điểm đạt (%), thời gian làm bài (1–60 phút hoặc không giới hạn), xáo trộn câu (`dbo.Quizzes`, `dbo.QuizQuestions`). Bài tập chỉ mở cho bé khi ở trạng thái "Đang mở" và có ít nhất 1 câu đã duyệt. Khi đã có bé làm, danh sách câu được giữ nguyên và bài tập không xóa được.
+- **Giao bài tập (US-37)**, thẻ "Bài tập kiểm tra" ở `/lesson-detail/{id}`: chọn bài tập, chọn bé, **bắt buộc hạn nộp** (từ hôm nay đến 1 năm), lời nhắn. Mỗi bé chỉ có một bài tập đang mở cho mỗi bài tập; kiểm tra và ghi nằm trong một transaction serializable. Bài tập được giao mở được cho bé kể cả khi khác lớp.
+- **Làm bài và chấm điểm (US-38)**, `/kids-quiz?id=`:
+  - Bé làm từng câu một, có thanh tiến độ và đồng hồ đếm ngược. Hết giờ thì tự nộp; nộp khi còn câu bỏ trống thì hỏi lại trước.
+  - Tải lại trang sẽ tiếp tục lượt đang làm, không tính lại giờ. Lượt quá giờ (thời gian làm bài cộng 60 giây dự phòng) bị đóng và câu trả lời gửi muộn không được tính.
+  - Server chấm theo điểm từng câu trong `dbo.QuizQuestions`. Đáp án không thuộc câu hỏi bị coi là chưa trả lời. Kết quả lưu trong `dbo.QuizAttempts` và `dbo.QuizAttemptAnswers`.
+  - Lần nộp đầu tiên của bài tập được giao sẽ hoàn thành bài giao và báo cho phụ huynh. Các lần làm lại sau đó là luyện tập.
+  - Thời gian trên trang làm bài cũng được tính vào giờ học. Hết giờ học thì bài làm vẫn được nộp, không bị mất.
+- **Kết quả và giải thích (US-39)**:
+  - Bé xem điểm, số sao, đáp án đã chọn, đáp án đúng và giải thích ở `/kids-result?id=`.
+  - Phụ huynh xem danh sách lượt làm ở `/history` (mục "Bài tập đã làm") và chi tiết từng câu ở `/quiz-result/{id}`.
+  - Bài nộp sau hạn được đánh dấu "nộp muộn".
+- **Gợi ý câu hỏi (US-40)**: nút "Gợi ý câu hỏi" (1–5 câu) lưu câu gợi ý ở trạng thái **Chờ duyệt** với `Origin = AiSuggested` và `AiModelName`. Câu gợi ý không dùng được trong bài tập cho tới khi Admin duyệt; Admin có thể sửa, duyệt hoặc từ chối. Danh sách chờ duyệt của mọi bài ở nút "Chờ duyệt".
+  - **Không có key**: dùng bộ gợi ý cục bộ `offline-rule-v1`. Bộ này tạo câu điền từ/điền số và câu Đúng/Sai từ nội dung chữ của bài, không phải AI.
+  - **Có key**: gọi Claude (`claude-opus-5-5`) qua SDK `Anthropic`, nhận JSON theo schema rồi kiểm tra lại từng câu như câu soạn tay. Đặt key riêng trên máy, không ghi vào `appsettings.json` hay Git:
+
+```powershell
+dotnet user-secrets set "Ai:ApiKey" "<anthropic-api-key>"
+```
+
+Môi trường khác dùng biến `Ai__ApiKey`; đổi model bằng `Ai:Model`. Kiểm thử: `py scripts\smoke-quiz.py` sau khi build (chạy không cần key).
+
+## Tiến độ, lộ trình và thành tích (Sprint 7)
+
+Mọi số liệu được tính lại trên server mỗi khi bé học: mỗi 30 giây trên trang bài học hoặc trang làm bài, khi hoàn thành một bài, và khi nộp bài tập (`Services/ProgressService.cs`).
+
+- **Tiến độ theo môn (US-41)**: `dbo.SubjectProgresses` lưu số bài đã xong trên tổng số bài đã xuất bản của môn ở lớp của bé, cùng điểm bài tập trung bình (lấy điểm cao nhất của mỗi bài tập). Phụ huynh xem ở `/progress`.
+- **Lộ trình học (US-42)**:
+  - Admin quản lý ở `/admin-paths`. Mỗi lộ trình là chuỗi bài đã xuất bản của một môn và một lớp, có thứ tự và đánh dấu bài bắt buộc (`dbo.LearningPaths`, `dbo.LearningPathItems`). Môn và lớp cố định sau khi tạo. Lộ trình đã có bé theo thì không xóa được, chỉ tắt "Đang dùng".
+  - Phụ huynh chọn hoặc bỏ lộ trình cho bé ở `/progress`. Chỉ chọn được lộ trình đúng lớp và đúng môn của bé (`dbo.ChildPaths`).
+  - Bé thấy bài tiếp theo ở trang học. Lộ trình hoàn thành khi bé học xong mọi bài bắt buộc.
+- **Huy hiệu (US-43)**:
+  - Admin quản lý ở `/admin-badges`. Tiêu chí: số bài hoàn thành, số ngày học liên tiếp (lấy kỷ lục), số bài tập đạt 100%, tổng số phút học.
+  - Bé tự nhận huy hiệu khi đạt mốc (`dbo.ChildBadges`, mỗi huy hiệu một lần). Bé thấy thông báo ngay; phụ huynh nhận thông báo loại `Badge`.
+  - `/kids-badges` hiện huy hiệu đã đạt, tiến độ tới từng huy hiệu chưa đạt, và số sao (0–5 sao theo điểm cao nhất mỗi bài tập).
+  - Huy hiệu đã có bé nhận thì không xóa được; đổi tiêu chí không thu hồi huy hiệu đã trao.
+- **Chuỗi ngày học (US-44)**, `dbo.Streaks`: mỗi ngày có học tính một lần. Học ngày liền sau thì chuỗi tăng 1; bỏ một ngày thì chuỗi bắt đầu lại từ 1, kỷ lục vẫn giữ. Phụ huynh chọn lộ trình không được tính là một ngày học.
+- **Mục tiêu tuần (US-45)**, `dbo.LearningGoals`: phụ huynh đặt số bài và/hoặc số phút cho tuần hiện tại (thứ Hai đến Chủ nhật). Trang gợi ý mục tiêu tuần trước kèm kết quả. Bé và phụ huynh thấy tiến độ tuần.
+- **Ôn câu làm sai (US-46)**, `/kids-review`:
+  - Liệt kê các câu mà lần trả lời gần nhất của bé sai hoặc bỏ trống. Bé chọn lại đáp án để kiểm tra; trả lời đúng thì thấy giải thích.
+  - Phần luyện này không lưu điểm. Câu chỉ rời danh sách khi bé làm lại bài tập và trả lời đúng.
+  - Phụ huynh thấy số câu cần ôn, cùng các bài tập chưa đạt, ở mục "Cần chú ý".
+
+Kiểm thử: `py scripts\smoke-progress.py` sau khi build.
+
 ## Email xác minh và khôi phục
 
 Profile Development dùng **Pickup**: email `.eml` được lưu riêng tại `%LOCALAPPDATA%\SafeLearnKids\Mail`. Mở thư mới nhất trên máy để lấy liên kết; đây là thư thử nghiệm, chưa gửi tới Gmail. Không có endpoint xem thư/token trong ứng dụng. Không đặt folder này trong repo hoặc wwwroot; không đưa thư/token lên Git/Trello/chat.

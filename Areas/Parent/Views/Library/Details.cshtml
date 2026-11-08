@@ -1,27 +1,195 @@
+@model LibraryDetailViewModel
 @{
-    ViewData["Title"] = """Chi tiết bài học""";
-    ViewData["Page"] = "lesson-detail";
+    var lesson = Model.Lesson;
+    ViewData["Title"] = lesson.Title;
+    ViewData["Page"] = "lesson-detail-sql";
     ViewData["Nav"] = "library";
-    ViewData["Crumb"] = Html.Raw("""Thư viện bài học <i class='ic ic-chevr'></i> Toán <i class='ic ic-chevr'></i> Bảng nhân 5""");
-    ViewData["Heading"] = """Bảng nhân 5""";
-    ViewData["Sub"] = """Toán · Lớp 3 · 3 nội dung · khoảng 24 phút""";
+    ViewData["Crumb"] = Html.Raw("""<a href="/library">Thư viện bài học</a> <i class='ic ic-chevr'></i> """ + System.Net.WebUtility.HtmlEncode(lesson.Subject));
+    ViewData["Heading"] = lesson.Title;
+    ViewData["Sub"] = $"{lesson.Subject} · Lớp {lesson.Grade} · {LessonKind.TypeLabel(lesson.LessonType)} · khoảng {lesson.DurationMin} phút";
 }
 @section Actions {
-<button class="sl-btn" type="button">Gỡ khỏi lộ trình</button><button class="sl-btn sl-btn-p" type="button"><i class="ic ic-send"></i>Giao cho Minh An</button>
+<a class="sl-btn" asp-action="Index"><i class="ic ic-arrowl"></i>Thư viện</a>
 }
 <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
-<div class="sl-col" style="flex:2 1 520px;min-width:0;gap:16px">
-<div style="height:300px;border-radius:26px;background:linear-gradient(135deg,#4F46E5,#38BDF8);display:flex;align-items:center;justify-content:center;color:#fff;position:relative"><span style="width:84px;height:84px;border-radius:42px;background:#fff;color:#4F46E5;display:flex;align-items:center;justify-content:center"><i class="ic ic-play ic-xl"></i></span><span class="chip" style="position:absolute;left:18px;top:18px;background:rgba(255,255,255,.22);color:#fff">Xem thử như phụ huynh</span><span class="chip t-g" style="position:absolute;right:18px;top:18px"><i class="ic ic-shield"></i>Đã duyệt</span></div>
-<div class="sl-card"><div class="card-t" style="margin-bottom:6px">Mục tiêu bài học</div><p class="sub" style="line-height:1.7">Bé thuộc bảng nhân 5, nhận ra quy luật chữ số tận cùng là 0 hoặc 5 và vận dụng vào 3 bài toán có lời văn.</p></div>
-<div class="sl-card"><div class="card-t">Nội dung bài (theo thứ tự)</div>
-<div class="sl-row" style="gap:14px;padding:13px 0;border-top:1px solid var(--line)"><span class="ib t-p"><i class="ic ic-playc"></i></span><div class="grow"><div class="b">Video: Bảng nhân 5</div><div class="muted" style="font-size:12.5px">Kênh Học Toán Vui · 10 phút</div></div><span class="chip t-g">Đã duyệt</span></div>
-<div class="sl-row" style="gap:14px;padding:13px 0;border-top:1px solid var(--line)"><span class="ib t-t"><i class="ic ic-book"></i></span><div class="grow"><div class="b">Bài đọc: Quy luật của bảng nhân 5</div><div class="muted" style="font-size:12.5px">3 phút đọc</div></div><span class="chip t-n">Văn bản</span></div>
-<div class="sl-row" style="gap:14px;padding:13px 0;border-top:1px solid var(--line)"><span class="ib t-a"><i class="ic ic-target"></i></span><div class="grow"><div class="b">Quiz: 5 câu</div><div class="muted" style="font-size:12.5px">Bé cần đúng 3/5 để hoàn thành</div></div><span class="chip t-a">Chờ giao</span></div></div></div>
-<div class="sl-col" style="flex:1 1 300px;min-width:0;gap:16px">
-<div class="sl-card"><div class="card-t" style="margin-bottom:12px">Giao cho</div>
-<div class="sl-row" style="gap:12px;padding:10px;border-radius:14px;background:var(--primary-soft)"><span class="av av-s" style="background:#6A4CFF">M</span><span class="b grow">Minh An</span><i class="ic ic-checkc" style="color:var(--primary)"></i></div>
-<div class="sl-row" style="gap:12px;padding:10px"><span class="av av-s" style="background:#22C55E">N</span><span class="b grow" style="color:var(--text-2)">Bảo Nam (Lớp 1)</span><span class="chip t-n">Khác lớp</span></div>
-<div class="field" style="margin-top:14px"><label class="lab" for="ld-d">Hạn hoàn thành</label><input id="ld-d" class="inp" value="Chủ nhật, 25/10/2026"></div></div>
-<div class="sl-card"><div class="card-t" style="margin-bottom:12px">Thông tin an toàn</div>
-<div class="sl-col" style="gap:10px;font-size:13.5px;color:var(--text-2)"><div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Nguồn đã được quản trị duyệt</div><div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Phát bằng trình phát nhúng, không gợi ý video khác</div><div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Phù hợp lớp 2–4</div></div>
-<a class="sl-btn sl-btn-d sl-btn-sm" style="margin-top:14px" href="~/history"><i class="ic ic-flag"></i>Báo cáo nội dung này</a></div></div></div>
+    <div class="sl-col" style="flex:2 1 520px;min-width:0;gap:16px">
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:6px">Mục tiêu bài học</div>
+            <p class="sub" style="line-height:1.7;margin:0">@(Model.Summary ?? "Bài chưa có mô tả mục tiêu.")</p>
+            @if (lesson.Tags.Count > 0)
+            {
+                <div class="sl-row" style="gap:6px;flex-wrap:wrap;margin-top:12px">
+                    @foreach (var tag in lesson.Tags)
+                    {
+                        <span class="chip t-n">@tag</span>
+                    }
+                </div>
+            }
+        </div>
+        <div class="sl-card">
+            <div class="card-t">Nội dung bài (theo thứ tự)</div>
+            @foreach (var content in Model.Contents)
+            {
+                <section style="padding:16px 0;border-top:1px solid var(--line);margin-top:12px">
+                    <div class="sl-row" style="gap:12px;margin-bottom:10px"><span class="ib t-@Model.Look.Tone"><i class="ic ic-@LessonKind.Icon(content.Kind)"></i></span><div class="b">@LessonKind.ContentLabel(content.Kind)@(content.Title is null ? "" : ": " + content.Title)</div></div>
+                    @switch (content.Kind)
+                    {
+                        case "Reading":
+                            <div style="white-space:pre-line;line-height:1.75">@content.Body</div>
+                            break;
+                        case "Video":
+                            <div style="position:relative;padding-top:56.25%;border-radius:20px;overflow:hidden;background:#000">
+                                <iframe src="https://www.youtube-nocookie.com/embed/@(content.VideoId)?rel=0&amp;modestbranding=1" title="@(content.Title ?? lesson.Title)"
+                                        style="position:absolute;inset:0;width:100%;height:100%;border:0" loading="lazy"
+                                        referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation"
+                                        allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+                            </div>
+                            break;
+                        case "Image":
+                            <img src="@content.FileUrl" alt="@(content.Title ?? lesson.Title)" style="max-width:100%;border-radius:16px" loading="lazy" />
+                            break;
+                        default:
+                            <a class="sl-btn sl-btn-sm" href="@content.FileUrl" target="_blank" rel="noopener"><i class="ic ic-file"></i>Mở tài liệu @(content.FileName ?? "PDF")</a>
+                            break;
+                    }
+                </section>
+            }
+            @if (Model.Contents.Count == 0)
+            {
+                <div class="empty" style="margin-top:12px">Nội dung của bài đang được cập nhật.</div>
+            }
+        </div>
+    </div>
+    <div class="sl-col" style="flex:1 1 300px;min-width:0;gap:16px">
+        @if (TempData["Info"] is string info)
+        {
+            <div class="banner t-g" role="status">@info</div>
+        }
+        @if (TempData["Error"] is string error)
+        {
+            <div class="banner t-r" role="alert">@error</div>
+        }
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:12px">Giao cho bé</div>
+            @{ var free = Model.Children.Where(child => child.Status is not (AssignmentStatus.Assigned or AssignmentStatus.InProgress)).ToList(); }
+            @foreach (var child in Model.Children.Where(child => child.Status is AssignmentStatus.Assigned or AssignmentStatus.InProgress or AssignmentStatus.Completed))
+            {
+                <div class="sl-row" style="gap:10px;padding:10px 0;border-top:1px solid var(--line)">
+                    <div class="grow" style="min-width:0"><div class="b">@child.ChildName</div><div class="muted" style="font-size:12.5px">@(child.DueDate is { } due ? "Hạn " + due.ToString("dd/MM/yyyy") : "Không đặt hạn")@(child.Note is null ? "" : " · " + child.Note)</div></div>
+                    <span class="chip @AssignmentStatus.Tone(child.Status!)">@AssignmentStatus.Label(child.Status!)</span>
+                    @if (child.Status is AssignmentStatus.Assigned or AssignmentStatus.InProgress)
+                    {
+                        <form asp-action="CancelAssignment" asp-route-assignmentId="@child.AssignmentId" method="post"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Hủy bài đã giao cho @child.ChildName">Hủy</button></form>
+                    }
+                </div>
+            }
+            @if (free.Count > 0)
+            {
+                <form asp-action="Assign" asp-route-id="@lesson.Id" method="post" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+                    <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
+                        <legend class="lab" style="margin-bottom:6px">Chọn bé</legend>
+                        @foreach (var child in free)
+                        {
+                            <label class="sl-row" style="gap:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);font-weight:600">
+                                <input type="checkbox" name="childIds" value="@child.ChildId" checked="@(free.Count == 1)" />
+                                <span class="grow">@child.ChildName</span>
+                                @if (child.Grade != lesson.Grade)
+                                {
+                                    <span class="chip t-n">Lớp @child.Grade</span>
+                                }
+                            </label>
+                        }
+                    </fieldset>
+                    <label class="lab" for="due-date">Hạn hoàn thành (không bắt buộc)</label>
+                    <input class="inp" id="due-date" name="dueDate" type="date" min="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                    <label class="lab" for="assign-note">Lời nhắn cho bé (không bắt buộc)</label>
+                    <input class="inp" id="assign-note" name="note" maxlength="300" placeholder="Ví dụ: Con học xong trước thứ Bảy nhé" />
+                    <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-send"></i>Giao bài</button>
+                </form>
+            }
+            else if (Model.Children.Count == 0)
+            {
+                <p class="muted" style="margin:0">Hãy tạo hồ sơ bé trước khi giao bài.</p>
+            }
+        </div>
+        <div class="sl-card" id="quizzes">
+            <div class="card-t" style="margin-bottom:4px">Bài tập kiểm tra</div>
+            <p class="muted" style="margin:0 0 10px;font-size:12.5px">Bé làm bài, hệ thống chấm điểm ngay và cho bé xem giải thích đáp án.</p>
+            @foreach (var row in Model.QuizAssignments)
+            {
+                <div class="sl-row" style="gap:10px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+                    <div class="grow" style="min-width:150px">
+                        <div class="b">@row.ChildName · @row.QuizTitle</div>
+                        <div class="muted" style="font-size:12.5px">@(row.DueDate is { } due ? "Hạn nộp " + due.ToString("dd/MM/yyyy") : "Không đặt hạn")@(row.Status is not AssignmentStatus.Completed && row.DueDate is { } over && over < DateOnly.FromDateTime(DateTime.Now) ? " · Quá hạn" : "")@(row.Note is null ? "" : " · " + row.Note)</div>
+                    </div>
+                    @if (row.Score is { } score)
+                    {
+                        <a class="chip @(row.Late ? "t-a" : "t-g")" href="/quiz-result/@row.AttemptId" title="Xem bài làm">@score.ToString("0.#")%@(row.Late ? " · nộp muộn" : "")</a>
+                    }
+                    else
+                    {
+                        <span class="chip @AssignmentStatus.Tone(row.Status)">@(row.Status == AssignmentStatus.InProgress ? "Đang làm" : AssignmentStatus.Label(row.Status))</span>
+                    }
+                    @if (row.Status is AssignmentStatus.Assigned or AssignmentStatus.InProgress)
+                    {
+                        <form asp-action="CancelAssignment" asp-route-assignmentId="@row.AssignmentId" method="post"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Hủy bài tập đã giao cho @row.ChildName">Hủy</button></form>
+                    }
+                </div>
+            }
+            @if (Model.Quizzes.Count == 0)
+            {
+                <p class="muted" style="margin:0">Bài này chưa có bài tập.</p>
+            }
+            else if (Model.Children.Count > 0)
+            {
+                <form asp-action="AssignQuiz" asp-route-id="@lesson.Id" method="post" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+                    <label class="lab" for="quiz-id">Bài tập</label>
+                    <select class="inp" id="quiz-id" name="quizId" required>
+                        @foreach (var quiz in Model.Quizzes)
+                        {
+                            <option value="@quiz.Id">@quiz.Title · @quiz.Questions câu@(quiz.TimeLimitSec is { } limit ? $" · {(limit + 59) / 60} phút" : "")</option>
+                        }
+                    </select>
+                    <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
+                        <legend class="lab" style="margin-bottom:6px">Chọn bé</legend>
+                        @foreach (var child in Model.Children)
+                        {
+                            <label class="sl-row" style="gap:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);font-weight:600">
+                                <input type="checkbox" name="childIds" value="@child.ChildId" checked="@(Model.Children.Count == 1)" />
+                                <span class="grow">@child.ChildName</span>
+                            </label>
+                        }
+                    </fieldset>
+                    <label class="lab" for="quiz-due">Hạn nộp</label>
+                    <input class="inp" id="quiz-due" name="dueDate" type="date" required min="@DateTime.Now.ToString("yyyy-MM-dd")" value="@DateTime.Now.AddDays(3).ToString("yyyy-MM-dd")" />
+                    <label class="lab" for="quiz-note">Lời nhắn cho bé (không bắt buộc)</label>
+                    <input class="inp" id="quiz-note" name="note" maxlength="300" />
+                    <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-send"></i>Giao bài tập</button>
+                </form>
+            }
+        </div>
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:12px">Thông tin an toàn</div>
+            <div class="sl-col" style="gap:10px;font-size:13.5px;color:var(--text-2)">
+                <div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Bài đã được quản trị viên xuất bản</div>
+                <div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Chỉ hiện video đã duyệt, phát bằng trình phát nhúng</div>
+                <div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Phù hợp lớp @lesson.Grade</div>
+            </div>
+            <details style="margin-top:14px">
+                <summary class="b" style="cursor:pointer;color:var(--rose-text)"><i class="ic ic-flag"></i> Báo cáo nội dung này</summary>
+                <form asp-action="Report" asp-route-id="@lesson.Id" method="post" style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+                    <label class="lab" for="report-reason">Lý do</label>
+                    <select class="inp" id="report-reason" name="reason" required>
+                        @foreach (var reason in ReportStatus.Reasons)
+                        {
+                            <option value="@reason">@ReportStatus.Reason(reason)</option>
+                        }
+                    </select>
+                    <label class="lab" for="report-comment">Ghi chú (không bắt buộc)</label>
+                    <textarea class="inp ta" id="report-comment" name="comment" rows="2" maxlength="500"></textarea>
+                    <button class="sl-btn sl-btn-d" type="submit"><i class="ic ic-send"></i>Gửi báo cáo</button>
+                </form>
+            </details>
+        </div>
+    </div>
+</div>

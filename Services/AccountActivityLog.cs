@@ -52,6 +52,18 @@ public sealed class AccountActivityLog(
             CreatedAt = DateTime.UtcNow
         }));
 
+    public Task ContentActionAsync(string actorId, string entityType, int entityId, string action, string? detail = null) => SaveAsync(db =>
+        db.AuditLogs.Add(new AuditLog
+        {
+            ActorId = actorId,
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Detail = Limit(detail, 500),
+            IpAddress = IpAddress,
+            CreatedAt = DateTime.UtcNow
+        }));
+
     private string? IpAddress => Limit(accessor.HttpContext?.Connection.RemoteIpAddress?.ToString(), 45);
 
     private static string? Limit(string? value, int length) =>

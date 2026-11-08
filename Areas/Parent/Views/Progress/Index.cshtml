@@ -1,19 +1,162 @@
+@model ProgressViewModel
 @{
     ViewData["Title"] = """Tiến độ và lộ trình""";
-    ViewData["Page"] = "progress";
+    ViewData["Page"] = "progress-sql";
     ViewData["Nav"] = "progress";
     ViewData["Crumb"] = Html.Raw("""Phụ huynh · Giám sát""");
     ViewData["Heading"] = """Tiến độ và lộ trình""";
-    ViewData["Sub"] = """Theo dõi từng môn và lộ trình học của Minh An (US-26, 27).""";
+    ViewData["Sub"] = $"Tiến độ từng môn, lộ trình, huy hiệu, chuỗi ngày học và mục tiêu tuần của {Model.Child.Name} (US-41 đến US-46).";
+    var week = Model.Week;
+    var earned = Model.Badges.Where(badge => badge.Earned).ToList();
+    var totalLessons = Model.Subjects.Sum(row => row.Total);
+    var doneLessons = Model.Subjects.Sum(row => Math.Min(row.Completed, row.Total));
 }
-@section Actions {
-<div class="seg"><span class="on">Minh An</span><span>Bảo Nam</span></div>
+@if (Model.Children.Count > 1)
+{
+    <nav class="sl-row" style="gap:8px;flex-wrap:wrap;margin-bottom:16px" aria-label="Chọn bé">
+        @foreach (var child in Model.Children)
+        {
+            <a class="sl-btn sl-btn-sm @(child.Id == Model.Child.Id ? "sl-btn-p" : "")" asp-action="Index" asp-route-child="@child.Id" aria-current="@(child.Id == Model.Child.Id ? "page" : null)">@child.Name</a>
+        }
+    </nav>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
 }
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px">
-<div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Bài hoàn thành</span><span class="ib t-p" style="width:38px;height:38px"><i class="ic ic-book"></i></span></div><div class="kpi-v">24 / 60</div><div class="bar"><i style="width:40%"></i></div><div class="kpi-d up">40% chương trình lớp 3</div></div><div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Điểm quiz trung bình</span><span class="ib t-a" style="width:38px;height:38px"><i class="ic ic-target"></i></span></div><div class="kpi-v">8,4</div><div class="kpi-d up">Cao nhất: Tiếng Việt 9,1</div></div><div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Chuỗi ngày học</span><span class="ib t-r" style="width:38px;height:38px"><i class="ic ic-flame"></i></span></div><div class="kpi-v">6 ngày</div><div class="kpi-d up">Kỷ lục: 11 ngày</div></div><div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Huy hiệu</span><span class="ib t-v" style="width:38px;height:38px"><i class="ic ic-trophy"></i></span></div><div class="kpi-v">9 / 24</div><div class="kpi-d up">Mới: Siêu chăm chỉ</div></div></div>
-<div class="sl-card" style="margin-top:16px"><div class="card-h"><div><div class="card-t">Lộ trình Toán · Lớp 3</div><div class="card-s">Mở bài tiếp theo khi hoàn thành bài trước.</div></div><span class="chip t-p">Bước 4 / 7</span></div>
-<div style="display:flex;flex-wrap:nowrap;align-items:flex-start;overflow:hidden;padding-top:8px"><div class="sl-col" style="align-items:center;gap:8px;width:120px"><span class="av" style="width:56px;height:56px;background:var(--green);color:#fff;box-shadow:none"><i class="ic ic-check"></i></span><span class="b" style="font-size:13px;text-align:center">Số đến 1000</span></div><i style="flex:1;height:4px;border-radius:2px;background:var(--line);margin-top:26px;min-width:20px"></i><div class="sl-col" style="align-items:center;gap:8px;width:120px"><span class="av" style="width:56px;height:56px;background:var(--green);color:#fff;box-shadow:none"><i class="ic ic-check"></i></span><span class="b" style="font-size:13px;text-align:center">Cộng trừ</span></div><i style="flex:1;height:4px;border-radius:2px;background:var(--line);margin-top:26px;min-width:20px"></i><div class="sl-col" style="align-items:center;gap:8px;width:120px"><span class="av" style="width:56px;height:56px;background:var(--green);color:#fff;box-shadow:none"><i class="ic ic-check"></i></span><span class="b" style="font-size:13px;text-align:center">Bảng nhân 2</span></div><i style="flex:1;height:4px;border-radius:2px;background:var(--line);margin-top:26px;min-width:20px"></i><div class="sl-col" style="align-items:center;gap:8px;width:120px"><span class="av" style="width:56px;height:56px;background:var(--primary);color:#fff;box-shadow:0 0 0 6px var(--primary-soft)"><i class="ic ic-play"></i></span><span class="b" style="font-size:13px;text-align:center">Bảng nhân 5</span></div><i style="flex:1;height:4px;border-radius:2px;background:var(--line);margin-top:26px;min-width:20px"></i><div class="sl-col" style="align-items:center;gap:8px;width:120px"><span class="av" style="width:56px;height:56px;background:var(--surface-2);color:var(--text-3);box-shadow:none"><i class="ic ic-lock"></i></span><span class="b" style="font-size:13px;text-align:center">Phân số</span></div><i style="flex:1;height:4px;border-radius:2px;background:var(--line);margin-top:26px;min-width:20px"></i><div class="sl-col" style="align-items:center;gap:8px;width:120px"><span class="av" style="width:56px;height:56px;background:var(--surface-2);color:var(--text-3);box-shadow:none"><i class="ic ic-lock"></i></span><span class="b" style="font-size:13px;text-align:center">Hình học</span></div></div></div>
-<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px">
-<div class="sl-card" style="flex:1 1 360px;min-width:0"><div class="card-t" style="margin-bottom:12px">Điểm quiz theo tuần</div><div style="display:flex;align-items:flex-end;gap:16px;height:150px"><div class="sl-col" style="flex:1;align-items:center;gap:6px;justify-content:flex-end;height:100%"><span class="b" style="font-size:12px">6.5</span><i style="width:100%;max-width:48px;height:84px;border-radius:10px 10px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:6px;justify-content:flex-end;height:100%"><span class="b" style="font-size:12px">7.0</span><i style="width:100%;max-width:48px;height:91px;border-radius:10px 10px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:6px;justify-content:flex-end;height:100%"><span class="b" style="font-size:12px">7.5</span><i style="width:100%;max-width:48px;height:97px;border-radius:10px 10px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:6px;justify-content:flex-end;height:100%"><span class="b" style="font-size:12px">8.0</span><i style="width:100%;max-width:48px;height:104px;border-radius:10px 10px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:6px;justify-content:flex-end;height:100%"><span class="b" style="font-size:12px">7.8</span><i style="width:100%;max-width:48px;height:101px;border-radius:10px 10px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:6px;justify-content:flex-end;height:100%"><span class="b" style="font-size:12px">8.4</span><i style="width:100%;max-width:48px;height:109px;border-radius:10px 10px 4px 4px;background:var(--grad)"></i></div></div></div>
-<div class="sl-card" style="flex:1 1 360px;min-width:0"><div class="card-t" style="margin-bottom:6px">Cần chú ý</div>
-<div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)"><span class="ib t-r"><i class="ic ic-alert"></i></span><div class="grow"><div class="b">Phân số cơ bản</div><div class="muted" style="font-size:13px">Điểm 5/10 · nên học lại</div></div><a class="sl-btn sl-btn-sm" href="~/library">Giao lại</a></div><div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)"><span class="ib t-a"><i class="ic ic-info"></i></span><div class="grow"><div class="b">Tiếng Anh chưa bắt đầu</div><div class="muted" style="font-size:13px">0 / 12 bài</div></div><a class="sl-btn sl-btn-sm" href="~/library">Chọn bài</a></div></div></div>
+    <div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Bài hoàn thành (lớp @Model.Child.Grade)</span><span class="ib t-p" style="width:38px;height:38px"><i class="ic ic-book"></i></span></div><div class="kpi-v">@doneLessons / @totalLessons</div><div class="bar"><i style="width:@(totalLessons == 0 ? 0 : doneLessons * 100 / totalLessons)%"></i></div><div class="kpi-d">Tổng cộng @Model.CompletedLessons bài đã học xong</div></div>
+    <div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Điểm bài tập trung bình</span><span class="ib t-a" style="width:38px;height:38px"><i class="ic ic-target"></i></span></div><div class="kpi-v">@(Model.AvgQuiz is { } avg ? avg.ToString("0.#") + "%" : "–")</div><div class="kpi-d">Điểm cao nhất của mỗi bài tập</div></div>
+    <div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Chuỗi ngày học</span><span class="ib t-r" style="width:38px;height:38px"><i class="ic ic-flame"></i></span></div><div class="kpi-v">@Model.Streak.Current ngày</div><div class="kpi-d">Kỷ lục: @Model.Streak.Longest ngày@(Model.Streak.StudiedToday ? " · hôm nay đã học" : "")</div></div>
+    <div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Huy hiệu</span><span class="ib t-v" style="width:38px;height:38px"><i class="ic ic-trophy"></i></span></div><div class="kpi-v">@earned.Count / @Model.Badges.Count</div><div class="kpi-d">@(earned.OrderByDescending(badge => badge.AwardedAt).FirstOrDefault() is { } latest ? "Mới nhất: " + latest.Name : "Chưa có huy hiệu")</div></div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;align-items:flex-start">
+    <div class="sl-card" style="flex:2 1 460px;min-width:0">
+        <div class="card-t" style="margin-bottom:12px">Tiến độ theo môn</div>
+        @foreach (var row in Model.Subjects)
+        {
+            <div class="sl-row" style="gap:12px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+                <span style="width:12px;height:12px;border-radius:6px;background:linear-gradient(135deg,@row.C[0],@row.C[1])" aria-hidden="true"></span>
+                <span class="b" style="width:130px">@row.Name</span>
+                <div class="grow" style="min-width:140px"><div class="bar"><i style="width:@row.Percent%"></i></div></div>
+                <span style="width:80px;text-align:right" class="b">@row.Completed / @row.Total bài</span>
+                <span class="muted" style="width:110px;text-align:right;font-size:12.5px">@(row.AvgQuiz is { } score ? $"Bài tập {score:0.#}%" : "Chưa làm bài tập")</span>
+            </div>
+        }
+        @if (Model.Subjects.Count == 0)
+        {
+            <div class="empty">Bé chưa được chọn môn học nào.</div>
+        }
+    </div>
+    <div class="sl-card" style="flex:1 1 300px;min-width:0" id="goal">
+        <div class="card-t" style="margin-bottom:4px">Mục tiêu tuần này</div>
+        <p class="muted" style="margin:0 0 12px;font-size:12.5px">Tuần từ @week.WeekStart.ToString("dd/MM") đến @week.WeekStart.AddDays(6).ToString("dd/MM")@(week.Reached ? " · Bé đã đạt mục tiêu!" : "")</p>
+        @if (week.HasGoal)
+        {
+            @if (week.TargetLessons is { } lessons)
+            {
+                <div class="sl-row" style="gap:8px;font-size:13.5px"><span class="grow">Bài học xong</span><span class="b">@week.Lessons / @lessons</span></div>
+                <div class="bar" style="margin:6px 0 12px"><i style="width:@(lessons == 0 ? 100 : Math.Min(100, week.Lessons * 100 / lessons))%"></i></div>
+            }
+            @if (week.TargetMinutes is { } minutes)
+            {
+                <div class="sl-row" style="gap:8px;font-size:13.5px"><span class="grow">Số phút học</span><span class="b">@week.Minutes / @minutes</span></div>
+                <div class="bar" style="margin:6px 0 12px"><i style="width:@(minutes == 0 ? 100 : Math.Min(100, week.Minutes * 100 / minutes))%"></i></div>
+            }
+        }
+        else
+        {
+            <p style="margin:0 0 12px;font-size:13.5px">Tuần này bé đã học xong @week.Lessons bài và học @week.Minutes phút.</p>
+        }
+        @{ var start = week.HasGoal ? week : Model.LastWeek; }
+        <form asp-action="Goal" asp-route-child="@Model.Child.Id" method="post" class="sl-col" style="gap:8px">
+            <div class="sl-row" style="gap:8px;flex-wrap:wrap">
+                <label class="sl-col" style="gap:4px;flex:1 1 110px"><span class="lab">Số bài</span><input class="inp" type="number" name="TargetLessons" min="0" max="100" value="@start?.TargetLessons" /></label>
+                <label class="sl-col" style="gap:4px;flex:1 1 110px"><span class="lab">Số phút</span><input class="inp" type="number" name="TargetMinutes" min="0" max="3000" value="@start?.TargetMinutes" /></label>
+            </div>
+            @if (!week.HasGoal && Model.LastWeek is { } last)
+            {
+                <span class="muted" style="font-size:12.5px">Gợi ý theo tuần @last.WeekStart.ToString("dd/MM"): bé đạt @last.Lessons bài, @last.Minutes phút@(last.Reached ? " (đạt mục tiêu)" : "").</span>
+            }
+            <button class="sl-btn sl-btn-p" type="submit">@(week.HasGoal ? "Cập nhật mục tiêu" : "Đặt mục tiêu")</button>
+            <span class="muted" style="font-size:12px">Để trống cả hai ô rồi lưu để bỏ mục tiêu.</span>
+        </form>
+    </div>
+</div>
+
+<div class="sl-card" style="margin-top:16px" id="paths">
+    <div class="card-t" style="margin-bottom:4px">Lộ trình học</div>
+    <p class="muted" style="margin:0 0 8px;font-size:12.5px">Lộ trình là chuỗi bài theo thứ tự cho một mục tiêu. Bé thấy bài tiếp theo ở trang học; lộ trình xong khi bé học hết các bài bắt buộc.</p>
+    @foreach (var path in Model.Paths)
+    {
+        <div style="padding:14px 0;border-top:1px solid var(--line)">
+            <div class="sl-row" style="gap:10px;flex-wrap:wrap">
+                <div class="grow" style="min-width:200px"><div class="b">@path.Name</div><div class="muted" style="font-size:12.5px">@path.Subject · Lớp @path.Grade@(path.Description is null ? "" : " · " + path.Description)</div></div>
+                @if (path.ChildPathId is not null)
+                {
+                    <span class="chip @PathStatus.Tone(path.Status)">@PathStatus.Label(path.Status) · @path.Done/@path.Required</span>
+                    <form asp-action="Stop" asp-route-child="@Model.Child.Id" asp-route-pathId="@path.Id" method="post"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Bỏ lộ trình @path.Name">Bỏ</button></form>
+                }
+                else
+                {
+                    <form asp-action="Follow" asp-route-child="@Model.Child.Id" asp-route-pathId="@path.Id" method="post"><button class="sl-btn sl-btn-sm sl-btn-p" type="submit">Chọn cho bé</button></form>
+                }
+            </div>
+            <ol class="sl-row" style="list-style:none;margin:12px 0 0;padding:0;gap:8px;flex-wrap:wrap" aria-label="Các bước của @path.Name">
+                @foreach (var step in path.Steps)
+                {
+                    <li class="chip @(step.Done ? "t-g" : step.Current ? "t-p" : "t-n")" title="@(step.Required ? "Bắt buộc" : "Không bắt buộc")">
+                        <i class="ic ic-@(step.Done ? "check" : step.Current ? "play" : "chevr")" aria-hidden="true"></i>@step.Title@(step.Required ? "" : " (tự chọn)")
+                        <span class="sr-only">@(step.Done ? "đã xong" : step.Current ? "bài tiếp theo" : "chưa học")</span>
+                    </li>
+                }
+            </ol>
+        </div>
+    }
+    @if (Model.Paths.Count == 0)
+    {
+        <div class="empty">Chưa có lộ trình cho lớp @Model.Child.Grade với các môn của bé.</div>
+    }
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;align-items:flex-start">
+    <div class="sl-card" style="flex:1 1 360px;min-width:0">
+        <div class="card-t" style="margin-bottom:12px">Huy hiệu</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+            @foreach (var badge in Model.Badges)
+            {
+                <div class="sl-col" style="gap:4px;padding:10px;border-radius:14px;border:1px solid var(--line);@(badge.Earned ? "" : "opacity:.6")">
+                    <span class="b" style="font-size:13.5px"><i class="ic ic-@(badge.Earned ? badge.Icon : "lock")" aria-hidden="true"></i> @badge.Name</span>
+                    <span class="muted" style="font-size:12px">@(badge.Earned ? "Đạt " + badge.AwardedAt!.Value.ToLocalTime().ToString("dd/MM/yyyy") : $"{BadgeCriteria.Goal(badge.CriteriaType, badge.Threshold)} · {Math.Min(badge.Current, badge.Threshold)}/{badge.Threshold}")</span>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="sl-card" style="flex:1 1 360px;min-width:0">
+        <div class="card-t" style="margin-bottom:6px">Cần chú ý</div>
+        @foreach (var (title, score, attemptId) in Model.Weak)
+        {
+            <div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)">
+                <span class="ib t-r"><i class="ic ic-alert"></i></span>
+                <div class="grow"><div class="b">@title</div><div class="muted" style="font-size:13px">Điểm cao nhất @score.ToString("0.#")% · chưa đạt</div></div>
+                <a class="sl-btn sl-btn-sm" href="/quiz-result/@attemptId">Xem bài làm</a>
+            </div>
+        }
+        @if (Model.ReviewCount > 0)
+        {
+            <div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)">
+                <span class="ib t-a"><i class="ic ic-refresh"></i></span>
+                <div class="grow"><div class="b">@Model.ReviewCount câu cần ôn lại</div><div class="muted" style="font-size:13px">Lần gần nhất bé chưa làm đúng. Bé ôn ở mục "Ôn lại câu chưa đúng" trong trang học.</div></div>
+            </div>
+        }
+        @if (Model.Weak.Count == 0 && Model.ReviewCount == 0)
+        {
+            <p class="muted" style="margin:0">Chưa có gì cần chú ý.</p>
+        }
+    </div>
+</div>

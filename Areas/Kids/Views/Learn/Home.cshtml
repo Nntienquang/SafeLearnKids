@@ -1,12 +1,134 @@
+@model KidHomeViewModel
 @{
     ViewData["Title"] = """Trang học của bé""";
-    ViewData["Page"] = "kids-home";
+    ViewData["Page"] = "kids-home-sql";
+    var next = Model.Continue ?? Model.Assigned.FirstOrDefault(card => !card.Done);
 }
-<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px"><div style="display:flex;flex-wrap:wrap;gap:22px;align-items:stretch">
-<div class="k-card" style="flex:2 1 520px;min-width:0;background:var(--grad);color:#fff;border-color:transparent;display:flex;flex-wrap:wrap;gap:22px;align-items:center;padding:28px">
-<div class="grow sl-col" style="gap:12px;min-width:240px"><span class="chip" style="align-self:flex-start;background:rgba(255,255,255,.22);color:#fff"><i class="ic ic-flame"></i>6 ngày liên tiếp</span><div class="kf" style="font-size:40px;line-height:1.05">Chào Minh An!<br>Học tiếp nhé</div><div style="opacity:.92;font-weight:600">Bảng nhân 5 · còn 4 phút nữa là xong</div><a class="k-btn y" href="~/kids-lesson" style="align-self:flex-start"><i class="ic ic-play"></i>Học tiếp</a></div>
-<div style="width:200px;height:140px;border-radius:24px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center"><i class="ic ic-play ic-xl"></i></div></div>
-<div class="k-card" style="flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:14px"><div class="kf" style="font-size:22px">Hôm nay của con</div><div class="sl-row" style="gap:16px"><div class="donut" style="background:conic-gradient(#FFB020 0 53%,var(--surface-2) 53% 100%)"><b>32<small>phút</small></b></div><div class="sl-col" style="gap:6px"><span class="k-note">Còn 28 phút</span><span style="font-weight:800;color:var(--primary-text)">Giỏi lắm!</span></div></div></div></div>
-<div><div class="kf" style="font-size:26px;margin-bottom:14px">Chọn môn học</div><div style="display:flex;flex-wrap:wrap;gap:18px"><a class="k-card" href="~/kids-subject" style="flex:1 1 200px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,#6A4CFF,#38BDF8);color:#fff;border-color:transparent"><i class="ic ic-calc ic-xl"></i><div class="kf" style="font-size:26px">Toán</div><div style="font-weight:700;font-size:14px;opacity:.95">7/10 bài</div><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><i style="display:block;height:8px;border-radius:4px;background:#fff;width:70%"></i></div></a><a class="k-card" href="~/kids-subject" style="flex:1 1 200px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,#14B8A6,#22C55E);color:#fff;border-color:transparent"><i class="ic ic-pen ic-xl"></i><div class="kf" style="font-size:26px">Tiếng Việt</div><div style="font-weight:700;font-size:14px;opacity:.95">5/12 bài</div><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><i style="display:block;height:8px;border-radius:4px;background:#fff;width:41%"></i></div></a><a class="k-card" href="~/kids-subject" style="flex:1 1 200px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,#F59E0B,#FB7185);color:#fff;border-color:transparent"><i class="ic ic-flask ic-xl"></i><div class="kf" style="font-size:26px">Khoa học</div><div style="font-weight:700;font-size:14px;opacity:.95">3/8 bài</div><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><i style="display:block;height:8px;border-radius:4px;background:#fff;width:37%"></i></div></a><a class="k-card" href="~/kids-subject" style="flex:1 1 200px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,#F43F5E,#FB923C);color:#fff;border-color:transparent"><i class="ic ic-globe ic-xl"></i><div class="kf" style="font-size:26px">Tiếng Anh</div><div style="font-weight:700;font-size:14px;opacity:.95">1/10 bài</div><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><i style="display:block;height:8px;border-radius:4px;background:#fff;width:10%"></i></div></a></div></div>
-<div><div class="kf" style="font-size:26px;margin-bottom:14px">Bài ba mẹ giao</div><div style="display:flex;flex-wrap:wrap;gap:18px">
-<a class="k-card" href="~/kids-lesson" style="flex:1 1 260px;display:flex;gap:14px;align-items:center"><div style="width:88px;height:70px;flex:0 0 auto;border-radius:16px;background:linear-gradient(135deg,#6A4CFF,#38BDF8);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play"></i></div><div><div class="b" style="font-size:16px">Bảng nhân 5</div><span class="k-note">Toán · 10 phút</span></div></a><a class="k-card" href="~/kids-lesson" style="flex:1 1 260px;display:flex;gap:14px;align-items:center"><div style="width:88px;height:70px;flex:0 0 auto;border-radius:16px;background:linear-gradient(135deg,#F59E0B,#FB7185);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play"></i></div><div><div class="b" style="font-size:16px">Vòng đời của bướm</div><span class="k-note">Khoa học · 9 phút</span></div></a><a class="k-card" href="~/kids-lesson" style="flex:1 1 260px;display:flex;gap:14px;align-items:center"><div style="width:88px;height:70px;flex:0 0 auto;border-radius:16px;background:linear-gradient(135deg,#4F46E5,#EC4899);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-pen"></i></div><div><div class="b" style="font-size:16px">Quiz: bảng nhân</div><span class="k-note">Toán · 6 phút</span></div></a></div></div></main>
+<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;flex-wrap:wrap;gap:22px;align-items:stretch">
+    <div class="k-card" style="flex:2 1 520px;min-width:0;background:var(--grad);color:#fff;border-color:transparent;display:flex;flex-wrap:wrap;gap:22px;align-items:center;padding:28px">
+        <div class="grow sl-col" style="gap:12px;min-width:240px">
+            <div class="kf" style="font-size:40px;line-height:1.05">Chào @Model.Kid.Name!<br>@(next is null ? "Hôm nay con chọn môn nào?" : "Học tiếp nhé")</div>
+            @if (next is not null)
+            {
+                <div style="opacity:.92;font-weight:600">@next.Title · @(next.Percent > 0 ? $"đã học {next.Percent}%" : next.Subject)</div>
+                <a class="k-btn y" href="/kids-lesson?id=@next.Id" style="align-self:flex-start"><i class="ic ic-play"></i>@(next.Percent > 0 ? "Học tiếp" : "Bắt đầu")</a>
+            }
+        </div>
+        <div style="width:200px;height:140px;border-radius:24px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center" aria-hidden="true"><i class="ic ic-play ic-xl"></i></div>
+    </div>
+    <div class="k-card" style="flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:14px">
+        <div class="kf" style="font-size:22px">Hôm nay của con</div>
+        <div class="sl-row" style="gap:16px"><div class="donut" data-today><b>0<small>phút</small></b></div><div class="sl-col" style="gap:6px"><span class="k-note" data-left></span><span style="font-weight:800;color:var(--primary-text)">Giỏi lắm!</span></div></div>
+        <a class="sl-row" href="/kids-badges" style="gap:10px;text-decoration:none;color:inherit;padding:10px 12px;border-radius:16px;background:var(--surface-2)">
+            <i class="ic ic-flame" style="color:#F97316" aria-hidden="true"></i>
+            <span class="grow" style="font-weight:800">@(Model.Streak.Current > 0 ? $"{Model.Streak.Current} ngày học liên tiếp" : "Học hôm nay để bắt đầu chuỗi ngày nhé")</span>
+            <span class="k-note">Kỷ lục @Model.Streak.Longest</span>
+        </a>
+        @if (Model.Week is { HasGoal: true } week)
+        {
+            <div class="sl-col" style="gap:6px" aria-label="Mục tiêu tuần này">
+                <span style="font-weight:800">Mục tiêu tuần này@(week.Reached ? " · Đạt rồi!" : "")</span>
+                @if (week.TargetLessons is { } lessons)
+                {
+                    <span class="k-note">Bài học: @week.Lessons / @lessons</span>
+                    <div class="bar"><i style="width:@(lessons == 0 ? 100 : Math.Min(100, week.Lessons * 100 / lessons))%"></i></div>
+                }
+                @if (week.TargetMinutes is { } minutes)
+                {
+                    <span class="k-note">Số phút: @week.Minutes / @minutes</span>
+                    <div class="bar"><i style="width:@(minutes == 0 ? 100 : Math.Min(100, week.Minutes * 100 / minutes))%"></i></div>
+                }
+            </div>
+        }
+    </div>
+</div>
+@if (TempData["Badge"] is string badge)
+{
+    <div class="banner t-p" role="status" style="font-weight:700;font-size:16px"><i class="ic ic-trophy"></i>@badge</div>
+}
+@if (Model.ReviewCount > 0)
+{
+    <a class="k-card sl-row" href="/kids-review" style="gap:14px;text-decoration:none;color:inherit">
+        <span class="ib t-a" aria-hidden="true"><i class="ic ic-refresh"></i></span>
+        <span class="grow"><span class="kf" style="font-size:20px">Ôn lại câu chưa đúng</span><br /><span class="k-note">Con có @Model.ReviewCount câu nên xem lại</span></span>
+        <span class="k-pill p">Ôn bài</span>
+    </a>
+}
+@if (Model.Paths.Count > 0)
+{
+    <section>
+        <div class="kf" style="font-size:26px;margin-bottom:14px">Lộ trình của con</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px">
+            @foreach (var path in Model.Paths)
+            {
+                <div class="k-card" style="display:flex;flex-direction:column;gap:10px">
+                    <div class="b" style="font-size:17px">@path.Name</div>
+                    <div class="bar"><i style="width:@(path.Required == 0 ? 0 : path.Done * 100 / path.Required)%"></i></div>
+                    <span class="k-note">Đã xong @path.Done / @path.Required bài</span>
+                    @if (path.Next is { } step)
+                    {
+                        <a class="k-btn" href="/kids-lesson?id=@step.LessonId" style="align-self:flex-start"><i class="ic ic-play"></i>@step.Title</a>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+}
+<section>
+    <div class="kf" style="font-size:26px;margin-bottom:14px">Chọn môn học</div>
+    <div style="display:flex;flex-wrap:wrap;gap:18px">
+        @foreach (var subject in Model.Subjects)
+        {
+            var pct = subject.Total == 0 ? 0 : subject.Done * 100 / subject.Total;
+            <a class="k-card" href="/kids-subject?s=@subject.Key" style="flex:1 1 200px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,@subject.C[0],@subject.C[1]);color:#fff;border-color:transparent">
+                <i class="ic ic-@subject.Icon ic-xl" aria-hidden="true"></i>
+                <div class="kf" style="font-size:26px">@subject.Name</div>
+                <div style="font-weight:700;font-size:14px;opacity:.95">@subject.Done/@subject.Total bài</div>
+                <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><i style="display:block;height:8px;border-radius:4px;background:#fff;width:@(pct)%"></i></div>
+            </a>
+        }
+        @if (Model.Subjects.Count == 0)
+        {
+            <div class="empty grow">Ba mẹ chưa chọn môn cho con.</div>
+        }
+    </div>
+</section>
+<section>
+    <div class="kf" style="font-size:26px;margin-bottom:14px">Bài ba mẹ giao</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px">
+        @foreach (var card in Model.Assigned)
+        {
+            <partial name="_LessonCard" model="card" />
+        }
+    </div>
+    @if (Model.Assigned.Count == 0)
+    {
+        <div class="empty">Ba mẹ chưa giao bài mới.</div>
+    }
+</section>
+@if (Model.Quizzes.Count > 0)
+{
+    <section>
+        <div class="kf" style="font-size:26px;margin-bottom:14px">Bài tập ba mẹ giao</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px">
+            @foreach (var quiz in Model.Quizzes)
+            {
+                <partial name="_QuizCard" model="quiz" />
+            }
+        </div>
+    </section>
+}
+@if (Model.Favorites.Count > 0)
+{
+    <section>
+        <div class="kf" style="font-size:26px;margin-bottom:14px">Bài con yêu thích</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px">
+            @foreach (var card in Model.Favorites)
+            {
+                <partial name="_LessonCard" model="card" />
+            }
+        </div>
+    </section>
+}
+</main>

@@ -130,7 +130,9 @@ public partial class SafeLearnDbContext : DbContext
 
             entity.Property(e => e.AssignedAt).HasDefaultValueSql("(sysutcdatetime())", "DF_Assignments_AssignedAt");
             entity.Property(e => e.Note).HasMaxLength(300);
-            entity.Property(e => e.QuizId).IsRequired();
+            // QuizId is NULL for lesson assignments. The composite FK from QuizAttempts (AssignmentId, ChildProfileId, QuizId)
+            // stays enforced by SQL Server only: as an EF alternate key it would make QuizId required and block lesson assignments.
+            entity.Ignore(e => e.QuizAttemptAssignmentNavigations);
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
                 .HasDefaultValue("Assigned", "DF_Assignments_Status");
@@ -710,9 +712,8 @@ public partial class SafeLearnDbContext : DbContext
                 .HasForeignKey(d => d.QuizId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
 
-            entity.HasOne(d => d.AssignmentNavigation).WithMany(p => p.QuizAttemptAssignmentNavigations)
-                .HasPrincipalKey(p => new { p.Id, p.ChildProfileId, p.QuizId })
-                .HasForeignKey(d => new { d.AssignmentId, d.ChildProfileId, d.QuizId });
+            // See Assignment: the composite FK to (Id, ChildProfileId, QuizId) is left to SQL Server.
+            entity.Ignore(e => e.AssignmentNavigation);
         });
 
         modelBuilder.Entity<QuizAttemptAnswer>(entity =>
