@@ -47,6 +47,16 @@ Admin thêm người dùng ở `/admin-users/new`: tài khoản chưa có mật 
 
 Thao tác quản trị ghi vào `dbo.AuditLogs`, đăng nhập ghi vào `dbo.LoginHistories`, đồng ý điều khoản khi đăng ký ghi vào `dbo.UserConsents`. Kiểm thử: `py scripts\smoke-admin-users.py` sau khi build.
 
+## Môn học và bài học (US-11, US-12, US-13)
+
+`/admin-catalog` đọc trực tiếp từ SQL: thêm, sửa, ẩn/hiện, xóa môn học và gán Lớp 1–5. Mã môn không đổi được sau khi tạo vì trang phụ huynh tìm môn theo mã. Không bỏ được lớp đã có bài; môn đã có bài hoặc được bé chọn chỉ ẩn được, không xóa được. Cột phải liệt kê bài của môn đang chọn, lọc theo lớp và trạng thái.
+
+"Bài học mới" mở `/admin-lessons/new?subject={id}`; bài mới luôn là Bản nháp, chỉ chọn được lớp đã gán cho môn. `/admin-lessons/{id}` là trang soạn bài: sửa thông tin, thêm video (chỉ video `SourceVideos` đã duyệt, nhúng khi bé học, không tải về) và bài đọc (văn bản thuần, tối đa 20.000 ký tự), đổi thứ tự, xóa từng phần. Loại bài (Video/Bài đọc/Kết hợp) và thời lượng (tổng thời lượng video cộng thời gian đọc ước tính 100 chữ/phút) tự tính theo nội dung. Hai Admin cùng sửa một bài: người lưu sau được báo xung đột (`Lessons.RowVersion`), dữ liệu đang gõ được giữ lại trên form.
+
+Vòng đời bài: Bản nháp → Đã xuất bản → Lưu trữ, có thể đưa về Bản nháp để sửa (bé tạm không thấy bài cho tới khi xuất bản lại). Chỉ Bản nháp sửa hoặc xóa được. Xuất bản cần ít nhất 1 nội dung hợp lệ và bị chặn nếu bài còn video đã bị chặn. Xóa chỉ áp dụng cho bản nháp chưa có dữ liệu học tập, giao bài, yêu thích, báo cáo, câu hỏi hay quiz; còn lại hãy lưu trữ. Mọi thao tác ghi `dbo.AuditLogs` với `EntityType` là `Subject` hoặc `Lesson`. Chế độ InMemory hiển thị thông báo cần SQL Server. Gắn thẻ phân loại (US-14) chưa làm.
+
+Kiểm thử sau khi build: `py scripts\smoke-catalog.py` và `py scripts\smoke-lessons.py`; hai script chỉ xóa dữ liệu của chính lượt chạy và trả lại trạng thái video mẫu nếu đã tạm chặn. Đặc tả, kế hoạch và danh sách task nằm trong `specs/001-lesson-management/`.
+
 ## Email xác minh và khôi phục
 
 Profile Development dùng **Pickup**: email `.eml` được lưu riêng tại `%LOCALAPPDATA%\SafeLearnKids\Mail`. Mở thư mới nhất trên máy để lấy liên kết; đây là thư thử nghiệm, chưa gửi tới Gmail. Không có endpoint xem thư/token trong ứng dụng. Không đặt folder này trong repo hoặc wwwroot; không đưa thư/token lên Git/Trello/chat.
@@ -104,5 +114,6 @@ Script dùng cổng HTTP và thư mục email tạm ngoài repo; kiểm tra SQL/
 - `Views/Shared`: layout/sidebar/top bar.
 - `Controllers/AccountController.cs`: backend Sprint1 cho đăng ký/xác minh/resend, login/logout, forgot/reset/change password.
 - `Services/AccountEmailService.cs`, `AccountEmailQueue.cs`: tạo liên kết tin cậy và gửi thư riêng.
+- `Services/CatalogService.cs`, `LessonService.cs`, `LessonContentService.cs`, `LessonWorkflow.cs`: danh mục môn, bài học, nội dung bài và quy tắc trạng thái bài.
 - `Data/`, `Models/`: Identity, entity và mapping.
 - `wwwroot/css/`, `wwwroot/js/`: design system, UI và dữ liệu demo.
