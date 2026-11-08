@@ -1,16 +1,135 @@
+@model QuestionBankViewModel
 @{
-    ViewData["Title"] = """Câu hỏi và quiz""";
-    ViewData["Page"] = "admin-questions";
+    ViewData["Title"] = """Câu hỏi và bài tập""";
+    ViewData["Page"] = "admin-questions-sql";
     ViewData["Nav"] = "questions";
     ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
-    ViewData["Heading"] = """Câu hỏi và quiz""";
-    ViewData["Sub"] = """Soạn câu hỏi và duyệt câu hỏi AI gợi ý (US-23, 25).""";
+    ViewData["Heading"] = """Câu hỏi và bài tập""";
+    ViewData["Sub"] = """Soạn câu hỏi theo bài học, duyệt câu hỏi gợi ý và tạo bài tập từ câu đã duyệt (US-35, 36, 40).""";
+    var lesson = Model.Lesson;
 }
 @section Actions {
-<button class="sl-btn" type="button"><i class="ic ic-plus"></i>Câu hỏi mới</button><button class="sl-btn sl-btn-p" type="button"><i class="ic ic-sparkles"></i>AI gợi ý câu hỏi</button>
+<a class="sl-btn @(Model.PendingOnly ? "sl-btn-p" : "")" asp-action="Index" asp-route-pending="true"><i class="ic ic-sparkles"></i>Chờ duyệt (@Model.PendingTotal)</a>
 }
-<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="sl-card" style="flex:2 1 520px;min-width:0"><div class="tabs"><span class="on">Bảng nhân 5 (5)</span><span>Phân số (6)</span><span>Chờ duyệt AI (8)</span></div>
-<div class="sl-row" style="gap:14px;padding:14px;border-radius:16px;border:1px solid var(--line);margin-top:10px"><div class="grow"><div class="b">5 × 7 = ?</div><div class="muted" style="font-size:12.5px">Trắc nghiệm · 4 đáp án</div></div><span class="chip t-n">Tay</span><span class="chip t-g">Đã duyệt</span></div><div class="sl-row" style="gap:14px;padding:14px;border-radius:16px;border:1px solid var(--primary);margin-top:10px"><div class="grow"><div class="b">Kết quả 5 × 6 tận cùng bằng chữ số nào?</div><div class="muted" style="font-size:12.5px">Trắc nghiệm</div></div><span class="chip t-v">AI</span><span class="chip t-a">Chờ duyệt</span></div><div class="sl-row" style="gap:14px;padding:14px;border-radius:16px;border:1px solid var(--line);margin-top:10px"><div class="grow"><div class="b">5 × 9 = ?</div><div class="muted" style="font-size:12.5px">Trắc nghiệm</div></div><span class="chip t-n">Tay</span><span class="chip t-g">Đã duyệt</span></div></div>
-<div class="sl-card" style="flex:1 1 340px;min-width:0"><div class="sl-row" style="gap:8px;margin-bottom:12px"><span class="chip t-v"><i class="ic ic-sparkles"></i>AI gợi ý</span><span class="muted" style="font-size:12.5px">Cần người duyệt trước khi dùng</span></div><div class="b" style="margin-bottom:10px">Kết quả 5 × 6 tận cùng bằng chữ số nào?</div>
-<div class="sl-row" style="gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--green);margin-top:8px;background:rgba(34,197,94,.1)"><i class="ic ic-checkc" style="color:var(--green)"></i><span class="b">0</span></div><div class="sl-row" style="gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);margin-top:8px;"><i class="ic ic-chevr" style="color:var(--text-3)"></i><span class="b">5</span></div><div class="sl-row" style="gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);margin-top:8px;"><i class="ic ic-chevr" style="color:var(--text-3)"></i><span class="b">6</span></div><div class="sl-row" style="gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);margin-top:8px;"><i class="ic ic-chevr" style="color:var(--text-3)"></i><span class="b">3</span></div>
-<div class="sl-row" style="gap:8px;margin-top:14px"><button class="sl-btn grow" type="button">Từ chối</button><button class="sl-btn sl-btn-p grow" type="button">Duyệt câu hỏi</button></div></div></div>
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+    <aside class="sl-card" style="flex:1 1 280px;min-width:0;max-width:420px">
+        <div class="card-t" style="margin-bottom:10px">Chọn bài học</div>
+        <form method="get" asp-action="Index" class="sl-col" style="gap:8px">
+            <select class="inp" name="subject" aria-label="Môn học" onchange="this.form.submit()">
+                <option value="">Tất cả môn</option>
+                @foreach (var subject in Model.Subjects)
+                {
+                    <option value="@subject.Id" selected="@(Model.Subject == subject.Id)">@subject.Name</option>
+                }
+            </select>
+            <input class="inp" type="search" name="q" value="@Model.Q" placeholder="Tìm tên bài" aria-label="Tìm tên bài" />
+        </form>
+        <nav class="sl-col" style="gap:6px;margin-top:12px" aria-label="Danh sách bài học">
+            @foreach (var item in Model.Lessons)
+            {
+                <a class="sl-row" style="gap:10px;padding:10px 12px;border-radius:14px;border:1px solid @(lesson?.Id == item.Id ? "var(--primary)" : "var(--line)");text-decoration:none;color:inherit"
+                   asp-action="Index" asp-route-lesson="@item.Id" asp-route-subject="@Model.Subject" asp-route-q="@Model.Q" aria-current="@(lesson?.Id == item.Id ? "page" : null)">
+                    <div class="grow" style="min-width:0"><div class="b" style="font-size:13.5px">@item.Title</div><div class="muted" style="font-size:12px">@item.Subject · Lớp @item.Grade</div></div>
+                    <span class="chip t-n" title="Số câu hỏi">@item.Questions</span>
+                    @if (item.Pending > 0)
+                    {
+                        <span class="chip t-a" title="Chờ duyệt">@item.Pending</span>
+                    }
+                </a>
+            }
+            @if (Model.Lessons.Count == 0)
+            {
+                <div class="empty">Không có bài học phù hợp.</div>
+            }
+        </nav>
+    </aside>
+
+    <div class="sl-col" style="flex:3 1 520px;min-width:0;gap:16px">
+        @if (Model.PendingOnly)
+        {
+            <div class="sl-card">
+                <div class="card-t">Câu hỏi gợi ý chờ duyệt</div>
+                <p class="muted" style="margin:6px 0 0;font-size:13px">Câu hỏi gợi ý không được dùng trong bài tập cho đến khi được duyệt. Hãy đọc kỹ đáp án, sửa nếu cần.</p>
+                @foreach (var question in Model.Questions)
+                {
+                    <partial name="_QuestionRow" model="question" view-data="@(new ViewDataDictionary(ViewData) { ["Pending"] = true })" />
+                }
+                @if (Model.Questions.Count == 0)
+                {
+                    <div class="empty" style="margin-top:12px">Không còn câu hỏi chờ duyệt.</div>
+                }
+            </div>
+        }
+        else if (lesson is null)
+        {
+            <div class="sl-card"><div class="empty">Chọn một bài học bên trái để xem câu hỏi và bài tập của bài.</div></div>
+        }
+        else
+        {
+            <div class="sl-card">
+                <div class="sl-row" style="gap:10px;flex-wrap:wrap">
+                    <div class="grow" style="min-width:200px"><div class="card-t">@lesson.Title</div><div class="muted" style="font-size:12.5px">@lesson.Subject · Lớp @lesson.Grade · @Model.Questions.Count câu hỏi</div></div>
+                    <a class="sl-btn" asp-action="Create" asp-route-lesson="@lesson.Id"><i class="ic ic-plus"></i>Câu hỏi mới</a>
+                </div>
+                <form asp-action="Suggest" method="post" class="sl-row" style="gap:8px;flex-wrap:wrap;margin-top:12px;padding:12px;border-radius:14px;background:var(--surface-2)">
+                    <input type="hidden" name="lesson" value="@lesson.Id" />
+                    <i class="ic ic-sparkles" style="color:var(--primary)"></i>
+                    <span class="grow" style="font-size:13px;min-width:180px">@(Model.AiConfigured ? "AI gợi ý câu hỏi từ nội dung bài." : "Chưa cấu hình Ai:ApiKey, đang dùng bộ gợi ý cục bộ từ nội dung chữ của bài.")</span>
+                    <label class="sr-only" for="suggest-count">Số câu</label>
+                    <select class="inp" id="suggest-count" name="count" style="width:auto">
+                        @for (var n = 1; n <= SafeLearnKids.Web.Services.QuestionSuggester.MaxCount; n++)
+                        {
+                            <option value="@n" selected="@(n == 3)">@n câu</option>
+                        }
+                    </select>
+                    <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-sparkles"></i>Gợi ý câu hỏi</button>
+                </form>
+                @foreach (var question in Model.Questions)
+                {
+                    <partial name="_QuestionRow" model="question" />
+                }
+                @if (Model.Questions.Count == 0)
+                {
+                    <div class="empty" style="margin-top:12px">Bài này chưa có câu hỏi.</div>
+                }
+            </div>
+
+            <div class="sl-card">
+                <div class="sl-row" style="gap:10px;flex-wrap:wrap">
+                    <div class="card-t grow">Bài tập của bài</div>
+                    <a class="sl-btn" asp-action="CreateQuiz" asp-route-lesson="@lesson.Id"><i class="ic ic-plus"></i>Tạo bài tập</a>
+                </div>
+                @foreach (var quiz in Model.Quizzes)
+                {
+                    <div class="sl-row" style="gap:12px;padding:12px 0;border-top:1px solid var(--line);margin-top:10px;flex-wrap:wrap">
+                        <span class="ib t-v"><i class="ic ic-pen"></i></span>
+                        <div class="grow" style="min-width:180px">
+                            <div class="b">@quiz.Title</div>
+                            <div class="muted" style="font-size:12.5px">@quiz.Questions câu · đạt từ @quiz.PassPercent% · @(quiz.TimeLimitSec is { } limit ? $"{(limit + 59) / 60} phút" : "không giới hạn thời gian") · @quiz.Attempts lượt làm</div>
+                        </div>
+                        <span class="chip @QuestionStatus.Tone(quiz.Status)">@QuestionStatus.QuizLabel(quiz.Status)</span>
+                        <a class="sl-btn sl-btn-sm" asp-action="EditQuiz" asp-route-id="@quiz.Id">Sửa</a>
+                        @if (quiz.Attempts == 0)
+                        {
+                            <form asp-action="DeleteQuiz" asp-route-id="@quiz.Id" method="post" data-confirm="Xóa bài tập này?" data-text="Chỉ xóa được khi chưa giao và chưa có bé làm." data-ok-label="Xóa" data-danger="true">
+                                <button class="sl-btn sl-btn-sm" type="submit" aria-label="Xóa bài tập @quiz.Title"><i class="ic ic-trash"></i></button>
+                            </form>
+                        }
+                    </div>
+                }
+                @if (Model.Quizzes.Count == 0)
+                {
+                    <div class="empty" style="margin-top:12px">Chưa có bài tập. Duyệt câu hỏi rồi tạo bài tập để phụ huynh giao cho bé.</div>
+                }
+            </div>
+        }
+    </div>
+</div>

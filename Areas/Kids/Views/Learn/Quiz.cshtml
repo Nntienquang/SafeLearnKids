@@ -1,11 +1,52 @@
+@model KidQuizViewModel
 @{
-    ViewData["Title"] = """Làm quiz""";
-    ViewData["Page"] = "kids-quiz";
+    ViewData["Title"] = Model.Title;
+    ViewData["Page"] = "kids-quiz-sql";
+    var total = Model.Questions.Count;
 }
-<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px"><div class="sl-row" style="gap:14px;flex-wrap:wrap"><a class="k-pill" href="~/kids-lesson"><i class="ic ic-x"></i>Thoát</a><div class="grow k-card" style="padding:12px 18px"><div class="bar bar-l" style="height:14px"><i style="width:60%;background:#22C55E"></i></div></div><span class="k-pill p">Câu 3 / 5</span></div>
-<div class="k-card" style="padding:34px;display:flex;flex-direction:column;gap:26px;max-width:960px;align-self:center;width:100%">
-<div class="kf" style="font-size:38px;text-align:center">5 × 7 = ?</div>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
-<div style="padding:20px;border-radius:22px;border:3px solid var(--line);background:var(--surface);text-align:center;font-weight:800;font-size:28px;color:var(--text)">30</div><div style="padding:20px;border-radius:22px;border:3px solid #22C55E;background:rgba(34,197,94,.14);text-align:center;font-weight:800;font-size:28px;color:var(--text)">35</div><div style="padding:20px;border-radius:22px;border:3px solid var(--line);background:var(--surface);text-align:center;font-weight:800;font-size:28px;color:var(--text)">40</div><div style="padding:20px;border-radius:22px;border:3px solid var(--line);background:var(--surface);text-align:center;font-weight:800;font-size:28px;color:var(--text)">45</div></div>
-<div class="banner t-g" style="font-weight:700"><i class="ic ic-checkc"></i>Đúng rồi! 5 × 7 = 35 vì 5 × 7 = 5 × 5 + 5 × 2.</div>
-<div class="sl-row" style="justify-content:space-between"><button class="sl-btn sl-btn-lg" type="button"><i class="ic ic-info"></i>Gợi ý</button><a class="k-btn" href="~/kids-result">Câu tiếp theo<i class="ic ic-arrowr"></i></a></div></div></main>
+<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px" data-attempt="@Model.AttemptId" data-seconds="@Model.SecondsLeft">
+<div class="sl-row" style="gap:14px;flex-wrap:wrap">
+    <a class="k-pill" href="/kids-lesson?id=@Model.LessonId"><i class="ic ic-x"></i>Thoát</a>
+    <h1 class="kf grow" style="font-size:30px">@Model.Title</h1>
+    @if (Model.SecondsLeft is { } left)
+    {
+        <span class="k-pill y" data-clock role="timer" aria-live="off"><i class="ic ic-clock"></i>@(left / 60):@((left % 60).ToString("00"))</span>
+    }
+    <span class="k-pill p" data-step aria-live="polite">@total câu</span>
+</div>
+@if (Model.DueDate is { } due)
+{
+    <p class="k-note" style="margin:0">Bài ba mẹ giao · Hạn nộp @due.ToString("dd/MM/yyyy")</p>
+}
+<div class="k-card" style="padding:12px 18px" hidden data-progress><div class="bar bar-l" style="height:14px"><i style="width:0%;background:#22C55E"></i></div></div>
+<form asp-action="Submit" asp-route-attemptId="@Model.AttemptId" method="post" id="quiz-form" class="sl-col" style="gap:18px;max-width:960px;align-self:center;width:100%">
+    @for (var i = 0; i < total; i++)
+    {
+        var question = Model.Questions[i];
+        <fieldset class="k-card" data-q="@i" style="padding:28px;display:flex;flex-direction:column;gap:20px;margin:0">
+            <legend class="sr-only">Câu @(i + 1) / @total</legend>
+            <div class="k-note">Câu @(i + 1) / @total</div>
+            <div class="kf" style="font-size:30px;text-align:center" id="q-@question.Id">@question.Text</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px" role="radiogroup" aria-labelledby="q-@question.Id">
+                @foreach (var option in question.Options)
+                {
+                    <label class="k-opt">
+                        <input type="radio" name="q@(question.Id)" value="@option.Id" />
+                        <span>@option.Text</span>
+                    </label>
+                }
+            </div>
+        </fieldset>
+    }
+    @if (total == 0)
+    {
+        <div class="empty">Bài tập này chưa có câu hỏi.</div>
+    }
+    <div class="sl-row" style="justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <button class="sl-btn sl-btn-lg" type="button" data-prev hidden><i class="ic ic-arrowl"></i>Câu trước</button>
+        <button class="k-btn" type="button" data-next hidden>Câu tiếp theo<i class="ic ic-arrowr"></i></button>
+        <button class="k-btn y" type="submit" data-submit><i class="ic ic-send"></i>Nộp bài</button>
+    </div>
+    <p class="k-note" data-unanswered hidden role="status"></p>
+</form>
+</main>

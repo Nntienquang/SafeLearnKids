@@ -103,6 +103,12 @@ public class LibraryController(IServiceProvider services) : Controller
             Look = SubjectCatalog.Look(lesson.Code, lesson.Subject, lesson.ColorKey, lesson.IconKey, true),
             // A video that is no longer approved, or an id that is not a plain YouTube id, is never embedded.
             Children = await ChildrenAsync(db, parentId!, id, cancellationToken),
+            Quizzes = await db.Quizzes.AsNoTracking()
+                .Where(quiz => quiz.LessonId == id && quiz.Status == QuestionStatus.Published && quiz.QuizQuestions.Any(link => link.Question.Status == QuestionStatus.Published))
+                .OrderBy(quiz => quiz.Id)
+                .Select(quiz => new LessonQuizOption(quiz.Id, quiz.Title, quiz.QuizQuestions.Count(link => link.Question.Status == QuestionStatus.Published), quiz.TimeLimitSec, quiz.PassPercent))
+                .ToListAsync(cancellationToken),
+            QuizAssignments = await QuizAssignmentsAsync(db, parentId!, id, cancellationToken),
             Contents = lesson.Contents
                 .Where(content => content.ContentKind != "Video" || (content.VideoId is not null && SourceUrl.EmbedId().IsMatch(content.VideoId)))
                 .Select(content => new LibraryContent(content.ContentKind, content.Title, content.Body, content.VideoId, content.FileUrl, content.FileName)).ToList()
@@ -152,6 +158,58 @@ public class LibraryController(IServiceProvider services) : Controller
         return RedirectToAction(nameof(Details), new { id });
     }
 
+    // US-37: a quiz is assigned with a due date; one open assignment per child and quiz.
+    [HttpPost("lesson-detail/{id:int}/assign-quiz")]
+    [EnableRateLimiting("account")]
+    public async Task<IActionResult> AssignQuiz(int id, [FromForm] int quizId, [FromForm] List<int> childIds, [FromForm] DateOnly? dueDate, [FromForm] string? note, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        var parentId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        if (!await Visible(db).AnyAsync(lesson => lesson.Id == id, cancellationToken)) return NotFound();
+        var quiz = await db.Quizzes.AsNoTracking().Where(item => item.Id == quizId && item.LessonId == id && item.Status == QuestionStatus.Published
+                && item.QuizQuestions.Any(link => link.Question.Status == QuestionStatus.Published))
+            .Select(item => new { item.Id, item.Title }).FirstOrDefaultAsync(cancellationToken);
+        if (quiz is null) return NotFound();
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        string? problem = childIds.Count == 0 ? "Chọn ít nhất 1 bé để giao bài tập."
+            : dueDate is null ? "Chọn hạn nộp bài tập."
+            : dueDate < today || dueDate > today.AddDays(MaxDueDays) ? "Hạn nộp phải từ hôm nay đến trong vòng 1 năm."
+            : note is { Length: > 300 } ? "Lời nhắn tối đa 300 ký tự." : null;
+        if (problem is not null)
+        {
+            TempData["Error"] = problem;
+            return Redirect(Url.Action(nameof(Details), new { id }) + "#quizzes");
+        }
+        var mine = await db.ChildProfiles.Where(child => child.ParentId == parentId && child.IsActive && childIds.Contains(child.Id))
+            .Select(child => child.Id).ToListAsync(cancellationToken);
+        if (mine.Count != childIds.Distinct().Count()) return NotFound();
+        // dbo.Assignments only has a unique index for lessons, so the check and insert share a serializable transaction.
+        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+        var busy = await db.Assignments.Where(item => item.QuizId == quizId && mine.Contains(item.ChildProfileId)
+                && (item.Status == AssignmentStatus.Assigned || item.Status == AssignmentStatus.InProgress))
+            .Select(item => item.ChildProfileId).ToListAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+        var fresh = mine.Except(busy).ToList();
+        foreach (var childId in fresh)
+            db.Assignments.Add(new Assignment { ChildProfileId = childId, QuizId = quizId, AssignedById = parentId, DueDate = dueDate, Note = note, Status = AssignmentStatus.Assigned, AssignedAt = now });
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
+            TempData["Error"] = "Chưa thể giao bài tập. Vui lòng thử lại.";
+            return Redirect(Url.Action(nameof(Details), new { id }) + "#quizzes");
+        }
+        TempData[fresh.Count > 0 ? "Info" : "Error"] = fresh.Count > 0
+            ? $"Đã giao \"{quiz.Title}\" cho {fresh.Count} bé, hạn nộp {dueDate:dd/MM/yyyy}" + (busy.Count > 0 ? $"; {busy.Count} bé đang có bài tập này nên giữ nguyên." : ".")
+            : "Các bé đã chọn đang có bài tập này rồi.";
+        return Redirect(Url.Action(nameof(Details), new { id }) + "#quizzes");
+    }
+
     // US-33: a parent reports a lesson; one open report per parent and lesson.
     [HttpPost("lesson-detail/{id:int}/report")]
     [EnableRateLimiting("account")]
@@ -190,7 +248,9 @@ public class LibraryController(IServiceProvider services) : Controller
             await db.SaveChangesAsync(cancellationToken);
             TempData["Info"] = "Đã hủy bài đã giao. Tiến độ bé đã học vẫn được giữ.";
         }
-        return assignment.LessonId is { } lessonId ? RedirectToAction(nameof(Details), new { id = lessonId }) : RedirectToAction(nameof(Index));
+        if (assignment.LessonId is { } lessonId) return RedirectToAction(nameof(Details), new { id = lessonId });
+        var quizLesson = await db.Quizzes.Where(item => item.Id == assignment.QuizId).Select(item => (int?)item.LessonId).FirstOrDefaultAsync(cancellationToken);
+        return quizLesson is { } back ? Redirect(Url.Action(nameof(Details), new { id = back }) + "#quizzes") : RedirectToAction(nameof(Index));
     }
 
     private static async Task<IReadOnlyList<LessonAssignmentRow>> ChildrenAsync(SafeLearnDbContext db, string parentId, int lessonId, CancellationToken cancellationToken)
@@ -204,6 +264,23 @@ public class LibraryController(IServiceProvider services) : Controller
                     .OrderByDescending(item => item.AssignedAt).Select(item => new { item.Id, item.Status, item.DueDate, item.Note }).FirstOrDefault()
             }).ToListAsync(cancellationToken);
         return rows.Select(row => new LessonAssignmentRow(row.Latest?.Id, row.Id, row.DisplayName, row.Level, row.Latest?.Status, row.Latest?.DueDate, row.Latest?.Note)).ToList();
+    }
+
+    // Quiz assignments of this family for the lesson's quizzes, with the score of the attempt that answered each one.
+    private static async Task<IReadOnlyList<QuizAssignmentRow>> QuizAssignmentsAsync(SafeLearnDbContext db, string parentId, int lessonId, CancellationToken cancellationToken)
+    {
+        var rows = await db.Assignments.AsNoTracking()
+            .Where(item => item.QuizId != null && item.Quiz!.LessonId == lessonId && item.ChildProfile.ParentId == parentId && item.ChildProfile.IsActive
+                && item.Status != AssignmentStatus.Cancelled)
+            .OrderByDescending(item => item.AssignedAt)
+            .Select(item => new
+            {
+                item.Id, item.ChildProfileId, Child = item.ChildProfile.DisplayName, QuizId = item.QuizId!.Value, Quiz = item.Quiz!.Title, item.Status, item.DueDate, item.Note,
+                Attempt = item.QuizAttemptAssignments.Where(attempt => attempt.SubmittedAt != null).OrderByDescending(attempt => attempt.ScorePercent)
+                    .Select(attempt => new { attempt.Id, attempt.ScorePercent, attempt.SubmittedAt }).FirstOrDefault()
+            }).Take(50).ToListAsync(cancellationToken);
+        return rows.Select(row => new QuizAssignmentRow(row.Id, row.ChildProfileId, row.Child, row.QuizId, row.Quiz, row.Status, row.DueDate, row.Note,
+            row.Attempt?.ScorePercent, row.Attempt?.Id, QuizService.Late(row.DueDate, row.Attempt?.SubmittedAt))).ToList();
     }
 
     private static IQueryable<Lesson> Visible(SafeLearnDbContext db) =>

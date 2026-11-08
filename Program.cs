@@ -41,6 +41,9 @@ builder.Services.AddHttpClient(SourceSyncService.ClientName, client =>
 builder.Services.AddScoped<SourceSyncService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<KidContext>();
+// US-40: Ai:ApiKey stays empty in appsettings.json; set it with user-secrets. Without it suggestions come from the offline generator.
+builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Ai"));
+builder.Services.AddScoped<QuestionSuggester>();
 builder.Services.AddSingleton<AccountEmailQueue>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<AccountEmailQueue>());
 

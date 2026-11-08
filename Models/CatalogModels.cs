@@ -211,4 +211,6 @@ public class LibraryDetailViewModel
     public required SubjectLook Look { get; init; }
     public IReadOnlyList<LibraryContent> Contents { get; init; } = [];
     public IReadOnlyList<LessonAssignmentRow> Children { get; init; } = [];
+    public IReadOnlyList<LessonQuizOption> Quizzes { get; init; } = [];
+    public IReadOnlyList<QuizAssignmentRow> QuizAssignments { get; init; } = [];
 }

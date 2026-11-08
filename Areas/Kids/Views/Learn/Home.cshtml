@@ -54,6 +54,18 @@
         <div class="empty">Ba mẹ chưa giao bài mới.</div>
     }
 </section>
+@if (Model.Quizzes.Count > 0)
+{
+    <section>
+        <div class="kf" style="font-size:26px;margin-bottom:14px">Bài tập ba mẹ giao</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px">
+            @foreach (var quiz in Model.Quizzes)
+            {
+                <partial name="_QuizCard" model="quiz" />
+            }
+        </div>
+    </section>
+}
 @if (Model.Favorites.Count > 0)
 {
     <section>

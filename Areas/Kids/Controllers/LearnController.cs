@@ -53,7 +53,10 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
             Continue = lastStarted.Select(id => continuing.FirstOrDefault(card => card.Id == id)).FirstOrDefault(card => card is not null),
             Subjects = await TilesAsync(db, kid, cancellationToken),
             Assigned = assigned.OrderBy(card => card.DueDate ?? DateOnly.MaxValue).ThenBy(card => card.Title).ToList(),
-            Favorites = await Cards(db, kid, openable.Where(lesson => lesson.Favorites.Any(item => item.ChildProfileId == kid.Id))).ToListAsync(cancellationToken)
+            Favorites = await Cards(db, kid, openable.Where(lesson => lesson.Favorites.Any(item => item.ChildProfileId == kid.Id))).ToListAsync(cancellationToken),
+            Quizzes = (await QuizService.Cards(QuizService.Playable(db, kid).Where(quiz => quiz.Assignments.Any(item => item.ChildProfileId == kid.Id
+                    && (item.Status == AssignmentStatus.Assigned || item.Status == AssignmentStatus.InProgress))), kid.Id).ToListAsync(cancellationToken))
+                .OrderBy(card => card.DueDate ?? DateOnly.MaxValue).ToList()
         });
     }
 
@@ -98,7 +101,8 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
             Look = SubjectCatalog.Look(lesson.Code, lesson.Name, lesson.ColorKey, lesson.IconKey, true),
             Sections = sections,
             SectionsDone = card.Done ? sections.Count : Math.Min(sections.Count, (int)Math.Round(card.Percent * sections.Count / 100.0)),
-            AssignmentNote = lesson.Note
+            AssignmentNote = lesson.Note,
+            Quizzes = await QuizService.Cards(QuizService.Playable(db, kid).Where(quiz => quiz.LessonId == id), kid.Id).ToListAsync(cancellationToken)
         });
     }
 
@@ -246,11 +250,116 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
         return View(new KidSearchViewModel { Q = term, Blocked = blocked, Results = results });
     }
 
+    // US-38: starts an attempt, or resumes the open one so a reload does not restart the clock.
     [HttpGet("kids-quiz")]
-    public IActionResult Quiz() => View();
+    public async Task<IActionResult> Quiz(int? id, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        if (await KidAsync(cancellationToken) is not { } kid) return RedirectToAction(nameof(Picker));
+        if (await GateAsync(db, kid, cancellationToken) is { } stop) return stop;
+        if (id is null) return RedirectToAction(nameof(Home));
+        var quiz = await QuizService.Playable(db, kid).Where(item => item.Id == id)
+            .Select(item => new { item.Id, item.Title, item.LessonId, Lesson = item.Lesson.Title, item.TimeLimitSec, item.ShuffleQuestions, item.PassPercent })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (quiz is null) return NotFound();
+        var attempt = await db.QuizAttempts.Where(item => item.QuizId == quiz.Id && item.ChildProfileId == kid.Id && item.SubmittedAt == null)
+            .OrderByDescending(item => item.StartedAt).FirstOrDefaultAsync(cancellationToken);
+        if (attempt is not null && quiz.TimeLimitSec is { } limit && (DateTime.UtcNow - attempt.StartedAt).TotalSeconds > limit + QuizRules.GraceSeconds)
+        {
+            // The clock ran out while the child was away: that attempt is closed with what was answered (nothing).
+            await QuizService.GradeAsync(db, attempt, quiz.PassPercent, new Dictionary<int, int>(), discard: true, cancellationToken);
+            await CompleteAssignmentAsync(db, kid, attempt, quiz.Title, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+            attempt = null;
+        }
+        if (attempt is null)
+        {
+            var assignment = await db.Assignments.Where(item => item.ChildProfileId == kid.Id && item.QuizId == quiz.Id
+                    && (item.Status == AssignmentStatus.Assigned || item.Status == AssignmentStatus.InProgress))
+                .OrderBy(item => item.AssignedAt).FirstOrDefaultAsync(cancellationToken);
+            if (assignment is { Status: AssignmentStatus.Assigned }) assignment.Status = AssignmentStatus.InProgress;
+            attempt = new QuizAttempt { QuizId = quiz.Id, ChildProfileId = kid.Id, AssignmentId = assignment?.Id, StartedAt = DateTime.UtcNow };
+            db.QuizAttempts.Add(attempt);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        var due = attempt.AssignmentId is { } assignmentId
+            ? await db.Assignments.Where(item => item.Id == assignmentId).Select(item => item.DueDate).FirstOrDefaultAsync(cancellationToken) : null;
+        return View(new KidQuizViewModel
+        {
+            AttemptId = attempt.Id,
+            QuizId = quiz.Id,
+            Title = quiz.Title,
+            LessonId = quiz.LessonId,
+            LessonTitle = quiz.Lesson,
+            SecondsLeft = QuizService.SecondsLeft(quiz.TimeLimitSec, attempt.StartedAt),
+            DueDate = due,
+            Questions = await QuizService.QuestionsAsync(db, quiz.Id, attempt.Id, quiz.ShuffleQuestions, cancellationToken)
+        });
+    }
 
+    // Submitting is not blocked by the study-time gate, so an answer sheet is never lost when the minutes run out mid-quiz.
+    [HttpPost("kids-quiz/{attemptId:long}/submit")]
+    public async Task<IActionResult> Submit(long attemptId, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        if (await KidAsync(cancellationToken) is not { } kid) return RedirectToAction(nameof(Picker));
+        var attempt = await db.QuizAttempts.FirstOrDefaultAsync(item => item.Id == attemptId && item.ChildProfileId == kid.Id, cancellationToken);
+        if (attempt is null) return NotFound();
+        if (attempt.SubmittedAt is not null) return RedirectToAction(nameof(Result), new { id = attemptId });
+        var quiz = await db.Quizzes.AsNoTracking().Where(item => item.Id == attempt.QuizId).Select(item => new { item.Title, item.PassPercent, item.TimeLimitSec }).FirstAsync(cancellationToken);
+        // Answers arrive as q{questionId}=optionId; GradeAsync ignores options that do not belong to the question.
+        var chosen = new Dictionary<int, int>();
+        foreach (var (key, value) in Request.Form)
+            if (key.Length > 1 && key[0] == 'q' && int.TryParse(key.AsSpan(1), out var questionId) && int.TryParse(value.ToString(), out var optionId))
+                chosen[questionId] = optionId;
+        var late = quiz.TimeLimitSec is { } limit && (DateTime.UtcNow - attempt.StartedAt).TotalSeconds > limit + QuizRules.GraceSeconds;
+        await QuizService.GradeAsync(db, attempt, quiz.PassPercent, chosen, discard: late, cancellationToken);
+        await CompleteAssignmentAsync(db, kid, attempt, quiz.Title, cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // A double tap submitted the same sheet a moment earlier; any other failure is not hidden.
+            if (!await SubmittedAsync(db, attemptId, cancellationToken)) throw;
+        }
+        return RedirectToAction(nameof(Result), new { id = attemptId });
+    }
+
+    [HttpPost("kids-quiz/{attemptId:long}/heartbeat")]
+    public async Task<IActionResult> QuizHeartbeat(long attemptId, [FromForm] int seconds, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return NoContent();
+        if (await KidAsync(cancellationToken) is not { } kid) return Unauthorized();
+        if (!await db.QuizAttempts.AnyAsync(item => item.Id == attemptId && item.ChildProfileId == kid.Id && item.SubmittedAt == null, cancellationToken)) return NotFound();
+        seconds = Math.Clamp(seconds, 0, StudyTimeService.MaxReportSeconds);
+        var breakDue = await StudyTimeService.AddAsync(db, kid.Id, seconds, cancellationToken);
+        var status = await StudyTimeService.StatusAsync(db, kid.Id, cancellationToken);
+        if (!status.Allowed) await StudyTimeService.EndSessionAsync(db, kid.Id, "TimeUp", cancellationToken);
+        return Json(new { left = status.RemainingMinutes, allowed = status.Allowed, breakDue });
+    }
+
+    // US-39: the child's own result with the right answers and explanations.
     [HttpGet("kids-result")]
-    public IActionResult Result() => View();
+    public async Task<IActionResult> Result(long? id, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        if (await KidAsync(cancellationToken) is not { } kid) return RedirectToAction(nameof(Picker));
+        if (id is null || !await db.QuizAttempts.AnyAsync(item => item.Id == id && item.ChildProfileId == kid.Id, cancellationToken)) return RedirectToAction(nameof(Home));
+        var result = await QuizService.ResultAsync(db, id.Value, cancellationToken);
+        if (result is null) return RedirectToAction(nameof(Home));
+        var status = await StudyTimeService.StatusAsync(db, kid.Id, cancellationToken);
+        ViewData["KidLeft"] = status.RemainingMinutes;
+        var canRetry = status.Allowed && await QuizService.Playable(db, kid).AnyAsync(item => item.Id == result.QuizId, cancellationToken);
+        return View(new QuizResultViewModel
+        {
+            AttemptId = result.AttemptId, QuizId = result.QuizId, Title = result.Title, LessonId = result.LessonId, LessonTitle = result.LessonTitle,
+            ChildName = result.ChildName, ChildId = result.ChildId, Score = result.Score, Correct = result.Correct, Total = result.Total, Passed = result.Passed,
+            PassPercent = result.PassPercent, SubmittedAt = result.SubmittedAt, DueDate = result.DueDate, Late = result.Late, TimedOut = result.TimedOut,
+            CanRetry = canRetry, Questions = result.Questions
+        });
+    }
 
     [HttpGet("kids-time-up")]
     public async Task<IActionResult> TimeUp(CancellationToken cancellationToken)
@@ -300,6 +409,26 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
 
     [HttpGet("kids-badges")]
     public IActionResult Badges() => View();
+
+    private static async Task<bool> SubmittedAsync(SafeLearnDbContext db, long attemptId, CancellationToken cancellationToken)
+    {
+        db.ChangeTracker.Clear();
+        return await db.QuizAttempts.AnyAsync(item => item.Id == attemptId && item.SubmittedAt != null, cancellationToken);
+    }
+
+    // The first submitted attempt of an assigned quiz completes the assignment and tells the parent the score.
+    private async Task CompleteAssignmentAsync(SafeLearnDbContext db, KidInfo kid, QuizAttempt attempt, string title, CancellationToken cancellationToken)
+    {
+        if (attempt.AssignmentId is not { } assignmentId) return;
+        var assignment = await db.Assignments.FirstOrDefaultAsync(item => item.Id == assignmentId, cancellationToken);
+        if (assignment is null || assignment.Status is not (AssignmentStatus.Assigned or AssignmentStatus.InProgress)) return;
+        var now = DateTime.UtcNow;
+        assignment.Status = AssignmentStatus.Completed;
+        assignment.CompletedAt = now < assignment.AssignedAt ? assignment.AssignedAt : now;
+        var late = QuizService.Late(assignment.DueDate, now);
+        NotificationWriter.Add(db, User.FindFirstValue(ClaimTypes.NameIdentifier)!, "Assignment", $"{kid.Name} đã nộp bài tập",
+            $"{title} · {attempt.ScorePercent:0.#}% ({attempt.CorrectCount}/{attempt.TotalCount} câu đúng){(late ? " · nộp muộn" : "")}", $"/quiz-result/{attempt.Id}");
+    }
 
     // Every learning page checks today's allowance on the server; the time-up page explains what happened.
     private async Task<IActionResult?> GateAsync(SafeLearnDbContext db, KidInfo kid, CancellationToken cancellationToken)

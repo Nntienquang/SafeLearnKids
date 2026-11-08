@@ -42,6 +42,24 @@
                 </tbody>
             </table>
         </div>
+        <div class="sl-card" id="quizzes">
+            <div class="card-t" style="margin-bottom:10px">Bài tập đã làm</div>
+            @foreach (var attempt in Model.Attempts)
+            {
+                <a class="sl-row" style="gap:10px;padding:10px 0;border-top:1px solid var(--line);text-decoration:none;color:inherit;flex-wrap:wrap" asp-action="Result" asp-route-id="@attempt.Id">
+                    <div class="grow" style="min-width:180px">
+                        <div class="b">@attempt.Quiz</div>
+                        <div class="muted" style="font-size:12.5px">@attempt.Lesson · @attempt.SubmittedAt.ToLocalTime().ToString("dd/MM HH:mm") · @attempt.Correct/@attempt.Total câu đúng@(attempt.Assigned ? " · ba mẹ giao" : "")@(attempt.Late ? " · nộp muộn" : "")</div>
+                    </div>
+                    <span class="chip @(attempt.Passed == true ? "t-g" : "t-a")">@((attempt.Score ?? 0).ToString("0.#"))% · @(attempt.Passed == true ? "Đạt" : "Chưa đạt")</span>
+                    <i class="ic ic-chevr" aria-hidden="true"></i>
+                </a>
+            }
+            @if (Model.Attempts.Count == 0)
+            {
+                <p class="muted" style="margin:0">@Model.Child.Name chưa làm bài tập nào.</p>
+            }
+        </div>
         <div class="sl-card">
             <div class="card-t" style="margin-bottom:10px">Tìm kiếm gần đây</div>
             @foreach (var search in Model.Searches)

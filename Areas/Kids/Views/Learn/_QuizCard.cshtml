@@ -1,0 +1,9 @@
+@model KidQuizCard
+<a class="k-card" href="/kids-quiz?id=@Model.Id" style="display:flex;gap:14px;align-items:center;min-width:0">
+    <div style="width:88px;height:70px;flex:0 0 auto;border-radius:16px;background:linear-gradient(135deg,@Model.Gradient[0],@Model.Gradient[1]);display:flex;align-items:center;justify-content:center;color:#fff" aria-hidden="true"><i class="ic ic-@(Model.BestScore is null ? "pen" : "trophy")"></i></div>
+    <div class="grow" style="min-width:0">
+        <div class="b" style="font-size:16px">@Model.Title</div>
+        <span class="k-note">@Model.Questions câu@(Model.TimeLimitSec is { } limit ? $" · {(limit + 59) / 60} phút" : "")@(Model.DueDate is { } due ? " · Hạn nộp " + due.ToString("dd/MM") : "")@(Model.BestScore is { } best ? $" · Điểm cao nhất {best:0.#}%" : "")</span>
+    </div>
+    <span class="k-pill p" style="flex:0 0 auto">@(Model.BestScore is null ? "Làm bài" : "Làm lại")</span>
+</a>

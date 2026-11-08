@@ -38,8 +38,28 @@ public class HistoryController(KidContext kids, IServiceProvider services) : Con
                 .Select(item => new HistorySearchRow(item.Query, item.ResultCount, item.WasBlocked, item.CreatedAt)).ToListAsync(cancellationToken),
             Reports = await db.ContentReports.AsNoTracking().Where(item => item.ChildProfileId == chosen.Id).OrderByDescending(item => item.CreatedAt).Take(20)
                 .Select(item => new ReportRow(item.Id, item.Lesson != null ? item.Lesson.Title : item.SourceVideo != null ? item.SourceVideo.Title : "Nội dung đã xóa",
-                    item.Reason, item.Comment, item.Status, item.Resolution, chosen.Name, item.CreatedAt)).ToListAsync(cancellationToken)
+                    item.Reason, item.Comment, item.Status, item.Resolution, chosen.Name, item.CreatedAt)).ToListAsync(cancellationToken),
+            Attempts = (await db.QuizAttempts.AsNoTracking().Where(item => item.ChildProfileId == chosen.Id && item.SubmittedAt != null)
+                .OrderByDescending(item => item.SubmittedAt).Take(30)
+                .Select(item => new
+                {
+                    item.Id, Quiz = item.Quiz.Title, Lesson = item.Quiz.Lesson.Title, item.ScorePercent, item.CorrectCount, item.TotalCount, item.Passed,
+                    SubmittedAt = item.SubmittedAt!.Value, Assigned = item.AssignmentId != null, DueDate = item.Assignment != null ? item.Assignment.DueDate : null
+                }).ToListAsync(cancellationToken))
+                .Select(item => new HistoryAttemptRow(item.Id, item.Quiz, item.Lesson, item.ScorePercent, item.CorrectCount, item.TotalCount, item.Passed,
+                    item.SubmittedAt, item.Assigned, QuizService.Late(item.DueDate, item.SubmittedAt))).ToList()
         });
+    }
+
+    // US-39: a parent sees each answer of their own child, with the right answer and the explanation.
+    [HttpGet("quiz-result/{id:long}")]
+    public async Task<IActionResult> Result(long id, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        var mine = (await kids.ChoicesAsync(cancellationToken)).Select(item => item.Id).ToList();
+        if (!await db.QuizAttempts.AnyAsync(item => item.Id == id && mine.Contains(item.ChildProfileId), cancellationToken)) return NotFound();
+        var result = await QuizService.ResultAsync(db, id, cancellationToken);
+        return result is null ? NotFound() : View(result);
     }
 
     [HttpGet("history/export")]

@@ -45,6 +45,7 @@ public class KidHomeViewModel
     public IReadOnlyList<KidSubjectTile> Subjects { get; init; } = [];
     public IReadOnlyList<KidLessonCard> Assigned { get; init; } = [];
     public IReadOnlyList<KidLessonCard> Favorites { get; init; } = [];
+    public IReadOnlyList<KidQuizCard> Quizzes { get; init; } = [];
 }
 
 public class KidSubjectViewModel
@@ -63,6 +64,7 @@ public class KidLessonViewModel
     // Sections the child has finished, in order; the next one is where the lesson resumes.
     public int SectionsDone { get; init; }
     public string? AssignmentNote { get; init; }
+    public IReadOnlyList<KidQuizCard> Quizzes { get; init; } = [];
 }
 
 public class KidSearchViewModel

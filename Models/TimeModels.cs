@@ -116,6 +116,7 @@ public class HistoryViewModel
     public IReadOnlyList<(DateOnly Day, int Minutes)> Days { get; init; } = [];
     public IReadOnlyList<HistorySearchRow> Searches { get; init; } = [];
     public IReadOnlyList<ReportRow> Reports { get; init; } = [];
+    public IReadOnlyList<HistoryAttemptRow> Attempts { get; init; } = [];
 }
 
 public class TimeUpViewModel

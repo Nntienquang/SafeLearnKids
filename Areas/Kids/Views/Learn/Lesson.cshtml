@@ -93,6 +93,17 @@
                 <p class="k-note">Học hết các phần để bấm hoàn thành nhé.</p>
             }
         }
+        @if (Model.Quizzes.Count > 0)
+        {
+            <div class="k-card" style="display:flex;flex-direction:column;gap:10px">
+                <div class="kf" style="font-size:22px">Làm bài tập</div>
+                @foreach (var quiz in Model.Quizzes)
+                {
+                    <a class="k-btn@(quiz.Assigned ? " y" : "")" href="/kids-quiz?id=@quiz.Id" style="justify-content:center"><i class="ic ic-pen"></i>@quiz.Title</a>
+                    <span class="k-note">@quiz.Questions câu@(quiz.TimeLimitSec is { } limit ? $" · {(limit + 59) / 60} phút" : "")@(quiz.DueDate is { } quizDue ? " · Hạn nộp " + quizDue.ToString("dd/MM") : "")@(quiz.BestScore is { } best ? $" · Điểm cao nhất {best:0.#}%" : "")</span>
+                }
+            </div>
+        }
         <details class="k-card">
             <summary class="b" style="cursor:pointer"><i class="ic ic-flag"></i> Bài này có gì lạ?</summary>
             <form asp-action="Report" asp-route-id="@lesson.Id" method="post" style="display:flex;flex-direction:column;gap:8px;margin-top:12px">

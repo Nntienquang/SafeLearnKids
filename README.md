@@ -78,7 +78,7 @@ Bé không có tài khoản riêng: phụ huynh đăng nhập, bấm **Chế đ�
 - `/kids-lesson?id=` chia bài thành từng phần nội dung theo thứ tự; "Con xong phần này rồi" lưu tiến độ vào `dbo.LessonActivities`, lần sau học tiếp từ phần đang dở. Server tự đếm số phần, chỉ cho hoàn thành khi đã học hết; hoàn thành cũng đóng bài được giao. Thời gian học cộng mỗi 30 giây khi trang đang mở (mỗi lần tối đa 60 giây).
 - Yêu thích lưu ở `dbo.Favorites`. `/kids-search` chỉ tìm trong bài bé được mở, ghi `dbo.SearchLogs`; từ khóa bị chặn (chung hoặc của gia đình) không trả kết quả.
 
-Công tắc "Cho phép tìm kiếm" và giới hạn giờ học của bé vẫn lưu ở trình duyệt (chưa có cột trong SQL); quiz, huy hiệu, giờ học là phần của Sprint 5–7. Kiểm thử: `py scripts\smoke-learning.py` sau khi build.
+Công tắc "Cho phép tìm kiếm" vẫn lưu ở trình duyệt (chưa có cột trong SQL). Giờ học ở Sprint 5, bài tập ở Sprint 6, huy hiệu ở Sprint 7. Kiểm thử: `py scripts\smoke-learning.py` sau khi build.
 
 ## Thời gian học và giám sát (Sprint 5)
 
@@ -87,6 +87,34 @@ Công tắc "Cho phép tìm kiếm" và giới hạn giờ học của bé vẫn
 Bé xin thêm 5/10/15/30 phút ở trang hết giờ (một yêu cầu chờ tại một thời điểm, tối đa 3 lần/ngày, không xin được khi đang ngoài khung giờ); phụ huynh cho thêm (không quá số bé xin) hoặc từ chối ở `/time`. Yêu cầu từ ngày trước tự hết hạn. Thông báo cho phụ huynh ghi vào `dbo.Notifications` (trang xem thông báo thuộc Sprint 8).
 
 `/history` theo từng bé: bài đã học (tiến độ, thời gian xem), số phút 14 ngày, tìm kiếm (kể cả từ khóa bị chặn), báo cáo của bé; xuất CSV. Bé báo cáo bài ở trang học, phụ huynh báo cáo ở thư viện (`dbo.ContentReports`). `/admin-reports`: nhận xem, giữ nội dung hoặc gỡ (chặn video, hoặc lưu trữ bài nếu báo cáo về bài), bắt buộc ghi kết quả; gia đình nhận thông báo và thấy kết quả trong lịch sử. Kiểm thử: `py scripts\smoke-time.py` sau khi build.
+
+## Câu hỏi và bài tập (Sprint 6)
+
+- **Ngân hàng câu hỏi (US-35)**, `/admin-questions`: chọn bài học, soạn câu trắc nghiệm (2–4 đáp án, đúng 1 đáp án đúng) hoặc Đúng/Sai, độ khó 1–3, giải thích đáp án (`dbo.Questions`, `dbo.QuestionOptions`). Trạng thái: Nháp, Chờ duyệt, Đã duyệt, Lưu trữ.
+  - Câu đã có bé trả lời thì khóa loại câu và đáp án để kết quả cũ vẫn đúng; vẫn sửa được nội dung, giải thích và trạng thái.
+  - Câu đang nằm trong bài tập hoặc đã có người trả lời thì không xóa được, chỉ lưu trữ.
+  - Loại "MultiChoice" trong bảng không được dùng, vì `dbo.QuizAttemptAnswers` chỉ lưu một đáp án mỗi câu.
+- **Bài tập (US-36)**, `/admin-quizzes/new?lesson=`: chọn câu đã duyệt của bài, điểm đạt (%), thời gian làm bài (1–60 phút hoặc không giới hạn), xáo trộn câu (`dbo.Quizzes`, `dbo.QuizQuestions`). Bài tập chỉ mở cho bé khi ở trạng thái "Đang mở" và có ít nhất 1 câu đã duyệt. Khi đã có bé làm, danh sách câu được giữ nguyên và bài tập không xóa được.
+- **Giao bài tập (US-37)**, thẻ "Bài tập kiểm tra" ở `/lesson-detail/{id}`: chọn bài tập, chọn bé, **bắt buộc hạn nộp** (từ hôm nay đến 1 năm), lời nhắn. Mỗi bé chỉ có một bài tập đang mở cho mỗi bài tập; kiểm tra và ghi nằm trong một transaction serializable. Bài tập được giao mở được cho bé kể cả khi khác lớp.
+- **Làm bài và chấm điểm (US-38)**, `/kids-quiz?id=`:
+  - Bé làm từng câu một, có thanh tiến độ và đồng hồ đếm ngược. Hết giờ thì tự nộp; nộp khi còn câu bỏ trống thì hỏi lại trước.
+  - Tải lại trang sẽ tiếp tục lượt đang làm, không tính lại giờ. Lượt quá giờ (thời gian làm bài cộng 60 giây dự phòng) bị đóng và câu trả lời gửi muộn không được tính.
+  - Server chấm theo điểm từng câu trong `dbo.QuizQuestions`. Đáp án không thuộc câu hỏi bị coi là chưa trả lời. Kết quả lưu trong `dbo.QuizAttempts` và `dbo.QuizAttemptAnswers`.
+  - Lần nộp đầu tiên của bài tập được giao sẽ hoàn thành bài giao và báo cho phụ huynh. Các lần làm lại sau đó là luyện tập.
+  - Thời gian trên trang làm bài cũng được tính vào giờ học. Hết giờ học thì bài làm vẫn được nộp, không bị mất.
+- **Kết quả và giải thích (US-39)**:
+  - Bé xem điểm, số sao, đáp án đã chọn, đáp án đúng và giải thích ở `/kids-result?id=`.
+  - Phụ huynh xem danh sách lượt làm ở `/history` (mục "Bài tập đã làm") và chi tiết từng câu ở `/quiz-result/{id}`.
+  - Bài nộp sau hạn được đánh dấu "nộp muộn".
+- **Gợi ý câu hỏi (US-40)**: nút "Gợi ý câu hỏi" (1–5 câu) lưu câu gợi ý ở trạng thái **Chờ duyệt** với `Origin = AiSuggested` và `AiModelName`. Câu gợi ý không dùng được trong bài tập cho tới khi Admin duyệt; Admin có thể sửa, duyệt hoặc từ chối. Danh sách chờ duyệt của mọi bài ở nút "Chờ duyệt".
+  - **Không có key**: dùng bộ gợi ý cục bộ `offline-rule-v1`. Bộ này tạo câu điền từ/điền số và câu Đúng/Sai từ nội dung chữ của bài, không phải AI.
+  - **Có key**: gọi Claude (`claude-opus-5-5`) qua SDK `Anthropic`, nhận JSON theo schema rồi kiểm tra lại từng câu như câu soạn tay. Đặt key riêng trên máy, không ghi vào `appsettings.json` hay Git:
+
+```powershell
+dotnet user-secrets set "Ai:ApiKey" "<anthropic-api-key>"
+```
+
+Môi trường khác dùng biến `Ai__ApiKey`; đổi model bằng `Ai:Model`. Kiểm thử: `py scripts\smoke-quiz.py` sau khi build (chạy không cần key).
 
 ## Email xác minh và khôi phục
 

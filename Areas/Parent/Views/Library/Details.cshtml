@@ -112,6 +112,62 @@
                 <p class="muted" style="margin:0">Hãy tạo hồ sơ bé trước khi giao bài.</p>
             }
         </div>
+        <div class="sl-card" id="quizzes">
+            <div class="card-t" style="margin-bottom:4px">Bài tập kiểm tra</div>
+            <p class="muted" style="margin:0 0 10px;font-size:12.5px">Bé làm bài, hệ thống chấm điểm ngay và cho bé xem giải thích đáp án.</p>
+            @foreach (var row in Model.QuizAssignments)
+            {
+                <div class="sl-row" style="gap:10px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+                    <div class="grow" style="min-width:150px">
+                        <div class="b">@row.ChildName · @row.QuizTitle</div>
+                        <div class="muted" style="font-size:12.5px">@(row.DueDate is { } due ? "Hạn nộp " + due.ToString("dd/MM/yyyy") : "Không đặt hạn")@(row.Status is not AssignmentStatus.Completed && row.DueDate is { } over && over < DateOnly.FromDateTime(DateTime.Now) ? " · Quá hạn" : "")@(row.Note is null ? "" : " · " + row.Note)</div>
+                    </div>
+                    @if (row.Score is { } score)
+                    {
+                        <a class="chip @(row.Late ? "t-a" : "t-g")" href="/quiz-result/@row.AttemptId" title="Xem bài làm">@score.ToString("0.#")%@(row.Late ? " · nộp muộn" : "")</a>
+                    }
+                    else
+                    {
+                        <span class="chip @AssignmentStatus.Tone(row.Status)">@(row.Status == AssignmentStatus.InProgress ? "Đang làm" : AssignmentStatus.Label(row.Status))</span>
+                    }
+                    @if (row.Status is AssignmentStatus.Assigned or AssignmentStatus.InProgress)
+                    {
+                        <form asp-action="CancelAssignment" asp-route-assignmentId="@row.AssignmentId" method="post"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Hủy bài tập đã giao cho @row.ChildName">Hủy</button></form>
+                    }
+                </div>
+            }
+            @if (Model.Quizzes.Count == 0)
+            {
+                <p class="muted" style="margin:0">Bài này chưa có bài tập.</p>
+            }
+            else if (Model.Children.Count > 0)
+            {
+                <form asp-action="AssignQuiz" asp-route-id="@lesson.Id" method="post" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+                    <label class="lab" for="quiz-id">Bài tập</label>
+                    <select class="inp" id="quiz-id" name="quizId" required>
+                        @foreach (var quiz in Model.Quizzes)
+                        {
+                            <option value="@quiz.Id">@quiz.Title · @quiz.Questions câu@(quiz.TimeLimitSec is { } limit ? $" · {(limit + 59) / 60} phút" : "")</option>
+                        }
+                    </select>
+                    <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
+                        <legend class="lab" style="margin-bottom:6px">Chọn bé</legend>
+                        @foreach (var child in Model.Children)
+                        {
+                            <label class="sl-row" style="gap:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);font-weight:600">
+                                <input type="checkbox" name="childIds" value="@child.ChildId" checked="@(Model.Children.Count == 1)" />
+                                <span class="grow">@child.ChildName</span>
+                            </label>
+                        }
+                    </fieldset>
+                    <label class="lab" for="quiz-due">Hạn nộp</label>
+                    <input class="inp" id="quiz-due" name="dueDate" type="date" required min="@DateTime.Now.ToString("yyyy-MM-dd")" value="@DateTime.Now.AddDays(3).ToString("yyyy-MM-dd")" />
+                    <label class="lab" for="quiz-note">Lời nhắn cho bé (không bắt buộc)</label>
+                    <input class="inp" id="quiz-note" name="note" maxlength="300" />
+                    <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-send"></i>Giao bài tập</button>
+                </form>
+            }
+        </div>
         <div class="sl-card">
             <div class="card-t" style="margin-bottom:12px">Thông tin an toàn</div>
             <div class="sl-col" style="gap:10px;font-size:13.5px;color:var(--text-2)">
