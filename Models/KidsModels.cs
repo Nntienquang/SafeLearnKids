@@ -46,6 +46,10 @@ public class KidHomeViewModel
     public IReadOnlyList<KidLessonCard> Assigned { get; init; } = [];
     public IReadOnlyList<KidLessonCard> Favorites { get; init; } = [];
     public IReadOnlyList<KidQuizCard> Quizzes { get; init; } = [];
+    public StreakView Streak { get; init; } = new(0, 0, false);
+    public WeekGoalView? Week { get; init; }
+    public IReadOnlyList<PathView> Paths { get; init; } = [];
+    public int ReviewCount { get; init; }
 }
 
 public class KidSubjectViewModel

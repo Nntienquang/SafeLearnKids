@@ -20,8 +20,61 @@
     <div class="k-card" style="flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:14px">
         <div class="kf" style="font-size:22px">Hôm nay của con</div>
         <div class="sl-row" style="gap:16px"><div class="donut" data-today><b>0<small>phút</small></b></div><div class="sl-col" style="gap:6px"><span class="k-note" data-left></span><span style="font-weight:800;color:var(--primary-text)">Giỏi lắm!</span></div></div>
+        <a class="sl-row" href="/kids-badges" style="gap:10px;text-decoration:none;color:inherit;padding:10px 12px;border-radius:16px;background:var(--surface-2)">
+            <i class="ic ic-flame" style="color:#F97316" aria-hidden="true"></i>
+            <span class="grow" style="font-weight:800">@(Model.Streak.Current > 0 ? $"{Model.Streak.Current} ngày học liên tiếp" : "Học hôm nay để bắt đầu chuỗi ngày nhé")</span>
+            <span class="k-note">Kỷ lục @Model.Streak.Longest</span>
+        </a>
+        @if (Model.Week is { HasGoal: true } week)
+        {
+            <div class="sl-col" style="gap:6px" aria-label="Mục tiêu tuần này">
+                <span style="font-weight:800">Mục tiêu tuần này@(week.Reached ? " · Đạt rồi!" : "")</span>
+                @if (week.TargetLessons is { } lessons)
+                {
+                    <span class="k-note">Bài học: @week.Lessons / @lessons</span>
+                    <div class="bar"><i style="width:@(lessons == 0 ? 100 : Math.Min(100, week.Lessons * 100 / lessons))%"></i></div>
+                }
+                @if (week.TargetMinutes is { } minutes)
+                {
+                    <span class="k-note">Số phút: @week.Minutes / @minutes</span>
+                    <div class="bar"><i style="width:@(minutes == 0 ? 100 : Math.Min(100, week.Minutes * 100 / minutes))%"></i></div>
+                }
+            </div>
+        }
     </div>
 </div>
+@if (TempData["Badge"] is string badge)
+{
+    <div class="banner t-p" role="status" style="font-weight:700;font-size:16px"><i class="ic ic-trophy"></i>@badge</div>
+}
+@if (Model.ReviewCount > 0)
+{
+    <a class="k-card sl-row" href="/kids-review" style="gap:14px;text-decoration:none;color:inherit">
+        <span class="ib t-a" aria-hidden="true"><i class="ic ic-refresh"></i></span>
+        <span class="grow"><span class="kf" style="font-size:20px">Ôn lại câu chưa đúng</span><br /><span class="k-note">Con có @Model.ReviewCount câu nên xem lại</span></span>
+        <span class="k-pill p">Ôn bài</span>
+    </a>
+}
+@if (Model.Paths.Count > 0)
+{
+    <section>
+        <div class="kf" style="font-size:26px;margin-bottom:14px">Lộ trình của con</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px">
+            @foreach (var path in Model.Paths)
+            {
+                <div class="k-card" style="display:flex;flex-direction:column;gap:10px">
+                    <div class="b" style="font-size:17px">@path.Name</div>
+                    <div class="bar"><i style="width:@(path.Required == 0 ? 0 : path.Done * 100 / path.Required)%"></i></div>
+                    <span class="k-note">Đã xong @path.Done / @path.Required bài</span>
+                    @if (path.Next is { } step)
+                    {
+                        <a class="k-btn" href="/kids-lesson?id=@step.LessonId" style="align-self:flex-start"><i class="ic ic-play"></i>@step.Title</a>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+}
 <section>
     <div class="kf" style="font-size:26px;margin-bottom:14px">Chọn môn học</div>
     <div style="display:flex;flex-wrap:wrap;gap:18px">

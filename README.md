@@ -116,6 +116,29 @@ dotnet user-secrets set "Ai:ApiKey" "<anthropic-api-key>"
 
 Môi trường khác dùng biến `Ai__ApiKey`; đổi model bằng `Ai:Model`. Kiểm thử: `py scripts\smoke-quiz.py` sau khi build (chạy không cần key).
 
+## Tiến độ, lộ trình và thành tích (Sprint 7)
+
+Mọi số liệu được tính lại trên server mỗi khi bé học: mỗi 30 giây trên trang bài học hoặc trang làm bài, khi hoàn thành một bài, và khi nộp bài tập (`Services/ProgressService.cs`).
+
+- **Tiến độ theo môn (US-41)**: `dbo.SubjectProgresses` lưu số bài đã xong trên tổng số bài đã xuất bản của môn ở lớp của bé, cùng điểm bài tập trung bình (lấy điểm cao nhất của mỗi bài tập). Phụ huynh xem ở `/progress`.
+- **Lộ trình học (US-42)**:
+  - Admin quản lý ở `/admin-paths`. Mỗi lộ trình là chuỗi bài đã xuất bản của một môn và một lớp, có thứ tự và đánh dấu bài bắt buộc (`dbo.LearningPaths`, `dbo.LearningPathItems`). Môn và lớp cố định sau khi tạo. Lộ trình đã có bé theo thì không xóa được, chỉ tắt "Đang dùng".
+  - Phụ huynh chọn hoặc bỏ lộ trình cho bé ở `/progress`. Chỉ chọn được lộ trình đúng lớp và đúng môn của bé (`dbo.ChildPaths`).
+  - Bé thấy bài tiếp theo ở trang học. Lộ trình hoàn thành khi bé học xong mọi bài bắt buộc.
+- **Huy hiệu (US-43)**:
+  - Admin quản lý ở `/admin-badges`. Tiêu chí: số bài hoàn thành, số ngày học liên tiếp (lấy kỷ lục), số bài tập đạt 100%, tổng số phút học.
+  - Bé tự nhận huy hiệu khi đạt mốc (`dbo.ChildBadges`, mỗi huy hiệu một lần). Bé thấy thông báo ngay; phụ huynh nhận thông báo loại `Badge`.
+  - `/kids-badges` hiện huy hiệu đã đạt, tiến độ tới từng huy hiệu chưa đạt, và số sao (0–5 sao theo điểm cao nhất mỗi bài tập).
+  - Huy hiệu đã có bé nhận thì không xóa được; đổi tiêu chí không thu hồi huy hiệu đã trao.
+- **Chuỗi ngày học (US-44)**, `dbo.Streaks`: mỗi ngày có học tính một lần. Học ngày liền sau thì chuỗi tăng 1; bỏ một ngày thì chuỗi bắt đầu lại từ 1, kỷ lục vẫn giữ. Phụ huynh chọn lộ trình không được tính là một ngày học.
+- **Mục tiêu tuần (US-45)**, `dbo.LearningGoals`: phụ huynh đặt số bài và/hoặc số phút cho tuần hiện tại (thứ Hai đến Chủ nhật). Trang gợi ý mục tiêu tuần trước kèm kết quả. Bé và phụ huynh thấy tiến độ tuần.
+- **Ôn câu làm sai (US-46)**, `/kids-review`:
+  - Liệt kê các câu mà lần trả lời gần nhất của bé sai hoặc bỏ trống. Bé chọn lại đáp án để kiểm tra; trả lời đúng thì thấy giải thích.
+  - Phần luyện này không lưu điểm. Câu chỉ rời danh sách khi bé làm lại bài tập và trả lời đúng.
+  - Phụ huynh thấy số câu cần ôn, cùng các bài tập chưa đạt, ở mục "Cần chú ý".
+
+Kiểm thử: `py scripts\smoke-progress.py` sau khi build.
+
 ## Email xác minh và khôi phục
 
 Profile Development dùng **Pickup**: email `.eml` được lưu riêng tại `%LOCALAPPDATA%\SafeLearnKids\Mail`. Mở thư mới nhất trên máy để lấy liên kết; đây là thư thử nghiệm, chưa gửi tới Gmail. Không có endpoint xem thư/token trong ứng dụng. Không đặt folder này trong repo hoặc wwwroot; không đưa thư/token lên Git/Trello/chat.

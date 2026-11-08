@@ -1,0 +1,75 @@
+@model PathFormViewModel
+@{
+    var editing = Model.Id is not null;
+    ViewData["Title"] = editing ? "Sửa lộ trình" : "Lộ trình mới";
+    ViewData["Page"] = "admin-paths-sql";
+    ViewData["Nav"] = "paths";
+    ViewData["Crumb"] = Html.Raw("""<a href="/admin-paths">Lộ trình học</a>""");
+    ViewData["Heading"] = editing ? "Sửa lộ trình" : "Lộ trình mới";
+    ViewData["Sub"] = $"{Model.SubjectName} · Lớp {Model.Grade}. Chọn bài đã xuất bản và sắp thứ tự (số nhỏ học trước).";
+}
+@if (!editing)
+{
+    <form method="get" asp-action="CreatePath" class="sl-card sl-row" style="gap:10px;flex-wrap:wrap;margin-bottom:16px">
+        <span class="b grow" style="min-width:160px">Đổi môn hoặc lớp</span>
+        <select class="inp" name="subject" style="width:auto" aria-label="Môn học">
+            @foreach (var subject in Model.Subjects)
+            {
+                <option value="@subject.Id" selected="@(subject.Id == Model.SubjectId)">@subject.Name</option>
+            }
+        </select>
+        <select class="inp" name="grade" style="width:auto" aria-label="Lớp">
+            @for (var level = 1; level <= 5; level++)
+            {
+                <option value="@level" selected="@(level == Model.Grade)">Lớp @level</option>
+            }
+        </select>
+        <button class="sl-btn" type="submit">Tải danh sách bài</button>
+    </form>
+}
+<form method="post" class="sl-card acc-form" asp-action="@(editing ? "EditPath" : "CreatePath")" asp-route-id="@Model.Id">
+    <input type="hidden" asp-for="SubjectId" />
+    <input type="hidden" asp-for="Grade" />
+    <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+    @if (Model.Followers > 0)
+    {
+        <div class="banner t-a"><i class="ic ic-info"></i>@Model.Followers bé đang theo lộ trình này. Thay đổi áp dụng ở lần học tiếp theo của bé.</div>
+    }
+    <section class="acc-sec">
+        <div class="field">
+            <label asp-for="Name" class="lab"></label>
+            <input asp-for="Name" class="inp" maxlength="120" required autocomplete="off" placeholder="Ví dụ: Thành thạo phép cộng lớp 1" />
+            <span asp-validation-for="Name" class="err"></span>
+        </div>
+        <div class="field">
+            <label asp-for="Description" class="lab"></label>
+            <textarea asp-for="Description" class="inp ta" rows="2" maxlength="300"></textarea>
+            <span asp-validation-for="Description" class="err"></span>
+        </div>
+        <label class="sl-row" style="gap:10px"><input asp-for="IsActive" type="checkbox" /><span>Đang dùng (phụ huynh chọn được cho bé)</span></label>
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+            <legend class="lab" style="margin-bottom:6px">Bài trong lộ trình</legend>
+            <span asp-validation-for="Steps" class="err"></span>
+            <div class="sl-col" style="gap:8px">
+                @for (var i = 0; i < Model.Steps.Count; i++)
+                {
+                    <div class="sl-row" style="gap:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);flex-wrap:wrap">
+                        <input type="hidden" asp-for="Steps[i].LessonId" />
+                        <input type="hidden" asp-for="Steps[i].Title" />
+                        <label class="sl-row grow" style="gap:10px;min-width:200px"><input asp-for="Steps[i].Include" type="checkbox" /><span class="b">@Model.Steps[i].Title</span></label>
+                        <label class="sl-row" style="gap:6px;font-size:13px"><input asp-for="Steps[i].Required" type="checkbox" />Bắt buộc</label>
+                        <label class="sl-row" style="gap:6px;font-size:13px">Thứ tự <input asp-for="Steps[i].Order" class="inp" type="number" min="1" max="999" style="width:80px" /></label>
+                    </div>
+                }
+                @if (Model.Steps.Count == 0)
+                {
+                    <div class="empty">Chưa có bài đã xuất bản cho @Model.SubjectName lớp @Model.Grade.</div>
+                }
+            </div>
+        </fieldset>
+    </section>
+    <div class="acc-foot">
+        <a class="sl-btn" asp-action="Paths">Hủy</a>
+        <button class="sl-btn sl-btn-p" type="submit">@(editing ? "Lưu lộ trình" : "Tạo lộ trình")</button>
+    </div>
+</form>

@@ -19,6 +19,10 @@
             <i class="ic ic-star ic-lg" style="@(i < stars ? "" : "color:var(--line)")"></i>
         }
     </div>
+    @if (TempData["Badge"] is string badge)
+    {
+        <a class="banner t-p" role="status" href="/kids-badges" style="font-weight:700"><i class="ic ic-sparkles"></i>@badge</a>
+    }
     @if (Model.TimedOut)
     {
         <div class="banner t-a" style="font-weight:700"><i class="ic ic-clock"></i>Hết giờ làm bài nên các câu chưa nộp được tính là chưa trả lời.</div>

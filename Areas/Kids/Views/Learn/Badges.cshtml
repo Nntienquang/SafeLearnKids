@@ -1,6 +1,45 @@
+@model KidBadgesViewModel
 @{
     ViewData["Title"] = """Thành tích và huy hiệu""";
-    ViewData["Page"] = "kids-badges";
+    ViewData["Page"] = "kids-badges-sql";
+    var earned = Model.Badges.Count(badge => badge.Earned);
 }
-<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px"><div class="sl-row" style="gap:14px;flex-wrap:wrap"><a class="k-pill" href="~/kids-home"><i class="ic ic-arrowl"></i>Quay lại</a><div class="kf" style="font-size:40px">Huy hiệu của con</div><span class="grow"></span><span class="k-pill y"><i class="ic ic-star"></i>340 sao</span><span class="k-pill p">9 / 24</span></div>
-<div style="display:flex;flex-wrap:wrap;gap:18px"><div class="k-card" style="flex:1 1 200px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="width:84px;height:84px;border-radius:42px;background:linear-gradient(135deg,#F59E0B,#FB7185);color:#fff;display:flex;align-items:center;justify-content:center"><i class="ic ic-flame ic-xl"></i></span><div class="b" style="font-size:16px">Siêu chăm chỉ</div><span class="k-note">5 ngày liên tiếp</span></div><div class="k-card" style="flex:1 1 200px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="width:84px;height:84px;border-radius:42px;background:linear-gradient(135deg,#6A4CFF,#38BDF8);color:#fff;display:flex;align-items:center;justify-content:center"><i class="ic ic-calc ic-xl"></i></span><div class="b" style="font-size:16px">Nhà toán học</div><span class="k-note">10 bài Toán</span></div><div class="k-card" style="flex:1 1 200px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;"><span style="width:84px;height:84px;border-radius:42px;background:linear-gradient(135deg,#14B8A6,#22C55E);color:#fff;display:flex;align-items:center;justify-content:center"><i class="ic ic-book ic-xl"></i></span><div class="b" style="font-size:16px">Mọt sách</div><span class="k-note">Đọc 5 bài</span></div><div class="k-card" style="flex:1 1 200px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;opacity:.5;"><span style="width:84px;height:84px;border-radius:42px;background:var(--surface-2);color:#fff;display:flex;align-items:center;justify-content:center"><i class="ic ic-lock ic-xl"></i></span><div class="b" style="font-size:16px">Điểm 10</div><span class="k-note">Quiz tuyệt đối</span></div><div class="k-card" style="flex:1 1 200px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;opacity:.5;"><span style="width:84px;height:84px;border-radius:42px;background:var(--surface-2);color:#fff;display:flex;align-items:center;justify-content:center"><i class="ic ic-lock ic-xl"></i></span><div class="b" style="font-size:16px">Nhà khoa học</div><span class="k-note">8 bài Khoa học</span></div><div class="k-card" style="flex:1 1 200px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;opacity:.5;"><span style="width:84px;height:84px;border-radius:42px;background:var(--surface-2);color:#fff;display:flex;align-items:center;justify-content:center"><i class="ic ic-lock ic-xl"></i></span><div class="b" style="font-size:16px">Bạn nhỏ chăm học</div><span class="k-note">14 ngày liên tiếp</span></div></div></main>
+<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px">
+<div class="sl-row" style="gap:14px;flex-wrap:wrap">
+    <a class="k-pill" href="/kids-home"><i class="ic ic-arrowl"></i>Quay lại</a>
+    <h1 class="kf" style="font-size:40px;margin:0">Huy hiệu của con</h1>
+    <span class="grow"></span>
+    <span class="k-pill y" title="Sao từ điểm cao nhất của mỗi bài tập"><i class="ic ic-star"></i>@Model.Stars sao</span>
+    <span class="k-pill p">@earned / @Model.Badges.Count</span>
+</div>
+<div class="k-card sl-row" style="gap:16px;flex-wrap:wrap">
+    <span style="width:64px;height:64px;border-radius:32px;background:linear-gradient(135deg,#F59E0B,#F97316);color:#fff;display:flex;align-items:center;justify-content:center" aria-hidden="true"><i class="ic ic-flame ic-lg"></i></span>
+    <div class="grow">
+        <div class="kf" style="font-size:26px">@(Model.Streak.Current > 0 ? $"{Model.Streak.Current} ngày học liên tiếp" : "Chưa có chuỗi ngày học")</div>
+        <span class="k-note">Kỷ lục của con: @Model.Streak.Longest ngày · @(Model.Streak.StudiedToday ? "Hôm nay con đã học rồi!" : "Học hôm nay để giữ chuỗi nhé")</span>
+    </div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px">
+    @foreach (var badge in Model.Badges)
+    {
+        <div class="k-card" style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;@(badge.Earned ? "" : "opacity:.7")">
+            <span style="width:84px;height:84px;border-radius:42px;background:@(badge.Earned ? "linear-gradient(135deg,#6A4CFF,#EC4899)" : "var(--surface-2)");color:@(badge.Earned ? "#fff" : "var(--text-3)");display:flex;align-items:center;justify-content:center" aria-hidden="true"><i class="ic ic-@(badge.Earned ? badge.Icon : "lock") ic-xl"></i></span>
+            <div class="b" style="font-size:16px">@badge.Name</div>
+            <span class="k-note">@badge.Description</span>
+            @if (badge.Earned)
+            {
+                <span class="chip t-g">Đạt ngày @badge.AwardedAt!.Value.ToLocalTime().ToString("dd/MM/yyyy")</span>
+            }
+            else
+            {
+                <span class="k-note">@BadgeCriteria.Goal(badge.CriteriaType, badge.Threshold) · @Math.Min(badge.Current, badge.Threshold)/@badge.Threshold</span>
+                <div class="bar" style="width:100%" role="progressbar" aria-valuenow="@badge.Percent" aria-valuemin="0" aria-valuemax="100"><i style="width:@badge.Percent%"></i></div>
+            }
+        </div>
+    }
+</div>
+@if (Model.Badges.Count == 0)
+{
+    <div class="empty">Chưa có huy hiệu nào.</div>
+}
+</main>

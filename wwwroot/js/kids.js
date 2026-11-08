@@ -57,6 +57,7 @@ if(P==='kids-lesson-sql'){
     fetch('/kids-lesson/'+id+'/heartbeat',{method:'POST',credentials:'same-origin',headers:{'RequestVerificationToken':window.SL_CSRF||''},body:f})
       .then(function(r){return r.ok?r.json():null;}).then(function(s){if(!s)return;window.SL_KID_LEFT=s.left;paintTop();
         if(s.breakDue)UI.toast('Con nghỉ mắt 5 phút rồi học tiếp nhé!');
+        if(s.badges&&s.badges.length)UI.toast('Huy hiệu mới: '+s.badges.join(', ')+'!');
         if(s.left===5)UI.toast('Còn 5 phút nữa là hết giờ học nhé!');
         if(!s.allowed)location.href='/kids-time-up';}).catch(function(){});},30000);
 }
@@ -92,15 +93,10 @@ if(P==='kids-quiz-sql'){
   setInterval(function(){if(document.hidden||sent)return;var f=new FormData();f.append('seconds','30');
     fetch('/kids-quiz/'+attempt+'/heartbeat',{method:'POST',credentials:'same-origin',headers:{'RequestVerificationToken':window.SL_CSRF||''},body:f})
       .then(function(r){return r.ok?r.json():null;}).then(function(s){if(!s)return;window.SL_KID_LEFT=s.left;paintTop();
+        if(s.badges&&s.badges.length)UI.toast('Huy hiệu mới: '+s.badges.join(', ')+'!');
         if(s.left===5)UI.toast('Còn 5 phút nữa là hết giờ học nhé!');
         if(!s.allowed){UI.toast('Hết giờ học hôm nay, bài làm được nộp luôn.');submitNow();}}).catch(function(){});},30000);
 }
 
-/* ---------- badges ---------- */
-if(P==='kids-badges'){
-  var c=kc(),own=S.get().badges[c.id]||[],stars=S.get().stars[c.id]||0;
-  var pills=$$('main .k-pill');pills[1].innerHTML='<i class="ic ic-star"></i>'+stars+' sao';pills[2].textContent=own.length+' / '+S.BADGES.length;
-  $('main > div:last-child').innerHTML=S.BADGES.map(function(b){var on=own.indexOf(b.id)>-1;return '<div class="k-card" style="flex:1 1 200px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;'+(on?'':'opacity:.55')+'"><span style="width:84px;height:84px;border-radius:42px;background:'+(on?'linear-gradient(135deg,'+b.g[0]+','+b.g[1]+')':'var(--surface-2)')+';color:'+(on?'#fff':'var(--text-3)')+';display:flex;align-items:center;justify-content:center"><i class="ic ic-'+(on?b.icon:'lock')+' ic-xl"></i></span><div class="b" style="font-size:16px">'+b.name+'</div><span class="k-note">'+(on?'Đã đạt · ':'Cách đạt: ')+b.d+'</span></div>';}).join('');
-}
 });
 })();

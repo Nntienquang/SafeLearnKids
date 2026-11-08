@@ -1,0 +1,71 @@
+@model BadgeFormViewModel
+@{
+    var editing = Model.Id is not null;
+    ViewData["Title"] = editing ? "Sửa huy hiệu" : "Huy hiệu mới";
+    ViewData["Page"] = "admin-paths-sql";
+    ViewData["Nav"] = "paths";
+    ViewData["Crumb"] = Html.Raw("""<a href="/admin-badges">Huy hiệu</a>""");
+    ViewData["Heading"] = editing ? "Sửa huy hiệu" : "Huy hiệu mới";
+    ViewData["Sub"] = editing ? $"{Model.Code} · {Model.Awarded} bé đã nhận" : "Bé đủ điều kiện sẽ tự nhận ở lần học tiếp theo.";
+}
+<form method="post" class="sl-card acc-form" asp-action="@(editing ? "EditBadge" : "CreateBadge")" asp-route-id="@Model.Id">
+    <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+    @if (Model.Awarded > 0)
+    {
+        <div class="banner t-a"><i class="ic ic-info"></i>Đổi tiêu chí không thu hồi huy hiệu bé đã nhận.</div>
+    }
+    <section class="acc-sec">
+        @if (!editing)
+        {
+            <div class="field">
+                <label asp-for="Code" class="lab"></label>
+                <input asp-for="Code" class="inp" maxlength="40" required autocomplete="off" placeholder="VD: STREAK_7" />
+                <span asp-validation-for="Code" class="err"></span>
+            </div>
+        }
+        <div class="field">
+            <label asp-for="Name" class="lab"></label>
+            <input asp-for="Name" class="inp" maxlength="80" required autocomplete="off" />
+            <span asp-validation-for="Name" class="err"></span>
+        </div>
+        <div class="field">
+            <label asp-for="Description" class="lab"></label>
+            <input asp-for="Description" class="inp" maxlength="200" required autocomplete="off" placeholder="VD: Con đã học 7 ngày liền!" />
+            <span asp-validation-for="Description" class="err"></span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px">
+            <div class="field" style="flex:2 1 220px">
+                <label asp-for="CriteriaType" class="lab"></label>
+                <select asp-for="CriteriaType" class="inp">
+                    @foreach (var type in BadgeCriteria.All)
+                    {
+                        <option value="@type">@BadgeCriteria.Label(type)</option>
+                    }
+                </select>
+                <span asp-validation-for="CriteriaType" class="err"></span>
+            </div>
+            <div class="field" style="flex:1 1 140px">
+                <label asp-for="Threshold" class="lab"></label>
+                <input asp-for="Threshold" class="inp" type="number" min="1" max="100000" required />
+                <span asp-validation-for="Threshold" class="err"></span>
+            </div>
+        </div>
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+            <legend class="lab" style="margin-bottom:6px">Biểu tượng</legend>
+            <div class="sl-row" style="gap:8px;flex-wrap:wrap">
+                @foreach (var icon in BadgeCriteria.Icons)
+                {
+                    <label class="sl-row" style="gap:6px;padding:8px 12px;border-radius:12px;border:1px solid var(--line)">
+                        <input type="radio" name="IconKey" value="@icon" checked="@(Model.IconKey == icon)" required /><i class="ic ic-@icon" aria-hidden="true"></i><span class="sr-only">@icon</span>
+                    </label>
+                }
+            </div>
+            <span asp-validation-for="IconKey" class="err"></span>
+        </fieldset>
+        <label class="sl-row" style="gap:10px"><input asp-for="IsActive" type="checkbox" /><span>Đang dùng</span></label>
+    </section>
+    <div class="acc-foot">
+        <a class="sl-btn" asp-action="Badges">Hủy</a>
+        <button class="sl-btn sl-btn-p" type="submit">@(editing ? "Lưu huy hiệu" : "Thêm huy hiệu")</button>
+    </div>
+</form>

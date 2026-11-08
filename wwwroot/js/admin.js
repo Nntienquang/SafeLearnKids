@@ -27,7 +27,7 @@ if(P==='admin-questions-sql'){
 }
 
 /* Forms marked data-confirm ask before posting. */
-if(P==='admin-users'||P==='admin-catalog-sql'||P==='admin-lesson-sql'||P==='admin-curate-sql'||P==='admin-reports-sql'||P==='admin-questions-sql'){
+if(P==='admin-users'||P==='admin-catalog-sql'||P==='admin-lesson-sql'||P==='admin-curate-sql'||P==='admin-reports-sql'||P==='admin-questions-sql'||P==='admin-paths-sql'){
   document.addEventListener('submit',function(e){var f=e.target;if(!f.dataset.confirm||f.dataset.confirmed)return;e.preventDefault();
     UI.confirm({title:f.dataset.confirm,text:f.dataset.text,ok:f.dataset.okLabel,danger:f.dataset.danger==='true',icon:'lock'}).then(function(ok){if(!ok)return;f.dataset.confirmed='1';f.submit();});});
 }

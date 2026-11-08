@@ -131,19 +131,6 @@ if(P==='pin'){
   var kidsSw=$('.switch');if(kidsSw)kidsSw.addEventListener('kl:switch',function(){UI.toast(kidsSw.classList.contains('on')?'Đã bật chế độ trẻ':'Đã tắt chế độ trẻ');});
 }
 
-/* ---------------- progress ---------------- */
-if(P==='progress'){
-  var sg=$('.head .seg');sg.innerHTML=S.get().children.map(function(x){return '<span class="'+(x.id===c.id?'on':'')+'" data-c="'+x.id+'">'+esc(x.name)+'</span>';}).join('');
-  sg.addEventListener('kl:select',function(e){S.set(function(s){s.parentChild=e.detail.dataset.c;});location.reload();});
-  var k=$$('.kpi'),d=doneCount(c),tot=S.LESSONS.filter(function(l){return l.cls===c.cls;}).length;
-  k[0].querySelector('.kpi-v').textContent=d+' / '+S.LESSONS.length;k[0].querySelector('.bar i').style.width=Math.round(d*100/S.LESSONS.length)+'%';k[0].querySelector('.kpi-d').textContent=Math.round(d*100/S.LESSONS.length)+'% chương trình';
-  var sc=Object.keys(S.get().progress[c.id]||{}).map(function(i){return S.get().progress[c.id][i].score;}).filter(function(v){return v!=null;});k[1].querySelector('.kpi-v').textContent=sc.length?(sc.reduce(function(a,b){return a+b;},0)/sc.length).toFixed(1).replace('.',','):'–';
-  k[2].querySelector('.kpi-v').textContent=(S.get().streak[c.id]||0)+' ngày';k[3].querySelector('.kpi-v').textContent=((S.get().badges[c.id]||[]).length)+' / '+S.BADGES.length;
-  var path=S.PATH.toan,cc=$('.card-t');var pc=$$('.sl-card').filter(function(x){return /Lộ trình/.test(x.textContent);})[0];
-  if(pc){var cur=0;path.forEach(function(id,i){if(S.prog(c.id,id).done)cur=i+1;});pc.querySelector('.chip').textContent='Bước '+Math.min(cur+1,path.length)+' / '+path.length;
-    var nodes=$$('.sl-col[style*="width:120px"]',pc);nodes.forEach(function(nd,i){var done=S.prog(c.id,path[i]).done,now=i===cur,av=nd.querySelector('.av');av.style.background=done?'var(--green)':now?'var(--primary)':'var(--surface-2)';av.style.color=done||now?'#fff':'var(--text-3)';av.style.boxShadow=now?'0 0 0 6px var(--primary-soft)':'none';av.firstChild.className='ic ic-'+(done?'check':now?'play':'lock');nd.querySelector('span.b').textContent=S.lesson(path[i]).title;});}
-}
-
 /* ---------------- weekly ---------------- */
 if(P==='weekly'){
   UI.on(UI.byText('.head button','Tải PDF'),function(){UI.toast('Mở hộp thoại in: chọn "Lưu dưới dạng PDF"');setTimeout(function(){window.print();},400);});

@@ -1,0 +1,47 @@
+@model KidReviewViewModel
+@{
+    ViewData["Title"] = """Ôn lại câu chưa đúng""";
+    ViewData["Page"] = "kids-review-sql";
+    var checkedId = TempData["ReviewId"] as int?;
+    var right = TempData["ReviewRight"] as bool? == true;
+}
+<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px">
+<div class="sl-row" style="gap:14px;flex-wrap:wrap">
+    <a class="k-pill" href="/kids-home"><i class="ic ic-arrowl"></i>Quay lại</a>
+    <h1 class="kf grow" style="font-size:36px;margin:0">Ôn lại câu chưa đúng</h1>
+</div>
+<p class="k-note" style="margin:0">Đây là những câu lần gần nhất con chưa làm đúng. Con chọn lại đáp án để kiểm tra, rồi làm lại bài tập để xóa câu khỏi danh sách nhé.</p>
+<div class="sl-col" style="gap:16px;max-width:960px;width:100%;align-self:center">
+    @foreach (var question in Model.Questions)
+    {
+        var mine = checkedId == question.QuestionId;
+        <article class="k-card" id="r@(question.QuestionId)" style="display:flex;flex-direction:column;gap:14px">
+            <span class="k-note">@question.Quiz · @question.Lesson</span>
+            <div class="kf" style="font-size:24px" id="rq-@question.QuestionId">@question.Text</div>
+            @if (mine)
+            {
+                <div class="banner @(right ? "t-g" : "t-r")" role="status" style="font-weight:700"><i class="ic ic-@(right ? "checkc" : "x")"></i>@(right ? "Đúng rồi! " : "Chưa đúng, con thử lại nhé. ")@(right ? question.Explanation : "")</div>
+            }
+            <form asp-action="CheckReview" asp-route-questionId="@question.QuestionId" method="post" class="sl-col" style="gap:12px">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px" role="radiogroup" aria-labelledby="rq-@question.QuestionId">
+                    @foreach (var option in question.Options)
+                    {
+                        <label class="k-opt" style="font-size:20px;min-height:60px">
+                            <input type="radio" name="option" value="@option.Id" required />
+                            <span>@option.Text</span>
+                        </label>
+                    }
+                </div>
+                <div class="sl-row" style="gap:10px;flex-wrap:wrap">
+                    <button class="k-btn" type="submit"><i class="ic ic-check"></i>Kiểm tra</button>
+                    <a class="sl-btn sl-btn-lg" href="/kids-quiz?id=@question.QuizId"><i class="ic ic-refresh"></i>Làm lại bài tập</a>
+                </div>
+            </form>
+        </article>
+    }
+    @if (Model.Questions.Count == 0)
+    {
+        <div class="empty"><div class="b" style="font-size:16px;color:var(--text-2)">Con không còn câu nào cần ôn. Giỏi lắm!</div></div>
+    }
+</div>
+</main>

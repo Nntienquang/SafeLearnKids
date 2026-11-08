@@ -56,7 +56,11 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
             Favorites = await Cards(db, kid, openable.Where(lesson => lesson.Favorites.Any(item => item.ChildProfileId == kid.Id))).ToListAsync(cancellationToken),
             Quizzes = (await QuizService.Cards(QuizService.Playable(db, kid).Where(quiz => quiz.Assignments.Any(item => item.ChildProfileId == kid.Id
                     && (item.Status == AssignmentStatus.Assigned || item.Status == AssignmentStatus.InProgress))), kid.Id).ToListAsync(cancellationToken))
-                .OrderBy(card => card.DueDate ?? DateOnly.MaxValue).ToList()
+                .OrderBy(card => card.DueDate ?? DateOnly.MaxValue).ToList(),
+            Streak = await ProgressService.StreakAsync(db, kid.Id, cancellationToken),
+            Week = await ProgressService.WeekAsync(db, kid.Id, ProgressService.WeekStart(StudyTimeService.Today), cancellationToken),
+            Paths = (await ProgressService.PathsAsync(db, kid.Id, followedOnly: true, cancellationToken)).Where(path => path.Status != PathStatus.Completed).ToList(),
+            ReviewCount = (await ProgressService.ReviewAsync(db, kid.Id, cancellationToken)).Count
         });
     }
 
@@ -158,6 +162,7 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
         }
         await db.SaveChangesAsync(cancellationToken);
         TempData["Kid"] = first ? "Giỏi lắm! Con đã học xong bài này." : "Con đã học xong bài này rồi.";
+        await AfterStudyAsync(db, kid, cancellationToken);
         return RedirectToAction(nameof(Lesson), new { id });
     }
 
@@ -198,7 +203,8 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
         var breakDue = await StudyTimeService.AddAsync(db, kid.Id, seconds, cancellationToken);
         var status = await StudyTimeService.StatusAsync(db, kid.Id, cancellationToken);
         if (!status.Allowed) await StudyTimeService.EndSessionAsync(db, kid.Id, "TimeUp", cancellationToken);
-        return Json(new { left = status.RemainingMinutes, allowed = status.Allowed, breakDue });
+        var badges = seconds > 0 ? await ProgressService.AfterStudyAsync(db, kid.Id, ParentId, kid.Name, cancellationToken) : [];
+        return Json(new { left = status.RemainingMinutes, allowed = status.Allowed, breakDue, badges });
     }
 
     [HttpPost("kids-lesson/{id:int}/report")]
@@ -323,7 +329,9 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
         {
             // A double tap submitted the same sheet a moment earlier; any other failure is not hidden.
             if (!await SubmittedAsync(db, attemptId, cancellationToken)) throw;
+            return RedirectToAction(nameof(Result), new { id = attemptId });
         }
+        await AfterStudyAsync(db, kid, cancellationToken);
         return RedirectToAction(nameof(Result), new { id = attemptId });
     }
 
@@ -337,7 +345,8 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
         var breakDue = await StudyTimeService.AddAsync(db, kid.Id, seconds, cancellationToken);
         var status = await StudyTimeService.StatusAsync(db, kid.Id, cancellationToken);
         if (!status.Allowed) await StudyTimeService.EndSessionAsync(db, kid.Id, "TimeUp", cancellationToken);
-        return Json(new { left = status.RemainingMinutes, allowed = status.Allowed, breakDue });
+        var badges = seconds > 0 ? await ProgressService.AfterStudyAsync(db, kid.Id, ParentId, kid.Name, cancellationToken) : [];
+        return Json(new { left = status.RemainingMinutes, allowed = status.Allowed, breakDue, badges });
     }
 
     // US-39: the child's own result with the right answers and explanations.
@@ -407,13 +416,59 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
         return RedirectToAction(nameof(TimeUp));
     }
 
+    // US-43/44: earned and upcoming badges with how far the child is, plus the streak.
     [HttpGet("kids-badges")]
-    public IActionResult Badges() => View();
+    public async Task<IActionResult> Badges(CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        if (await KidAsync(cancellationToken) is not { } kid) return RedirectToAction(nameof(Picker));
+        if (await GateAsync(db, kid, cancellationToken) is { } stop) return stop;
+        return View(new KidBadgesViewModel
+        {
+            Kid = kid,
+            Badges = await ProgressService.BadgesAsync(db, kid.Id, cancellationToken),
+            Streak = await ProgressService.StreakAsync(db, kid.Id, cancellationToken),
+            Stars = await ProgressService.StarsAsync(db, kid.Id, cancellationToken)
+        });
+    }
+
+    // US-46: questions the child got wrong the last time, with the right answer one tap away.
+    [HttpGet("kids-review")]
+    public async Task<IActionResult> Review(CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        if (await KidAsync(cancellationToken) is not { } kid) return RedirectToAction(nameof(Picker));
+        if (await GateAsync(db, kid, cancellationToken) is { } stop) return stop;
+        return View(new KidReviewViewModel { Kid = kid, Questions = await ProgressService.ReviewAsync(db, kid.Id, cancellationToken) });
+    }
+
+    // Practice only: the answer is checked on the server and explained, nothing is scored. Retaking the quiz updates the list.
+    [HttpPost("kids-review/{questionId:int}")]
+    public async Task<IActionResult> CheckReview(int questionId, [FromForm] int? option, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        if (await KidAsync(cancellationToken) is not { } kid) return RedirectToAction(nameof(Picker));
+        if (await GateAsync(db, kid, cancellationToken) is { } stop) return stop;
+        if (!(await ProgressService.ReviewAsync(db, kid.Id, cancellationToken)).Any(item => item.QuestionId == questionId)) return NotFound();
+        var right = option is { } id && await db.QuestionOptions.AnyAsync(item => item.Id == id && item.QuestionId == questionId && item.IsCorrect, cancellationToken);
+        TempData["ReviewId"] = questionId;
+        TempData["ReviewRight"] = right;
+        return Redirect(Url.Action(nameof(Review)) + $"#r{questionId}");
+    }
 
     private static async Task<bool> SubmittedAsync(SafeLearnDbContext db, long attemptId, CancellationToken cancellationToken)
     {
         db.ChangeTracker.Clear();
         return await db.QuizAttempts.AnyAsync(item => item.Id == attemptId && item.SubmittedAt != null, cancellationToken);
+    }
+
+    private string ParentId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+    // Streak, subject progress, paths and badges after the child finished something; new badges are celebrated on the next page.
+    private async Task AfterStudyAsync(SafeLearnDbContext db, KidInfo kid, CancellationToken cancellationToken)
+    {
+        var badges = await ProgressService.AfterStudyAsync(db, kid.Id, ParentId, kid.Name, cancellationToken);
+        if (badges.Count > 0) TempData["Badge"] = "Huy hiệu mới: " + string.Join(", ", badges) + "!";
     }
 
     // The first submitted attempt of an assigned quiz completes the assignment and tells the parent the score.

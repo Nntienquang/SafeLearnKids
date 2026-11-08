@@ -20,6 +20,10 @@
 {
     <div class="banner t-g" role="status" style="font-weight:700;font-size:16px"><i class="ic ic-trophy"></i>@praise</div>
 }
+@if (TempData["Badge"] is string badge)
+{
+    <a class="banner t-p" role="status" href="/kids-badges" style="font-weight:700;font-size:16px"><i class="ic ic-trophy"></i>@badge</a>
+}
 <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
     <div class="sl-col" style="flex:2 1 560px;min-width:0;gap:16px">
         @for (var i = 0; i < total; i++)

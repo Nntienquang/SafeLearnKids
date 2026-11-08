@@ -5,6 +5,7 @@ Build first. Removes only the subject, lessons, video, children, reports and acc
 """
 
 from datetime import datetime, timedelta
+from html import unescape
 import importlib.util
 import json
 from pathlib import Path
@@ -144,7 +145,8 @@ def checks(url, directory):
         check(sql(f"SELECT COUNT(*) FROM dbo.TimeExtensionRequests WHERE ChildProfileId={kid};") == "1", "only one request waits at a time")
         request = sql(f"SELECT Id FROM dbo.TimeExtensionRequests WHERE ChildProfileId={kid};")
         body = parent.request(time_page, raw=True)[2]
-        stale = re.search(rf'/time/requests/{request}"[^>]*>\s*<input type="hidden" name="decision" value="approve" /><input type="hidden" name="rowVersion" value="([^"]+)"', body).group(1)
+        # The page is read raw, so the base64 row version still carries HTML entities such as &#x2B; for '+'.
+        stale = unescape(re.search(rf'/time/requests/{request}"[^>]*>\s*<input type="hidden" name="decision" value="approve" /><input type="hidden" name="rowVersion" value="([^"]+)"', body).group(1))
         check(form(other, "/time", f"/time/requests/{request}", [("decision", "approve"), ("minutes", "15")])[0] == 404, "another family cannot answer the request")
         form(parent, time_page, f"/time/requests/{request}", [("decision", "approve"), ("minutes", "20"), ("rowVersion", stale)])
         check(sql(f"SELECT Status FROM dbo.TimeExtensionRequests WHERE Id={request};") == "Pending", "a parent cannot grant more than was asked")
