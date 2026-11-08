@@ -1,5 +1,6 @@
 @inject SafeLearnKids.Web.Services.ChildProfileService ChildProfiles
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@inject SafeLearnKids.Web.Services.ParentSettings Settings
 @{
     var area = ViewData["Area"] as string ?? "public";
     var isKids = area == "kids";
@@ -8,6 +9,16 @@
         ? await ChildProfiles.ForParentAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value, Context.RequestAborted)
         : null;
     var subjects = children is null ? null : await ChildProfiles.SubjectsAsync(Context.RequestAborted);
+    var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var saved = userId is null ? null : await Settings.FindAsync(userId, Context.RequestAborted);
+    var unread = 0;
+    var openReports = 0;
+    if (userId is not null && Context.RequestServices.GetService(typeof(SafeLearnKids.Web.Data.SafeLearnDbContext)) is SafeLearnKids.Web.Data.SafeLearnDbContext db)
+    {
+        // Sidebar badges: the parent's unread notifications, the admins' open content reports.
+        if (children is not null) unread = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.Notifications.Where(item => item.UserId == userId && !item.IsRead), Context.RequestAborted);
+        if (User.IsInRole("Admin")) openReports = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.ContentReports.Where(item => item.Status == "Open" || item.Status == "InReview"), Context.RequestAborted);
+    }
 }
 <!DOCTYPE html>
 <html lang="vi" data-bs-theme="light">
@@ -41,6 +52,12 @@
             role = User.IsInRole("Admin") ? "admin" : "parent",
             demo = string.Equals(User.Identity!.Name, "ha.nguyen@gmail.com", StringComparison.OrdinalIgnoreCase)
         }));
+        window.SL_UNREAD = @unread;
+        window.SL_OPEN_REPORTS = @openReports;
+        @if (saved is not null)
+        {
+            <text>window.SL_THEME = "@SafeLearnKids.Web.Models.ThemeChoice.Client(saved.Theme)";</text>
+        }
         @if (children is not null)
         {
             <text>window.SL_CHILDREN = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(children, System.Text.Json.JsonSerializerOptions.Web));

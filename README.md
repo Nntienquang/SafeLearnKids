@@ -71,7 +71,7 @@ Môi trường khác dùng biến `YouTube__ApiKey`. Key không được ghi và
 
 ## Trang học của bé (Sprint 4)
 
-Bé không có tài khoản riêng: phụ huynh đăng nhập, bấm **Chế độ trẻ**, chọn bé. Lựa chọn lưu trong cookie `.SafeLearnKids.Kid` và mỗi request đều kiểm tra bé thuộc phụ huynh đang đăng nhập; quay về màn hình chọn bé là xóa cookie. Bé chỉ mở được bài đã xuất bản thuộc môn đang dùng, và (a) đúng lớp và môn ba mẹ chọn cho bé, hoặc (b) được giao riêng. Video theo cùng quy tắc với thư viện (video và nguồn được duyệt, gia đình không chặn nguồn).
+Bé không có tài khoản riêng: phụ huynh đăng nhập, bấm **Chế độ trẻ**, chọn bé. Lựa chọn lưu trong cookie `.SafeLearnKids.Kid` và mỗi request đều kiểm tra bé thuộc phụ huynh đang đăng nhập. Đổi bé ở màn hình chọn bé vẫn giữ chế độ trẻ; chỉ màn hình PIN (`/kids-exit`) mới kết thúc chế độ trẻ (xem Sprint 8). Bé chỉ mở được bài đã xuất bản thuộc môn đang dùng, và (a) đúng lớp và môn ba mẹ chọn cho bé, hoặc (b) được giao riêng. Video theo cùng quy tắc với thư viện (video và nguồn được duyệt, gia đình không chặn nguồn).
 
 - Phụ huynh giao bài ở `/lesson-detail/{id}`: chọn bé, hạn (từ hôm nay đến 1 năm), lời nhắn; mỗi bé chỉ có một bài giao đang mở cho mỗi bài học; hủy được (`dbo.Assignments`).
 - `/kids-home`: bài ba mẹ giao, "Học tiếp", các môn của bé kèm số bài đã xong, bài yêu thích.
@@ -138,6 +138,47 @@ Mọi số liệu được tính lại trên server mỗi khi bé học: mỗi 3
   - Phụ huynh thấy số câu cần ôn, cùng các bài tập chưa đạt, ở mục "Cần chú ý".
 
 Kiểm thử: `py scripts\smoke-progress.py` sau khi build.
+
+## Báo cáo, thống kê, thông báo và dữ liệu (Sprint 8)
+
+- **Báo cáo tuần (US-47)**, `/weekly`: theo từng bé và từng tuần (thứ Hai đến Chủ nhật, 12 tuần gần nhất).
+  - Gồm số phút mỗi ngày, số bài hoàn thành, số lượt và điểm bài tập, chia theo môn, môn làm tốt nhất, môn cần ôn, huy hiệu mới, mục tiêu tuần.
+  - Tuần đã qua được lưu vào `dbo.WeeklyReports`; tuần hiện tại tính trực tiếp.
+  - Có nút In / lưu PDF (dùng hộp thoại in của trình duyệt) và xuất CSV các tuần.
+- **Job chạy nền** (`Services/DailyJobs.cs`, cấu hình mục `Jobs`; mặc định chạy mỗi 60 phút, lượt đầu sau 20 giây):
+  - Tạo báo cáo tuần trước cho mọi bé chưa có báo cáo, gửi thông báo `WeeklyReport` cho phụ huynh.
+  - Gửi email báo cáo nếu phụ huynh bật "Gửi báo cáo tuần qua email" và email đã xác minh.
+  - Chụp số liệu từng ngày (30 ngày gần nhất) vào `dbo.SystemMetricsDaily`.
+  - Mỗi bước chỉ điền phần còn thiếu, nên chạy lại hoặc chạy nhiều bản app cùng lúc đều an toàn.
+  - Lần đầu chạy app bản mới, job sẽ tự điền báo cáo tuần trước và số liệu 30 ngày cho dữ liệu đang có.
+- **Tổng quan Admin (US-48)**, `/admin-home`:
+  - Số phụ huynh, số bé, số bé học trong 7 ngày, số phút và số bài hôm nay, số bài và video đang có.
+  - Biểu đồ 14 ngày: ngày cũ lấy từ `SystemMetricsDaily`, hôm nay tính trực tiếp.
+  - "Việc cần làm": báo cáo nội dung, nguồn và video chờ duyệt, câu hỏi gợi ý, yêu cầu xóa dữ liệu, đăng nhập thất bại trong 24 giờ.
+- **Thống kê nội dung (US-49)**, `/admin-stats` (7, 30 hoặc 90 ngày):
+  - Theo môn; bài học nhiều bé học (tỉ lệ hoàn thành, phút xem, yêu thích, báo cáo).
+  - Bài tập (lượt làm, điểm trung bình, tỉ lệ đạt); câu hỏi hay bị làm sai.
+  - Từ khóa bé tìm, kể cả từ khóa bị chặn và từ khóa không có kết quả.
+  - Chỉ hiện số liệu tổng, không hiện bé cụ thể. Xuất CSV bài học.
+- **Thông báo và cài đặt (US-50)**:
+  - `/notifications`: lọc chưa đọc, mở thông báo (đánh dấu đã đọc rồi đi tới link; chỉ đi tới link trong trang), đánh dấu đọc tất cả, xóa. Số chưa đọc trên sidebar và chuông lấy từ server.
+  - `/settings`: giao diện (sáng, tối, theo máy), bật/tắt thông báo xin thêm giờ và báo cáo nội dung, email báo cáo tuần (`dbo.UserSettings`), lịch sử đăng nhập của chính mình.
+  - **PIN và khóa chế độ trẻ**:
+    - `/pin` đặt hoặc đổi PIN 4 số, cần mật khẩu tài khoản. PIN lưu dạng băm trong `UserSettings.ParentPinHash` (PasswordHasher của Identity), không còn lưu trong trình duyệt.
+    - Khi đang ở chế độ trẻ, server chặn mọi trang của khu phụ huynh: GET quay về `/kids-home`, POST bị từ chối 403. Gõ địa chỉ trực tiếp cũng không vào được.
+    - Thoát ở `/kids-exit` bằng PIN, hoặc bằng mật khẩu tài khoản khi chưa đặt PIN hay quên PIN. Sai 5 lần thì khóa 5 phút.
+- **Nhật ký (US-51)**, `/admin-audit`:
+  - Tab Thao tác (`dbo.AuditLogs`): lọc theo người thực hiện, loại thao tác, khoảng ngày.
+  - Tab Đăng nhập (`dbo.LoginHistories`): lọc theo email/IP, thành công/thất bại.
+  - Phân trang, xuất CSV (tối đa 5000 dòng).
+- **Dữ liệu của bé (US-52)**:
+  - `/privacy`: tải toàn bộ dữ liệu của bé dạng JSON (hồ sơ, bài học, bài tập và câu trả lời, giờ học, tìm kiếm, báo cáo, huy hiệu, lộ trình, mục tiêu, báo cáo tuần). Mỗi lần tải được ghi vào `dbo.DataRequests`.
+  - Phụ huynh gửi yêu cầu xóa (gõ tên bé để xác nhận) và có thể hủy khi chưa được xử lý.
+  - `/admin-data-requests`: Admin xóa hồ sơ (SQL xóa theo dây chuyền toàn bộ dữ liệu học của bé), hoặc từ chối kèm lý do. Phụ huynh nhận thông báo; thao tác được ghi nhật ký.
+
+Kiểm thử: `py scripts\smoke-reports.py` sau khi build. Test này bật job chạy mỗi phút và chạy khoảng 3–4 phút.
+
+Các test khác tắt job (`Jobs__Enabled=false` trong `smoke-sql-auth.py`). Vì server khóa trang phụ huynh khi đang ở chế độ trẻ, các test dùng `smoke.Devices`: đường dẫn `/kids-…` gửi từ "máy của bé", các trang khác gửi từ "máy của ba mẹ".
 
 ## Email xác minh và khôi phục
 

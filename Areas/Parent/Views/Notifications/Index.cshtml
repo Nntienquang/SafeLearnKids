@@ -1,13 +1,52 @@
+@model NotificationsViewModel
 @{
     ViewData["Title"] = """Thông báo""";
-    ViewData["Page"] = "notifications";
+    ViewData["Page"] = "notifications-sql";
     ViewData["Nav"] = "notifications";
     ViewData["Crumb"] = Html.Raw("""Phụ huynh · Tài khoản""");
     ViewData["Heading"] = """Thông báo""";
-    ViewData["Sub"] = """Việc cần ba mẹ xử lý và cập nhật về việc học.""";
+    ViewData["Sub"] = $"{Model.Unread} thông báo chưa đọc. Chọn loại muốn nhận ở Cài đặt (US-50).";
 }
 @section Actions {
-<button class="sl-btn" type="button"><i class="ic ic-check"></i>Đánh dấu đã đọc</button>
+<div class="sl-row" style="gap:8px;flex-wrap:wrap">
+    <a class="sl-btn sl-btn-sm @(Model.UnreadOnly ? "" : "sl-btn-p")" asp-action="Index">Tất cả</a>
+    <a class="sl-btn sl-btn-sm @(Model.UnreadOnly ? "sl-btn-p" : "")" asp-action="Index" asp-route-unread="true">Chưa đọc (@Model.Unread)</a>
+    <form asp-action="ReadAll" method="post"><button class="sl-btn sl-btn-sm" type="submit"><i class="ic ic-check"></i>Đánh dấu đã đọc</button></form>
+    <a class="sl-btn sl-btn-sm" href="/settings"><i class="ic ic-sliders"></i>Cài đặt</a>
+</div>
 }
-<div class="tabs" style="margin-bottom:16px"><span class="on">Tất cả (3 mới)</span><span>Cần xử lý</span><span>Báo cáo</span></div>
-<div class="sl-card" style="padding:0;overflow:hidden"><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);background:var(--primary-soft)"><span class="ib t-a"><i class="ic ic-clock"></i></span><div class="grow"><div class="b">Minh An xin thêm 15 phút</div><div class="muted" style="font-size:13px">Chờ ba mẹ duyệt</div></div><span class="muted" style="font-size:12.5px">19:40</span></div><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);background:var(--primary-soft)"><span class="ib t-r"><i class="ic ic-flag"></i></span><div class="grow"><div class="b">Báo cáo nội dung mới</div><div class="muted" style="font-size:13px">Vòng đời của bướm · có quảng cáo lạ</div></div><span class="muted" style="font-size:12.5px">Hôm qua</span></div><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);background:var(--primary-soft)"><span class="ib t-v"><i class="ic ic-file"></i></span><div class="grow"><div class="b">Báo cáo tuần đã sẵn sàng</div><div class="muted" style="font-size:13px">Tuần 12 – 18/10</div></div><span class="muted" style="font-size:12.5px">CN</span></div><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);"><span class="ib t-g"><i class="ic ic-trophy"></i></span><div class="grow"><div class="b">Minh An nhận huy hiệu</div><div class="muted" style="font-size:13px">Siêu chăm chỉ · 5 ngày liên tiếp</div></div><span class="muted" style="font-size:12.5px">T6</span></div><div class="sl-row" style="gap:14px;padding:16px 18px;border-top:1px solid var(--line);"><span class="ib t-b"><i class="ic ic-checkc"></i></span><div class="grow"><div class="b">Nguồn mới được duyệt</div><div class="muted" style="font-size:13px">Tiếng Việt lớp 3 · 24 bài</div></div><span class="muted" style="font-size:12.5px">T5</span></div></div>
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+<div class="sl-card">
+    @foreach (var row in Model.Rows)
+    {
+        <div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+            <span class="ib @NotificationKind.Tone(row.Type)" aria-hidden="true"><i class="ic ic-@NotificationKind.Icon(row.Type)"></i></span>
+            <div class="grow" style="min-width:200px">
+                <div class="b">@if (!row.IsRead) {<span class="sr-only">Chưa đọc: </span><i style="display:inline-block;width:8px;height:8px;border-radius:4px;background:var(--primary);margin-right:6px" aria-hidden="true"></i>}@row.Title</div>
+                @if (row.Body is not null)
+                {
+                    <div style="font-size:13.5px;margin-top:2px">@row.Body</div>
+                }
+                <div class="muted" style="font-size:12px;margin-top:2px">@NotificationKind.Label(row.Type) · @row.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+            </div>
+            <form asp-action="Open" asp-route-id="@row.Id" method="post"><button class="sl-btn sl-btn-sm @(row.IsRead ? "" : "sl-btn-p")" type="submit">@(row.Link is null ? "Đã đọc" : "Xem")</button></form>
+            <form asp-action="Delete" asp-route-id="@row.Id" method="post"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Xóa thông báo @row.Title"><i class="ic ic-trash"></i></button></form>
+        </div>
+    }
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="empty">@(Model.UnreadOnly ? "Không có thông báo chưa đọc." : "Chưa có thông báo nào.")</div>
+    }
+</div>
+@if (Model.TotalPages > 1)
+{
+    <nav class="sl-row" style="gap:8px;justify-content:center;margin-top:16px" aria-label="Phân trang">
+        @for (var p = 1; p <= Model.TotalPages; p++)
+        {
+            <a class="sl-btn sl-btn-sm @(p == Model.Page ? "sl-btn-p" : "")" asp-action="Index" asp-route-page="@p" asp-route-unread="@(Model.UnreadOnly ? "true" : null)" aria-current="@(p == Model.Page ? "page" : null)">@p</a>
+        }
+    </nav>
+}

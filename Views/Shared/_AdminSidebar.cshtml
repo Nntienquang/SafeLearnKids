@@ -5,6 +5,7 @@
 <aside class="side">
     <div class="brand"><div class="brand-mark"><i class="ic ic-grad"></i></div><div><div class="brand-name">SafeLearn Kids</div><div class="brand-sub">Quản trị viên</div></div></div>
     <a class="sl-nav @(nav == "home" ? "on" : "")" href="~/admin-home"><i class="ic ic-home"></i>Tổng quan</a>
+    <a class="sl-nav @(nav == "stats" ? "on" : "")" href="~/admin-stats"><i class="ic ic-chart"></i>Thống kê nội dung</a>
     <div class="side-l">Nội dung</div>
     <a class="sl-nav @(nav == "catalog" ? "on" : "")" href="~/admin-catalog"><i class="ic ic-layers"></i>Môn học và bài học</a>
     <a class="sl-nav @(nav == "lesson" ? "on" : "")" href="~/admin-lesson"><i class="ic ic-pen"></i>Soạn bài học</a>
@@ -15,7 +16,8 @@
     <div class="side-l">Vận hành</div>
     <a class="sl-nav @(nav == "reports" ? "on" : "")" href="~/admin-reports"><i class="ic ic-flag"></i>Báo cáo nội dung<span class="sl-badge hidden">0</span></a>
     <a class="sl-nav @(nav == "users" ? "on" : "")" href="~/admin-users"><i class="ic ic-users"></i>Người dùng</a>
-    <a class="sl-nav @(nav == "audit" ? "on" : "")" href="~/admin-audit"><i class="ic ic-history"></i>Nhật ký xử lý</a>
+    <a class="sl-nav @(nav == "data" ? "on" : "")" href="~/admin-data-requests"><i class="ic ic-shield"></i>Yêu cầu dữ liệu</a>
+    <a class="sl-nav @(nav == "audit" ? "on" : "")" href="~/admin-audit"><i class="ic ic-history"></i>Nhật ký</a>
     <div class="side-foot">
         <form asp-area="" asp-controller="Account" asp-action="Logout" method="post"><button type="submit" class="sl-btn sl-btn-g" style="justify-content:flex-start;width:100%"><i class="ic ic-logout"></i>Đăng xuất</button></form>
         <div class="who"><partial name="_Avatar" model="@(new AvatarViewModel(User.FindFirst("AvatarUrl")?.Value, fullName, "av-s", "#0F766E"))" /><div style="flex:1;min-width:0"><div class="b" style="font-size:13.5px">@fullName</div><div class="muted" style="font-size:12px">@User.Identity?.Name</div></div></div>

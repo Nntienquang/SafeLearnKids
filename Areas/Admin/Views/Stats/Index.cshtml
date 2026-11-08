@@ -1,0 +1,114 @@
+@model ContentStatsViewModel
+@{
+    ViewData["Title"] = """Thống kê nội dung""";
+    ViewData["Page"] = "admin-stats-sql";
+    ViewData["Nav"] = "stats";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Tổng quan""");
+    ViewData["Heading"] = """Thống kê nội dung""";
+    ViewData["Sub"] = $"Bài học, bài tập và tìm kiếm trong {Model.Days} ngày qua. Chỉ hiện số liệu tổng, không hiện bé cụ thể (US-49).";
+    var maxLearners = Math.Max(1, Model.Subjects.Count == 0 ? 1 : Model.Subjects.Max(row => row.Learners));
+}
+@section Actions {
+<div class="sl-row" style="gap:8px;flex-wrap:wrap">
+    @foreach (var range in new[] { 7, 30, 90 })
+    {
+        <a class="sl-btn sl-btn-sm @(Model.Days == range ? "sl-btn-p" : "")" asp-action="Index" asp-route-days="@range">@range ngày</a>
+    }
+    <a class="sl-btn sl-btn-sm" asp-action="Export" asp-route-days="@Model.Days"><i class="ic ic-download"></i>CSV bài học</a>
+</div>
+}
+<div class="sl-card">
+    <div class="card-t" style="margin-bottom:12px">Theo môn</div>
+    @foreach (var row in Model.Subjects)
+    {
+        <div class="sl-row" style="gap:12px;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+            <span class="b" style="width:140px">@row.Name</span>
+            <div class="grow" style="min-width:140px"><div class="bar"><i style="width:@(row.Learners * 100 / maxLearners)%"></i></div></div>
+            <span style="width:90px;text-align:right">@row.Learners bé học</span>
+            <span class="muted" style="width:200px;text-align:right;font-size:12.5px">@row.Completed lượt hoàn thành · @row.Minutes phút · @row.Lessons bài</span>
+        </div>
+    }
+</div>
+<div class="sl-card" style="margin-top:16px;padding:6px 0;overflow-x:auto">
+    <div class="card-t" style="padding:12px 18px 0">Bài học được học nhiều nhất</div>
+    <table class="tbl">
+        <thead><tr><th>Bài học</th><th>Bé học</th><th>Hoàn thành</th><th>Phút xem</th><th>Yêu thích</th><th>Báo cáo</th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.Lessons)
+            {
+                <tr>
+                    <td><a class="b" href="/admin-lesson/@row.Id">@row.Title</a><div class="muted" style="font-size:12px">@row.Subject · Lớp @row.Grade</div></td>
+                    <td>@row.Learners</td>
+                    <td>@row.Completed <span class="muted" style="font-size:12px">(@row.CompletionRate%)</span></td>
+                    <td>@row.WatchMinutes</td>
+                    <td>@row.Favorites</td>
+                    <td>@if (row.Reports > 0) {<span class="chip t-r">@row.Reports</span>} else {<span class="muted">0</span>}</td>
+                </tr>
+            }
+            @if (Model.Lessons.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty">Chưa có bài học đã xuất bản.</div></td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;align-items:flex-start">
+    <div class="sl-card" style="flex:1 1 420px;min-width:0;padding:6px 0;overflow-x:auto">
+        <div class="card-t" style="padding:12px 18px 0">Bài tập</div>
+        <table class="tbl">
+            <thead><tr><th>Bài tập</th><th>Lượt làm</th><th>Số bé</th><th>Điểm TB</th><th>Đạt</th></tr></thead>
+            <tbody>
+                @foreach (var row in Model.Quizzes)
+                {
+                    <tr>
+                        <td><span class="b">@row.Title</span><div class="muted" style="font-size:12px">@row.Lesson</div></td>
+                        <td>@row.Attempts</td>
+                        <td>@row.Children</td>
+                        <td>@(row.AvgScore is { } avg ? avg.ToString("0.#") + "%" : "–")</td>
+                        <td><span class="chip @(row.PassRate >= 70 ? "t-g" : row.PassRate >= 40 ? "t-a" : "t-r")">@row.PassRate%</span></td>
+                    </tr>
+                }
+                @if (Model.Quizzes.Count == 0)
+                {
+                    <tr><td colspan="5"><div class="empty">Chưa có lượt làm bài trong khoảng này.</div></td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="sl-card" style="flex:1 1 360px;min-width:0">
+        <div class="card-t" style="margin-bottom:6px">Câu hỏi bé hay làm sai</div>
+        @foreach (var row in Model.HardQuestions)
+        {
+            <a class="sl-row" href="/admin-questions/@row.Id" style="gap:12px;padding:10px 0;border-top:1px solid var(--line);text-decoration:none;color:inherit">
+                <span class="grow"><span class="b">@row.Text</span><br /><span class="muted" style="font-size:12px">@row.Quiz · @row.Answers lượt trả lời</span></span>
+                <span class="chip @(row.WrongRate >= 50 ? "t-r" : "t-a")">@row.WrongRate% sai</span>
+            </a>
+        }
+        @if (Model.HardQuestions.Count == 0)
+        {
+            <p class="muted" style="margin:0">Chưa đủ lượt trả lời (cần ít nhất 3 lượt mỗi câu).</p>
+        }
+    </div>
+</div>
+<div class="sl-card" style="margin-top:16px">
+    <div class="card-h"><div><div class="card-t">Bé tìm gì</div><div class="card-s">@Model.SearchTotal lượt tìm, @Model.SearchBlocked lượt bị chặn bởi từ khóa</div></div></div>
+    @foreach (var row in Model.Searches)
+    {
+        <div class="sl-row" style="gap:10px;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+            <span class="grow">"@row.Query"</span>
+            <span class="muted">@row.Count lượt</span>
+            @if (row.Blocked > 0)
+            {
+                <span class="chip t-r">@row.Blocked bị chặn</span>
+            }
+            @if (row.NoResult > 0)
+            {
+                <span class="chip t-a" title="Gợi ý: thêm bài cho chủ đề này">@row.NoResult không có kết quả</span>
+            }
+        </div>
+    }
+    @if (Model.Searches.Count == 0)
+    {
+        <p class="muted" style="margin:0">Chưa có lượt tìm kiếm.</p>
+    }
+</div>

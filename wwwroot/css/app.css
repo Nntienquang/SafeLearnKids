@@ -74,3 +74,8 @@ a.k-card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
 .k-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
 .k-opt:has(input:checked){border-color:var(--primary);background:var(--surface-2);box-shadow:0 0 0 3px var(--primary) inset}
 .k-opt:has(input:focus-visible){outline:3px solid var(--primary);outline-offset:3px}
+/* Settings: the chosen theme card */
+.theme-opt:has(input:checked){border-color:var(--primary)!important}
+.theme-opt:has(input:focus-visible){outline:3px solid var(--primary);outline-offset:2px}
+/* Printing a report (weekly report: In / lưu PDF) keeps only the page content. */
+@media print{.side,.sl-side,aside.nav,.top,[data-noprint],.toasts{display:none!important}.app{display:block!important}.main{padding:0!important}.sl-card{break-inside:avoid;box-shadow:none!important}}

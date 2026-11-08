@@ -128,7 +128,7 @@ def children_checks(admin, url, directory, parent_id, other_id):
     # A cached script would keep writing to localStorage and never reach SQL.
     check("/js/parent.js?v=" in parent.request("/onboarding", raw=True)[2], "onboarding loads the current parent script")
     status, _, body = parent.request("/kids-exit")
-    check(status == 200 and "Nhập PIN" in body and "sl-nav" not in body, "leaving child mode shows no parent menu")
+    check(status == 200 and ("Nhập PIN" in body or "mật khẩu" in body) and "sl-nav" not in body, "leaving child mode shows no parent menu")
     page = f"/admin-users/{parent_id}"
     check("Phụ huynh chưa thêm hồ sơ bé" in admin.request(page)[2], "Admin sees a parent has no children yet")
     check(smoke.Client(url).request("/children", child_values("Khach"))[0] in (302, 400), "anonymous users cannot add a child")

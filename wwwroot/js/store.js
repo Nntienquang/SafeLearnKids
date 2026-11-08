@@ -77,6 +77,8 @@ function subjects(){
 }
 /* SQL owns the profiles; usage, progress and colours stay local until those modules move too. */
 function sync(){
+  /* A theme saved in Settings applies once; switching from the top bar afterwards stays local to this browser. */
+  if(window.SL_THEME&&state.themeSync!==window.SL_THEME){state.theme=window.SL_THEME;state.themeSync=window.SL_THEME;save();}
   var rows=window.SL_CHILDREN;if(!rows)return;
   var old={},ids={};state.children.forEach(function(c){old[c.id]=c;});
   state.children=rows.map(function(r,i){ids[r.id]=1;
@@ -86,7 +88,8 @@ function sync(){
   if(!ids[state.parentChild])state.parentChild=rows.length?rows[0].id:null;
   if(!ids[state.kidsChild])state.kidsChild=null;
   /* In child mode the server says which child is learning. */
-  if(window.SL_KID&&ids[String(window.SL_KID)])state.kidsChild=String(window.SL_KID);
+  // The server owns child mode: pages render SL_KID only while it is on.
+  state.kidsChild=window.SL_KID&&ids[String(window.SL_KID)]?String(window.SL_KID):null;
   save();
 }
 load();

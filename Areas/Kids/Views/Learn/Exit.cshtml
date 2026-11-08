@@ -1,3 +1,4 @@
+@model KidExitViewModel
 @{
     ViewData["Title"] = """Dành cho ba mẹ""";
     ViewData["Page"] = "kids-exit";
@@ -6,17 +7,50 @@
 }
 <main style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:40px 16px">
 <span class="ib t-p" style="width:56px;height:56px;border-radius:18px"><i class="ic ic-lock ic-lg"></i></span>
-<h1 class="kf" style="font-size:32px;text-align:center">Nhập PIN của ba mẹ</h1>
-<div class="sl-row" id="pin-dots" style="gap:14px" aria-hidden="true"><span style="width:18px;height:18px;border-radius:9px;border:1px solid var(--line)"></span><span style="width:18px;height:18px;border-radius:9px;border:1px solid var(--line)"></span><span style="width:18px;height:18px;border-radius:9px;border:1px solid var(--line)"></span><span style="width:18px;height:18px;border-radius:9px;border:1px solid var(--line)"></span></div>
-<span class="err hidden" id="pin-err" role="alert"></span>
-<div style="display:grid;grid-template-columns:repeat(3,64px);gap:12px;justify-content:center">
-@foreach (var digit in "123456789")
+<h1 class="kf" style="font-size:32px;text-align:center">@(Model.HasPin ? "Nhập PIN của ba mẹ" : "Ba mẹ nhập mật khẩu")</h1>
+@if (Model.Error is not null || Model.LockedMinutes is not null)
 {
-    <button type="button" class="icbtn pin-key" style="@key" data-k="@digit" aria-label="Số @digit">@digit</button>
+    <span class="err" id="pin-err" role="alert">@(Model.Error ?? $"Sai quá nhiều lần. Thử lại sau {Model.LockedMinutes} phút.")</span>
 }
-<span></span>
-<button type="button" class="icbtn pin-key" style="@key" data-k="0" aria-label="Số 0">0</button>
-<button type="button" class="icbtn pin-key" style="@key" data-k="back" aria-label="Xóa"><i class="ic ic-arrowl"></i></button>
-</div>
-<a class="sl-btn sl-btn-g" id="pin-back" href="~/kids-picker"><i class="ic ic-arrowl"></i>Quay lại học</a>
+@if (Model.HasPin)
+{
+    <form method="post" asp-action="Exit" id="pin-form" class="sl-col" style="align-items:center;gap:16px">
+        <label class="sr-only" for="pin-input">Mã PIN 4 số</label>
+        <input class="inp" id="pin-input" name="pin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" autocomplete="off" style="width:140px;text-align:center;font-size:22px;letter-spacing:.4em" required />
+        <div class="sl-row" id="pin-dots" style="gap:14px" aria-hidden="true" hidden>
+            @for (var i = 0; i < 4; i++)
+            {
+                <span style="width:18px;height:18px;border-radius:9px;border:1px solid var(--line)"></span>
+            }
+        </div>
+        <div id="pin-pad" style="display:grid;grid-template-columns:repeat(3,64px);gap:12px;justify-content:center" hidden>
+            @foreach (var digit in "123456789")
+            {
+                <button type="button" class="icbtn pin-key" style="@key" data-k="@digit" aria-label="Số @digit">@digit</button>
+            }
+            <span></span>
+            <button type="button" class="icbtn pin-key" style="@key" data-k="0" aria-label="Số 0">0</button>
+            <button type="button" class="icbtn pin-key" style="@key" data-k="back" aria-label="Xóa"><i class="ic ic-arrowl"></i></button>
+        </div>
+        <button class="sl-btn sl-btn-p" type="submit" id="pin-submit">Mở khóa</button>
+    </form>
+    <details style="max-width:320px;width:100%">
+        <summary class="muted" style="cursor:pointer;text-align:center">Quên PIN? Dùng mật khẩu tài khoản</summary>
+        <form method="post" asp-action="Exit" class="sl-col" style="gap:10px;margin-top:10px">
+            <label class="lab" for="exit-password">Mật khẩu tài khoản</label>
+            <input class="inp" id="exit-password" name="password" type="password" autocomplete="current-password" required />
+            <button class="sl-btn" type="submit">Mở khóa bằng mật khẩu</button>
+        </form>
+    </details>
+}
+else
+{
+    <p class="muted" style="max-width:360px;text-align:center;margin:0">Ba mẹ chưa đặt PIN nên cần mật khẩu tài khoản. Đặt PIN 4 số ở mục "Mã PIN và chế độ trẻ" để mở khóa nhanh hơn.</p>
+    <form method="post" asp-action="Exit" class="sl-col" style="gap:10px;max-width:320px;width:100%">
+        <label class="lab" for="exit-password">Mật khẩu tài khoản</label>
+        <input class="inp" id="exit-password" name="password" type="password" autocomplete="current-password" required />
+        <button class="sl-btn sl-btn-p" type="submit">Mở khóa</button>
+    </form>
+}
+<a class="sl-btn sl-btn-g" id="pin-back" href="@Model.Back"><i class="ic ic-arrowl"></i>Quay lại học</a>
 </main>

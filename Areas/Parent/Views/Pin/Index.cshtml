@@ -1,22 +1,49 @@
+@model PinViewModel
 @{
     ViewData["Title"] = """Mã PIN và chế độ trẻ""";
-    ViewData["Page"] = "pin";
+    ViewData["Page"] = "pin-sql";
     ViewData["Nav"] = "pin";
     ViewData["Crumb"] = Html.Raw("""Phụ huynh · Bảo vệ""");
     ViewData["Heading"] = """Mã PIN và chế độ trẻ""";
-    ViewData["Sub"] = """PIN giúp bé không thoát chế độ học hoặc đổi cài đặt của ba mẹ (US-05).""";
+    ViewData["Sub"] = """PIN giúp bé không tự thoát chế độ học hoặc vào trang của ba mẹ (US-50).""";
 }
-<div style="display:flex;flex-wrap:wrap;gap:16px">
-<div class="sl-card" style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:18px">
-<div class="card-h"><div><div class="card-t">Chế độ trẻ</div><div class="card-s">Khi bật, màn hình chỉ còn giao diện của bé.</div></div><span class="switch on"></span></div>
-<div class="banner t-g" style="font-weight:600;font-size:13.5px"><i class="ic ic-checkc"></i>Đang bật cho Minh An từ 19:02. Thoát cần nhập PIN.</div>
-<div class="field"><span class="lab">Khi bé thoát</span><div class="sl-col" style="gap:10px"><label class="sl-row" style="gap:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);font-size:14px;font-weight:600"><input class="chk" type="checkbox" checked>Luôn yêu cầu PIN</label><label class="sl-row" style="gap:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);font-size:14px;font-weight:600"><input class="chk" type="checkbox" >Cho phép chuyển sang hồ sơ khác của bé mà không cần PIN</label><label class="sl-row" style="gap:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);font-size:14px;font-weight:600"><input class="chk" type="checkbox" checked>Tự khóa lại sau 10 phút không thao tác</label></div></div>
-<div class="field"><span class="lab">Đổi mã PIN</span><div class="sl-row" style="gap:10px;flex-wrap:wrap"><input class="inp" type="password" value="••••" style="width:120px" aria-label="PIN hiện tại"><i class="ic ic-arrowr" style="color:var(--text-3)"></i><input class="inp f" type="password" value="••••" style="width:120px" aria-label="PIN mới"><button class="sl-btn sl-btn-p" type="button">Cập nhật</button></div><span class="hint">PIN gồm 4 chữ số, được lưu dạng băm. Sai 5 lần sẽ khóa 5 phút.</span></div>
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+    <form method="post" asp-action="Save" class="sl-card acc-form" style="flex:1 1 420px;min-width:0">
+        <div class="card-t">@(Model.HasPin ? "Đổi mã PIN" : "Đặt mã PIN")</div>
+        <p class="muted" style="margin:0;font-size:13px">@(Model.HasPin ? $"PIN được đặt lần gần nhất lúc {Model.UpdatedAt?.ToLocalTime():dd/MM/yyyy HH:mm}." : "Chưa có PIN: khi rời chế độ trẻ, ba mẹ phải nhập mật khẩu tài khoản.")</p>
+        <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+        <section class="acc-sec">
+            <div style="display:flex;flex-wrap:wrap;gap:12px">
+                <div class="field" style="flex:1 1 140px">
+                    <label class="lab" for="pin-new">PIN mới (4 số)</label>
+                    <input class="inp" id="pin-new" name="Pin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" autocomplete="new-password" required />
+                    @Html.ValidationMessage("Pin", new { @class = "err" })
+                </div>
+                <div class="field" style="flex:1 1 140px">
+                    <label class="lab" for="pin-confirm">Nhập lại PIN</label>
+                    <input class="inp" id="pin-confirm" name="ConfirmPin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" autocomplete="new-password" required />
+                    @Html.ValidationMessage("ConfirmPin", new { @class = "err" })
+                </div>
+            </div>
+            <div class="field">
+                <label class="lab" for="pin-password">Mật khẩu tài khoản</label>
+                <input class="inp" id="pin-password" name="Password" type="password" autocomplete="current-password" required />
+                @Html.ValidationMessage("Password", new { @class = "err" })
+            </div>
+        </section>
+        <div class="acc-foot"><button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-key"></i>@(Model.HasPin ? "Đổi PIN" : "Đặt PIN")</button></div>
+    </form>
+    <div class="sl-card" style="flex:1 1 320px;min-width:0">
+        <div class="card-t" style="margin-bottom:10px">Chế độ trẻ hoạt động thế nào</div>
+        <ul style="margin:0;padding-left:18px;line-height:1.8;font-size:13.5px">
+            <li>Bấm <b>Chế độ trẻ</b> rồi chọn bé. Từ lúc đó mọi trang của ba mẹ đều đưa về trang học của bé, kể cả khi gõ địa chỉ trực tiếp.</li>
+            <li>Muốn quay lại, bấm <b>Ba mẹ</b> ở góc trên và nhập PIN (hoặc mật khẩu nếu chưa đặt PIN).</li>
+            <li>Sai 5 lần liên tiếp thì khóa 5 phút.</li>
+            <li>PIN được lưu dạng băm trên máy chủ, không lưu trong trình duyệt.</li>
+        </ul>
+    </div>
 </div>
-<div class="sl-card" style="flex:1 1 360px;min-width:0;display:flex;flex-direction:column;align-items:center;gap:16px;background:var(--surface-2)">
-<div class="muted b" style="font-size:12.5px;letter-spacing:.08em">XEM TRƯỚC · MÀN HÌNH NHẬP PIN</div>
-<span class="ib t-p" style="width:56px;height:56px;border-radius:18px"><i class="ic ic-lock ic-lg"></i></span>
-<div class="b" style="font-size:18px">Nhập PIN của ba mẹ</div>
-<div class="sl-row" style="gap:14px"><span style="width:18px;height:18px;border-radius:9px;background:var(--primary)"></span><span style="width:18px;height:18px;border-radius:9px;background:var(--primary)"></span><span style="width:18px;height:18px;border-radius:9px;background:var(--primary)"></span><span style="width:18px;height:18px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line)"></span></div>
-<div style="display:grid;grid-template-columns:repeat(3,64px);gap:12px;justify-content:center"><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">1</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">2</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">3</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">4</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">5</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">6</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">7</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">8</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">9</span><span style="width:64px"></span><span class="icbtn" style="width:64px;height:64px;border-radius:20px;font-size:22px;font-weight:800;color:var(--text)">0</span><span class="icbtn" style="width:64px;height:64px;border-radius:20px"><i class="ic ic-arrowl"></i></span></div>
-<span class="err">Sai PIN. Còn 3 lần thử.</span></div></div>

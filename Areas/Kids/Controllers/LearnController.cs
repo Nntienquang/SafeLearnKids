@@ -12,7 +12,7 @@ namespace SafeLearnKids.Web.Areas.Kids.Controllers;
 // Child mode (US-23 to US-28). Every action re-reads the chosen child and checks it belongs to the signed-in parent.
 [Area("Kids")]
 [Authorize(Roles = "Parent")]
-public class LearnController(KidContext kids, IServiceProvider services) : Controller
+public class LearnController(KidContext kids, ParentSettings settings, Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> users, IServiceProvider services) : Controller
 {
     private const int MaxRequestsPerDay = 3;
     private static readonly int[] RequestChoices = [5, 10, 15, 30];
@@ -22,7 +22,8 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
     [HttpGet("kids-picker")]
     public async Task<IActionResult> Picker(CancellationToken cancellationToken)
     {
-        kids.Clear();
+        // Switching child keeps child mode on; only the PIN screen ends it.
+        await KidAsync(cancellationToken);
         return View(await kids.ChoicesAsync(cancellationToken));
     }
 
@@ -30,8 +31,44 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
     public async Task<IActionResult> Choose(int id, CancellationToken cancellationToken) =>
         await kids.ChooseAsync(id, cancellationToken) is null ? NotFound() : RedirectToAction(nameof(Home));
 
+    // US-50: leaving child mode needs the parent PIN, or the account password when no PIN is set.
     [HttpGet("kids-exit")]
-    public IActionResult Exit() => View();
+    public async Task<IActionResult> Exit(CancellationToken cancellationToken) => View(await ExitModelAsync(null, cancellationToken));
+
+    [HttpPost("kids-exit")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("account")]
+    public async Task<IActionResult> Exit([FromForm] string? pin, [FromForm] string? password, CancellationToken cancellationToken)
+    {
+        if (await users.GetUserAsync(User) is not { } user) return Challenge();
+        var hasPin = (await settings.FindAsync(user.Id, cancellationToken))?.ParentPinHash is not null;
+        ParentSettings.PinCheck check;
+        if (settings.LockedMinutes(user.Id) is { } locked) check = new(false, 0, locked);
+        else if (!string.IsNullOrEmpty(password)) check = settings.Record(user.Id, await users.CheckPasswordAsync(user, password));
+        else if (hasPin) check = await settings.CheckPinAsync(user, pin, cancellationToken);
+        else check = settings.Record(user.Id, false);
+        if (check.Ok)
+        {
+            kids.Clear();
+            return Redirect("/parent-home");
+        }
+        var error = check.LockedMinutes is { } minutes ? $"Sai quá nhiều lần. Thử lại sau {minutes} phút."
+            : !string.IsNullOrEmpty(password) || !hasPin ? $"Mật khẩu chưa đúng. Còn {check.Left} lần thử." : $"Sai PIN. Còn {check.Left} lần thử.";
+        Response.StatusCode = StatusCodes.Status400BadRequest;
+        return View(await ExitModelAsync(error, cancellationToken));
+    }
+
+    private async Task<KidExitViewModel> ExitModelAsync(string? error, CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var kid = await KidAsync(cancellationToken);
+        return new KidExitViewModel
+        {
+            HasPin = (await settings.FindAsync(userId, cancellationToken))?.ParentPinHash is not null,
+            Error = error,
+            LockedMinutes = settings.LockedMinutes(userId),
+            Back = kid is null ? "/kids-picker" : "/kids-home"
+        };
+    }
 
     [HttpGet("kids-home")]
     public async Task<IActionResult> Home(CancellationToken cancellationToken)
@@ -225,8 +262,8 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
         {
             db.ContentReports.Add(new ContentReport { ChildProfileId = kid.Id, LessonId = id, Reason = reason, Comment = comment, Status = ReportStatus.Open, CreatedAt = DateTime.UtcNow });
             var title = await db.Lessons.Where(item => item.Id == id).Select(item => item.Title).FirstAsync(cancellationToken);
-            NotificationWriter.Add(db, User.FindFirstValue(ClaimTypes.NameIdentifier)!, "ContentReport", $"{kid.Name} báo cáo một bài học",
-                $"{title} · {ReportStatus.Reason(reason)}", $"/history?child={kid.Id}");
+            await NotificationWriter.AddAsync(db, User.FindFirstValue(ClaimTypes.NameIdentifier)!, "ContentReport", $"{kid.Name} báo cáo một bài học",
+                $"{title} · {ReportStatus.Reason(reason)}", $"/history?child={kid.Id}", cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
         }
         TempData["Kid"] = "Cảm ơn con! Ba mẹ và thầy cô sẽ xem lại bài này.";
@@ -409,7 +446,7 @@ public class LearnController(KidContext kids, IServiceProvider services) : Contr
             {
                 ChildProfileId = kid.Id, ForDate = today, RequestedMinutes = minutes, Reason = reason, Status = RequestStatus.Pending, RequestedAt = DateTime.UtcNow
             });
-            NotificationWriter.Add(db, User.FindFirstValue(ClaimTypes.NameIdentifier)!, "TimeRequest", $"{kid.Name} xin thêm {minutes} phút", reason, $"/time?child={kid.Id}");
+            await NotificationWriter.AddAsync(db, User.FindFirstValue(ClaimTypes.NameIdentifier)!, "TimeRequest", $"{kid.Name} xin thêm {minutes} phút", reason, $"/time?child={kid.Id}", cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
         }
         TempData["Kid"] = problem ?? "Đã gửi cho ba mẹ. Đợi ba mẹ trả lời nhé!";

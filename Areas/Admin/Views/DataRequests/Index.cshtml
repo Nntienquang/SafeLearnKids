@@ -1,0 +1,63 @@
+@model AdminDataRequestsViewModel
+@{
+    ViewData["Title"] = """Yêu cầu xóa dữ liệu""";
+    ViewData["Page"] = "admin-data-sql";
+    ViewData["Nav"] = "data";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Vận hành""");
+    ViewData["Heading"] = """Yêu cầu xóa dữ liệu của bé""";
+    ViewData["Sub"] = """Phụ huynh yêu cầu xóa hồ sơ và dữ liệu học của bé; xử lý trong tối đa 30 ngày (US-52).""";
+}
+@section Actions {
+<div class="sl-row" style="gap:8px">
+    <a class="sl-btn sl-btn-sm @(Model.Status == "open" ? "sl-btn-p" : "")" asp-action="Index" asp-route-status="open">Cần xử lý (@Model.Open)</a>
+    <a class="sl-btn sl-btn-sm @(Model.Status == "done" ? "sl-btn-p" : "")" asp-action="Index" asp-route-status="done">Đã xử lý</a>
+</div>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div class="sl-col" style="gap:16px">
+    @foreach (var row in Model.Rows)
+    {
+        var overdue = row.CompletedAt is null && row.RequestedAt < DateTime.UtcNow.AddDays(-30);
+        <div class="sl-card">
+            <div class="sl-row" style="gap:12px;flex-wrap:wrap">
+                <span class="ib t-p" aria-hidden="true"><i class="ic ic-shield"></i></span>
+                <div class="grow" style="min-width:200px">
+                    <div class="b">Xóa dữ liệu của @row.ChildName</div>
+                    <div class="muted" style="font-size:12.5px">@row.Parent · gửi lúc @row.RequestedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")@(row.ProcessedBy is null ? "" : " · xử lý bởi " + row.ProcessedBy)</div>
+                </div>
+                @if (overdue)
+                {
+                    <span class="chip t-r">Quá 30 ngày</span>
+                }
+                <span class="chip @DataRequestStatus.Tone(row.Status)">@DataRequestStatus.Label(row.Status)</span>
+            </div>
+            @if (row.Note is not null)
+            {
+                <p style="margin:10px 0 0;font-size:13.5px">Ghi chú: @row.Note</p>
+            }
+            @if (row.Status is DataRequestStatus.Pending or DataRequestStatus.Processing)
+            {
+                <form asp-action="Decide" asp-route-id="@row.Id" method="post" class="sl-col" style="gap:8px;margin-top:12px"
+                      data-confirm="Xử lý yêu cầu của @row.ChildName?" data-text="Nếu chọn xóa, hồ sơ và toàn bộ dữ liệu học của bé bị xóa vĩnh viễn." data-ok-label="Tiếp tục" data-danger="true">
+                    <label class="lab" for="note-@row.Id">Ghi chú gửi phụ huynh (bắt buộc khi từ chối)</label>
+                    <textarea class="inp ta" id="note-@row.Id" name="note" rows="2" maxlength="500"></textarea>
+                    <div class="sl-row" style="gap:8px;justify-content:flex-end;flex-wrap:wrap">
+                        <button class="sl-btn" type="submit" name="decision" value="reject">Từ chối</button>
+                        <button class="sl-btn sl-btn-d" type="submit" name="decision" value="approve"><i class="ic ic-trash"></i>Xóa dữ liệu</button>
+                    </div>
+                </form>
+            }
+        </div>
+    }
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="sl-card"><div class="empty">@(Model.Status == "open" ? "Không có yêu cầu cần xử lý." : "Chưa có yêu cầu đã xử lý.")</div></div>
+    }
+</div>
