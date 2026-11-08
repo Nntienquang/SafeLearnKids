@@ -1,16 +1,104 @@
+@model PrivacyViewModel
 @{
     ViewData["Title"] = """Dữ liệu và quyền riêng tư""";
-    ViewData["Page"] = "privacy";
+    ViewData["Page"] = "privacy-sql";
     ViewData["Nav"] = "privacy";
     ViewData["Crumb"] = Html.Raw("""Phụ huynh · Tài khoản""");
     ViewData["Heading"] = """Dữ liệu và quyền riêng tư""";
-    ViewData["Sub"] = """Ba mẹ kiểm soát dữ liệu của bé: xem, xuất và xóa (US-31).""";
+    ViewData["Sub"] = """Ba mẹ kiểm soát dữ liệu của bé: tải về hoặc yêu cầu xóa (US-52).""";
+    var pending = Model.Requests.Where(item => item.Type == "Delete" && item.Status is DataRequestStatus.Pending or DataRequestStatus.Processing).Select(item => item.ChildId).ToHashSet();
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
 }
 <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
-<div class="sl-card" style="flex:1 1 440px;min-width:0"><div class="card-t" style="margin-bottom:12px">Chúng tôi lưu gì về bé</div>
-<div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)"><span class="ib t-p"><i class="ic ic-user"></i></span><div class="grow"><div class="b">Tên hoặc biệt danh, lớp</div><div class="muted" style="font-size:12.5px">Để hiển thị và chọn bài phù hợp</div></div><i class="ic ic-checkc" style="color:var(--green)"></i></div><div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)"><span class="ib t-b"><i class="ic ic-history"></i></span><div class="grow"><div class="b">Lịch sử học và điểm quiz</div><div class="muted" style="font-size:12.5px">Để tạo tiến độ và báo cáo</div></div><i class="ic ic-checkc" style="color:var(--green)"></i></div><div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)"><span class="ib t-a"><i class="ic ic-clock"></i></span><div class="grow"><div class="b">Thời gian học theo ngày</div><div class="muted" style="font-size:12.5px">Để áp giới hạn giờ</div></div><i class="ic ic-checkc" style="color:var(--green)"></i></div><div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)"><span class="ib t-r"><i class="ic ic-camera"></i></span><div class="grow"><div class="b">Họ tên đầy đủ, ảnh, vị trí</div><div class="muted" style="font-size:12.5px">Không thu thập</div></div><i class="ic ic-x" style="color:var(--rose)"></i></div><div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line)"><span class="ib t-r"><i class="ic ic-eye"></i></span><div class="grow"><div class="b">Quảng cáo và theo dõi bên thứ ba</div><div class="muted" style="font-size:12.5px">Không sử dụng</div></div><i class="ic ic-x" style="color:var(--rose)"></i></div></div>
-<div class="sl-col" style="flex:1 1 360px;min-width:0;gap:16px">
-<div class="sl-card"><div class="card-t" style="margin-bottom:6px">Xuất dữ liệu</div><div class="card-s" style="margin-bottom:12px">Tải toàn bộ dữ liệu học của Minh An dạng CSV hoặc JSON.</div><button class="sl-btn sl-btn-block" type="button"><i class="ic ic-download"></i>Tải dữ liệu của bé</button></div>
-<div class="sl-card" style="border:1px solid var(--rose)"><div class="sl-row" style="gap:12px"><span class="ib t-r"><i class="ic ic-trash"></i></span><div class="grow"><div class="card-t">Xóa hồ sơ và dữ liệu</div><div class="card-s">Xóa vĩnh viễn trong 30 ngày. Không thể hoàn tác.</div></div></div><button class="sl-btn sl-btn-d sl-btn-block" style="margin-top:14px" type="button">Xóa hồ sơ Minh An</button></div>
-<div class="sl-card"><div class="card-t" style="margin-bottom:12px">Văn bản đã đồng ý</div><div class="sl-col" style="gap:10px"><a class="sl-btn sl-btn-block" href="~/child-data-policy" target="_blank" rel="noopener">Chính sách dữ liệu của trẻ em</a><a class="sl-btn sl-btn-block" href="~/terms" target="_blank" rel="noopener">Điều khoản sử dụng</a></div></div>
-<div class="banner t-g" style="font-weight:600;font-size:13.5px"><i class="ic ic-shield"></i>PIN lưu dạng băm. Dữ liệu trẻ chỉ ba mẹ và hệ thống truy cập được.</div></div></div>
+    <div class="sl-col" style="flex:2 1 460px;min-width:0;gap:16px">
+        @foreach (var child in Model.Children)
+        {
+            <div class="sl-card">
+                <div class="sl-row" style="gap:12px;flex-wrap:wrap">
+                    <span class="av" aria-hidden="true">@child.Init</span>
+                    <div class="grow"><div class="card-t">@child.Name</div><div class="muted" style="font-size:12.5px">Lớp @child.Grade</div></div>
+                    <form asp-action="Export" asp-route-child="@child.Id" method="post"><button class="sl-btn" type="submit"><i class="ic ic-download"></i>Tải dữ liệu (JSON)</button></form>
+                </div>
+                @if (pending.Contains(child.Id))
+                {
+                    <div class="banner t-a" style="margin-top:12px"><i class="ic ic-clock"></i>Đang chờ quản trị viên xóa dữ liệu của bé.</div>
+                }
+                else
+                {
+                    <details style="margin-top:12px">
+                        <summary class="b" style="cursor:pointer;color:var(--rose-text)"><i class="ic ic-trash"></i> Yêu cầu xóa hồ sơ và dữ liệu</summary>
+                        <form asp-action="RequestDelete" asp-route-child="@child.Id" method="post" class="sl-col" style="gap:8px;margin-top:10px">
+                            <p class="muted" style="margin:0;font-size:13px">Sau khi quản trị viên xử lý, hồ sơ, lịch sử học, điểm bài tập, huy hiệu và giờ học của bé bị xóa vĩnh viễn. Nên tải dữ liệu về trước.</p>
+                            <label class="lab" for="confirm-@child.Id">Nhập tên "@child.Name" để xác nhận</label>
+                            <input class="inp" id="confirm-@child.Id" name="confirmName" autocomplete="off" required />
+                            <button class="sl-btn sl-btn-d" type="submit" style="align-self:flex-start">Gửi yêu cầu xóa</button>
+                        </form>
+                    </details>
+                }
+            </div>
+        }
+        <div class="sl-card" style="padding:6px 0;overflow-x:auto">
+            <div class="card-t" style="padding:12px 18px 0">Yêu cầu về dữ liệu</div>
+            <table class="tbl">
+                <thead><tr><th>Loại</th><th>Bé</th><th>Gửi lúc</th><th>Trạng thái</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var request in Model.Requests)
+                    {
+                        <tr>
+                            <td>@(request.Type == "Delete" ? "Xóa dữ liệu" : "Tải dữ liệu")</td>
+                            <td>@request.ChildName</td>
+                            <td class="muted">@request.RequestedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><span class="chip @DataRequestStatus.Tone(request.Status)">@DataRequestStatus.Label(request.Status)</span>@if (request.Note is not null) {<div class="muted" style="font-size:12px">@request.Note</div>}</td>
+                            <td>
+                                @if (request.Status == DataRequestStatus.Pending)
+                                {
+                                    <form asp-action="Cancel" asp-route-id="@request.Id" method="post"><button class="sl-btn sl-btn-sm" type="submit">Hủy yêu cầu</button></form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Requests.Count == 0)
+                    {
+                        <tr><td colspan="5"><div class="empty">Chưa có yêu cầu nào.</div></td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px">
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:10px">Chúng tôi lưu gì về bé</div>
+            <ul style="margin:0;padding-left:18px;line-height:1.8;font-size:13.5px">
+                <li>Tên hoặc biệt danh, lớp, năm sinh (nếu có), môn học</li>
+                <li>Bài đã học, tiến độ, bài yêu thích, bài được giao</li>
+                <li>Bài làm và điểm bài tập</li>
+                <li>Số phút học mỗi ngày, yêu cầu thêm giờ</li>
+                <li>Từ khóa bé tìm, báo cáo nội dung của bé</li>
+                <li>Huy hiệu, chuỗi ngày học, mục tiêu, lộ trình, báo cáo tuần</li>
+            </ul>
+            <p class="muted" style="margin:10px 0 0;font-size:12.5px">Không thu thập ảnh, vị trí hay liên hệ của bé. Không có quảng cáo.</p>
+        </div>
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:10px">Văn bản đã đồng ý</div>
+            @foreach (var consent in Model.Consents)
+            {
+                <div class="sl-row" style="gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:13.5px">
+                    <span class="grow">@(consent.Type == "Terms" ? "Điều khoản sử dụng" : "Chính sách dữ liệu trẻ em") · bản @consent.Version@(consent.Child is null ? "" : " · " + consent.Child)</span>
+                    <span class="chip @(consent.Decision == "Accepted" ? "t-g" : "t-n")">@(consent.Decision == "Accepted" ? "Đã đồng ý" : consent.Decision == "Revoked" ? "Đã rút" : "Từ chối")</span>
+                </div>
+                <div class="muted" style="font-size:12px">@consent.DecidedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+            }
+            <div class="sl-col" style="gap:8px;margin-top:12px">
+                <a class="sl-btn sl-btn-block" href="/child-data-policy" target="_blank" rel="noopener">Chính sách dữ liệu của trẻ em</a>
+                <a class="sl-btn sl-btn-block" href="/terms" target="_blank" rel="noopener">Điều khoản sử dụng</a>
+            </div>
+        </div>
+    </div>
+</div>

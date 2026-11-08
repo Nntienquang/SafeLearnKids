@@ -100,7 +100,8 @@ def running_app(url, mail_directory, overrides=None, logs=None):
         env = {**os.environ, "ASPNETCORE_ENVIRONMENT": "Development",
                "Email__DeliveryMethod": "Pickup", "Email__FromAddress": "no-reply@example.invalid",
                "Email__PublicBaseUrl": url, "Email__PickupDirectory": str(mail_directory),
-               "Auth__RateLimitPermitLimit": "200", **(overrides or {})}
+               # Background jobs stay off unless a test turns them on.
+               "Auth__RateLimitPermitLimit": "200", "Jobs__Enabled": "false", **(overrides or {})}
         process = subprocess.Popen(
             ["dotnet", "run", "--project", "SafeLearnKids.Web.csproj", "--no-build", "--no-launch-profile", "--urls", url],
             cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
@@ -138,6 +139,42 @@ def clone(client):
     for cookie in client.cookies:
         other.cookies.set_cookie(copy.copy(cookie))
     return other
+
+
+class Devices:
+    """One parent session used from two devices. Child mode locks the parent pages on the server, so /kids-* requests
+    carry the child-mode cookie (the child's tablet) and every other request goes without it (the parent's phone).
+    Both share the sign-in and antiforgery cookies, so tokens from either page are valid."""
+
+    KID = ".SafeLearnKids.Kid"
+
+    def __init__(self, client):
+        self.client, self.url, self.opener, self.cookies = client, client.url, client.opener, client.cookies
+        self.kid = None
+
+    def _take_kid(self):
+        found = None
+        for cookie in list(self.cookies):
+            if cookie.name == self.KID:
+                found = cookie
+                self.cookies.clear(cookie.domain, cookie.path, cookie.name)
+        return found
+
+    def request(self, path, data=None, headers=None, raw=False):
+        child = path.startswith("/kids-")
+        self._take_kid()
+        if child and self.kid is not None:
+            self.cookies.set_cookie(copy.copy(self.kid))
+        try:
+            return self.client.request(path, data, headers, raw)
+        finally:
+            # The jar never keeps the child cookie between calls; a cleared cookie ends child mode on the child device.
+            current = self._take_kid()
+            if child:
+                self.kid = current
+
+    # Same as Client.post_form, routed through the right device.
+    post_form = Client.post_form
 
 
 def token_from(body):

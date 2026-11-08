@@ -1,10 +1,11 @@
+@model SettingsViewModel
 @{
     ViewData["Title"] = "Cài đặt tài khoản";
-    ViewData["Page"] = "settings";
+    ViewData["Page"] = "settings-sql";
     ViewData["Nav"] = "settings";
     ViewData["Crumb"] = Html.Raw("Phụ huynh · Tài khoản");
     ViewData["Heading"] = "Cài đặt";
-    ViewData["Sub"] = "Hồ sơ phụ huynh, giao diện và bảo mật đăng nhập.";
+    ViewData["Sub"] = "Hồ sơ phụ huynh, giao diện, thông báo và lịch sử đăng nhập (US-50, US-51).";
 
     var fullName = User.FindFirst("FullName")?.Value;
     if (string.IsNullOrWhiteSpace(fullName))
@@ -12,9 +13,6 @@
         fullName = User.Identity?.Name ?? "Phụ huynh";
     }
     var avatarUrl = User.FindFirst("AvatarUrl")?.Value;
-}
-@section Actions {
-<button class="sl-btn sl-btn-p" type="button" disabled title="Chỉnh sửa hồ sơ chưa khả dụng.">Lưu thay đổi</button>
 }
 @if (TempData["Info"] is string info)
 {
@@ -32,6 +30,48 @@
 </form>
 <div class="field"><label class="lab" for="st1">Họ và tên</label><input id="st1" class="inp" value="@User.FindFirst("FullName")?.Value" readonly></div><div class="field"><label class="lab" for="st2">Email</label><input id="st2" class="inp" value="@User.Identity?.Name" readonly></div>
 <div class="field"><span class="lab">Đổi mật khẩu</span><a class="sl-btn" href="~/change-password" style="align-self:flex-start"><i class="ic ic-key"></i>Đổi mật khẩu</a></div></div>
-<div class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px"><div class="sl-card"><div class="card-t" style="margin-bottom:12px">Giao diện</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-<div class="sl-col" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid var(--primary)"><span class="ib t-a"><i class="ic ic-sun"></i></span><span class="b" style="font-size:13px">Sáng</span></div><div class="sl-col" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid var(--line)"><span class="ib t-v"><i class="ic ic-moon"></i></span><span class="b" style="font-size:13px">Tối</span></div><div class="sl-col" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid var(--line)"><span class="ib t-n"><i class="ic ic-monitor"></i></span><span class="b" style="font-size:13px">Theo máy</span></div></div></div>
-<div class="sl-card"><div class="card-t" style="margin-bottom:12px">Thông báo</div><div class="sl-row" style="justify-content:space-between;padding:9px 0"><span class="b" style="font-size:14px">Xin thêm giờ</span><span class="switch on"></span></div><div class="sl-row" style="justify-content:space-between;padding:9px 0"><span class="b" style="font-size:14px">Báo cáo tuần</span><span class="switch on"></span></div><div class="sl-row" style="justify-content:space-between;padding:9px 0"><span class="b" style="font-size:14px">Huy hiệu mới</span><span class="switch"></span></div></div></div></div>
+<form method="post" asp-action="Save" class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px">
+    <fieldset class="sl-card" style="margin:0">
+        <legend class="card-t" style="margin-bottom:12px;float:left;width:100%">Giao diện</legend>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;clear:both">
+            @foreach (var (value, label, icon, tone) in new[] { (ThemeChoice.Light, "Sáng", "sun", "t-a"), (ThemeChoice.Dark, "Tối", "moon", "t-v"), (ThemeChoice.Auto, "Theo máy", "monitor", "t-n") })
+            {
+                <label class="sl-col theme-opt" style="gap:8px;align-items:center;padding:12px;border-radius:16px;border:2px solid @(Model.Form.Theme == value ? "var(--primary)" : "var(--line)");cursor:pointer">
+                    <input type="radio" name="Theme" value="@value" checked="@(Model.Form.Theme == value)" class="sr-only" />
+                    <span class="ib @tone" aria-hidden="true"><i class="ic ic-@icon"></i></span><span class="b" style="font-size:13px">@label</span>
+                </label>
+            }
+        </div>
+    </fieldset>
+    <fieldset class="sl-card" style="margin:0">
+        <legend class="card-t" style="margin-bottom:6px;float:left;width:100%">Thông báo</legend>
+        <p class="muted" style="margin:0 0 8px;font-size:12.5px;clear:both">Huy hiệu, bài tập đã nộp và báo cáo tuần luôn có trong mục Thông báo.</p>
+        <label class="sl-row" style="justify-content:space-between;padding:9px 0;gap:10px"><span class="b" style="font-size:14px">Bé xin thêm giờ</span><input type="checkbox" name="NotifyTimeRequest" value="true" checked="@Model.Form.NotifyTimeRequest" /></label>
+        <label class="sl-row" style="justify-content:space-between;padding:9px 0;gap:10px"><span class="b" style="font-size:14px">Báo cáo nội dung và kết quả xử lý</span><input type="checkbox" name="NotifyContentReport" value="true" checked="@Model.Form.NotifyContentReport" /></label>
+        <label class="sl-row" style="justify-content:space-between;padding:9px 0;gap:10px"><span class="b" style="font-size:14px">Gửi báo cáo tuần qua email</span><input type="checkbox" name="WeeklyEmail" value="true" checked="@Model.Form.WeeklyEmail" /></label>
+        <input type="hidden" name="NotifyTimeRequest" value="false" /><input type="hidden" name="NotifyContentReport" value="false" /><input type="hidden" name="WeeklyEmail" value="false" />
+    </fieldset>
+    <button class="sl-btn sl-btn-p" type="submit" style="align-self:flex-start">Lưu cài đặt</button>
+</form>
+</div>
+<div class="sl-card" style="margin-top:16px;padding:6px 0;overflow-x:auto">
+    <div class="card-t" style="padding:12px 18px 0">Lịch sử đăng nhập gần đây</div>
+    <table class="tbl">
+        <thead><tr><th>Thời gian</th><th>Kết quả</th><th>Địa chỉ IP</th><th>Trình duyệt</th></tr></thead>
+        <tbody>
+            @foreach (var login in Model.Logins)
+            {
+                <tr>
+                    <td>@login.At.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td><span class="chip @(login.Succeeded ? "t-g" : "t-r")">@(login.Succeeded ? "Thành công" : "Thất bại" + (login.Reason is null ? "" : " · " + login.Reason))</span></td>
+                    <td class="muted">@login.Ip</td>
+                    <td class="muted" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@login.Agent">@login.Agent</td>
+                </tr>
+            }
+            @if (Model.Logins.Count == 0)
+            {
+                <tr><td colspan="4"><div class="empty">Chưa có lần đăng nhập nào được ghi lại.</div></td></tr>
+            }
+        </tbody>
+    </table>
+</div>

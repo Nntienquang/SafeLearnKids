@@ -97,7 +97,7 @@ function enhance(){
   $$('.sl-nav.on').forEach(function(n){n.setAttribute('aria-current','page');});
   $$('.side').forEach(function(s){s.setAttribute('aria-label','Điều hướng chính');});
   $$('a[href="/login"].btn-g').forEach(function(a){if(/Đăng xuất/.test(a.textContent))a.addEventListener('click',function(e){e.preventDefault();UI.logout();});});
-  $$('.icbtn[aria-label="Thông báo"]').forEach(function(b){var a=document.createElement('a');a.className=b.className;a.href='/notifications';a.setAttribute('aria-label','Thông báo');a.innerHTML=b.innerHTML;b.replaceWith(a);});
+  /* The bell is a real link rendered by the server (parents: notifications, admins: content reports). */
   // mobile drawer
   var side=$('.side'),top=$('.top');
   if(side&&top){var h=document.createElement('button');h.type='button';h.className='icbtn hamb';h.setAttribute('aria-label','Mở menu');h.innerHTML='<i class="ic ic-menu"></i>';top.insertBefore(h,top.firstChild);
@@ -120,11 +120,13 @@ function enhance(){
       cs.parentNode.style.position='relative';cs.parentNode.appendChild(pop);pop.addEventListener('click',function(e){var b=e.target.closest('[data-c]');if(!b)return;S.set(function(s){s.parentChild=b.dataset.c;});pop.remove();pop=null;UI.toast('Đang xem '+S.child(b.dataset.c).name);document.dispatchEvent(new CustomEvent('kl:child'));});};
     cs.addEventListener('click',open);cs.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});}
   // bell dot + nav badge from store
-  var unread=S.get().notifs.filter(function(n){return n.unread;}).length;
+  /* Counts come from the server when signed in; the demo store is only a fallback. */
+  var unread=window.SL_UNREAD!=null?window.SL_UNREAD:S.get().notifs.filter(function(n){return n.unread;}).length;
   $$('.sl-nav').forEach(function(n){if(/Thông báo/.test(n.textContent)){var b=n.querySelector('.sl-badge');if(b){b.textContent=unread;b.classList.toggle('hidden',!unread);}}});
-  $$('.icbtn .dot').forEach(function(d){d.classList.toggle('hidden',!unread);});
+  var bell=window.SL_USER&&window.SL_USER.role==='admin'?(window.SL_OPEN_REPORTS||0):unread;
+  $$('.icbtn .dot').forEach(function(d){d.classList.toggle('hidden',!bell);});
   var pr=S.pendingReqs().length;
-  $$('.sl-nav').forEach(function(n){if(/Báo cáo nội dung/.test(n.textContent)){var b=n.querySelector('.sl-badge');if(b){var c=S.get().reports.filter(function(r){return r.status==='open';}).length;b.textContent=c;b.classList.toggle('hidden',!c);}}});
+  $$('.sl-nav').forEach(function(n){if(/Báo cáo nội dung/.test(n.textContent)){var b=n.querySelector('.sl-badge');if(b){var c=window.SL_OPEN_REPORTS!=null?window.SL_OPEN_REPORTS:S.get().reports.filter(function(r){return r.status==='open';}).length;b.textContent=c;b.classList.toggle('hidden',!c);}}});
   // images/icons decorative
   $$('i.ic').forEach(function(i){i.setAttribute('aria-hidden','true');});
 }

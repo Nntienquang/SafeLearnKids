@@ -138,7 +138,19 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsync("Bạn thao tác quá nhanh. Vui lòng thử lại sau.", cancellationToken);
     };
 });
-builder.Services.AddControllersWithViews(options => options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ParentSettings>();
+builder.Services.AddScoped<ChildModeFilter>();
+// US-47/48: weekly reports and daily admin numbers, filled in the background (section "Jobs").
+builder.Services.Configure<JobOptions>(builder.Configuration.GetSection("Jobs"));
+builder.Services.AddSingleton<DailyJobs>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<DailyJobs>());
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+    // Child mode locks the parent area on the server, not only in the page scripts.
+    options.Filters.AddService<ChildModeFilter>();
+});
 
 var app = builder.Build();
 

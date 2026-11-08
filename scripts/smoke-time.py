@@ -97,6 +97,8 @@ def checks(url, directory):
         parent, other, admin = smoke.Client(url), smoke.Client(url), smoke.Client(url)
         for client, email in ((parent, PARENT), (other, OTHER), (admin, ADMIN)):
             check(client.post_form("/login", {"Email": email, "Password": PASSWORD})[0] == 302, f"{email.split('-')[3]} signs in")
+        # Child mode locks the parent pages on the server: /kids-* pages run on the child's device, the rest on the parent's.
+        parent, other = smoke.Devices(parent), smoke.Devices(other)
         kid = add_child(parent, "Be Gio")
         add_child(other, "Be Khac")
         time_page = f"/time?child={kid}"

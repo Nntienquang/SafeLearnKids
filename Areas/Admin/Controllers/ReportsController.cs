@@ -90,8 +90,8 @@ public class ReportsController(UserManager<ApplicationUser> users, AccountActivi
             report.ResolvedAt = DateTime.UtcNow;
             var family = report.ReportedById ?? report.ChildProfile?.ParentId;
             if (family is not null)
-                NotificationWriter.Add(db, family, "ContentReport", "Báo cáo nội dung đã được xử lý",
-                    $"{report.Lesson?.Title ?? report.SourceVideo?.Title}: {resolution}", report.ChildProfileId is { } childId ? $"/history?child={childId}" : null);
+                await NotificationWriter.AddAsync(db, family, "ContentReport", "Báo cáo nội dung đã được xử lý",
+                    $"{report.Lesson?.Title ?? report.SourceVideo?.Title}: {resolution}", report.ChildProfileId is { } childId ? $"/history?child={childId}" : null, cancellationToken);
         }
         try
         {

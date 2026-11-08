@@ -98,6 +98,8 @@ def checks(url, directory):
         parent, other = smoke.Client(url), smoke.Client(url)
         for client, email in ((parent, PARENT), (other, OTHER)):
             check(client.post_form("/login", {"Email": email, "Password": PASSWORD})[0] == 302, f"{email.split('-')[3]} signs in")
+        # Child mode locks the parent pages on the server: /kids-* pages run on the child's device, the rest on the parent's.
+        parent, other = smoke.Devices(parent), smoke.Devices(other)
         kid = add_child(parent, "Be Hoc", 2)
         stranger = add_child(other, "Be Khac", 2)
         alpha, beta, gamma, draft, epsilon = (lesson_id(name) for name in ("Alpha", "Beta", "Gamma", "Draft", "Epsilon"))
@@ -194,7 +196,14 @@ def checks(url, directory):
         check(form(parent, epsilon_detail, f"/assignments/{cancel}/cancel")[0] == 302 and assignment(kid, epsilon) == "Cancelled", "the parent cancels an assignment")
         check(parent.request(f"/kids-lesson?id={epsilon}")[0] == 404, "a cancelled lesson from another grade closes again")
         check(parent.request(f"/kids-reading?id={beta}")[1].get("Location", "").endswith(f"/kids-lesson?id={beta}"), "old reading links open the lesson page")
-        check(parent.request("/kids-picker")[0] == 200 and "/kids-picker" in parent.request("/kids-home")[1].get("Location", ""), "returning to the picker ends child mode")
+        check(parent.request("/kids-picker")[0] == 200 and parent.request("/kids-home")[0] == 200, "switching child at the picker keeps child mode on")
+        token = smoke.token_from(parent.request("/kids-exit")[2])
+        check(parent.request("/kids-exit", [("password", "wrong"), ("__RequestVerificationToken", token)])[0] == 400 and parent.request("/kids-home")[0] == 200,
+              "a wrong password does not end child mode")
+        token = smoke.token_from(parent.request("/kids-exit")[2])
+        status, headers, _ = parent.request("/kids-exit", [("password", PASSWORD), ("__RequestVerificationToken", token)])
+        check(status == 302 and headers.get("Location", "").endswith("/parent-home") and "/kids-picker" in parent.request("/kids-home")[1].get("Location", ""),
+              "the account password ends child mode when no PIN is set")
 
 
 def main():

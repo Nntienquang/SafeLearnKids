@@ -1,15 +1,65 @@
+@model AdminDashboardViewModel
 @{
     ViewData["Title"] = """Tổng quan quản trị""";
-    ViewData["Page"] = "admin-home";
+    ViewData["Page"] = "admin-home-sql";
     ViewData["Nav"] = "home";
     ViewData["Crumb"] = Html.Raw("""Quản trị · Tổng quan""");
     ViewData["Heading"] = """Tổng quan quản trị""";
-    ViewData["Sub"] = """Số liệu nội dung, kiểm duyệt và người dùng.""";
+    ViewData["Sub"] = """Người dùng, việc học và việc cần kiểm duyệt (US-48).""";
+    var maxMinutes = Math.Max(1, Model.Trend.Max(day => day.Minutes));
+    (string Label, int Count, string Link, string Icon, string Tone)[] todo =
+    [
+        ("Báo cáo nội dung chưa xử lý", Model.OpenReports, "/admin-reports", "flag", "t-r"),
+        ("Nguồn chờ duyệt", Model.PendingSources, "/admin-curate", "link", "t-a"),
+        ("Video chờ duyệt", Model.PendingVideos, "/admin-videos", "playc", "t-a"),
+        ("Câu hỏi gợi ý chờ duyệt", Model.PendingQuestions, "/admin-questions?pending=true", "sparkles", "t-v"),
+        ("Yêu cầu xóa dữ liệu của bé", Model.PendingDataRequests, "/admin-data-requests", "shield", "t-p"),
+        ("Đăng nhập thất bại trong 24 giờ", Model.FailedLogins24h, "/admin-audit?tab=logins&result=failed", "lock", "t-n")
+    ];
 }
 @section Actions {
-<button class="sl-btn" type="button"><i class="ic ic-download"></i>Xuất báo cáo</button>
+<a class="sl-btn" href="/admin-stats"><i class="ic ic-chart"></i>Thống kê nội dung</a>
 }
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px"><div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Phụ huynh đang hoạt động</span><span class="ib t-p" style="width:38px;height:38px"><i class="ic ic-users"></i></span></div><div class="kpi-v">1.284</div><div class="kpi-d up">+86 tuần này</div></div><div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Bài học đã xuất bản</span><span class="ib t-g" style="width:38px;height:38px"><i class="ic ic-book"></i></span></div><div class="kpi-v">342</div><div class="kpi-d up">+12 tuần này</div></div><div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Kênh chờ kiểm duyệt</span><span class="ib t-a" style="width:38px;height:38px"><i class="ic ic-playc"></i></span></div><div class="kpi-v">12</div><div class="kpi-d down">3 quá hạn 48h</div></div><div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Báo cáo chờ xử lý</span><span class="ib t-r" style="width:38px;height:38px"><i class="ic ic-flag"></i></span></div><div class="kpi-v">5</div><div class="kpi-d up">Trung bình xử lý 3 giờ</div></div></div>
-<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px"><div class="sl-card" style="flex:2 1 520px;min-width:0"><div class="card-h"><div class="card-t">Lượt học theo ngày</div><div class="seg"><span class="on">14 ngày</span><span>30 ngày</span></div></div>
-<div style="display:flex;align-items:flex-end;gap:8px;height:170px;margin-top:14px"><i style="flex:1;height:40%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:52%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:48%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:60%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:44%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:35%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:70%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:66%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:58%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:72%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:64%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:50%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:80%;border-radius:8px 8px 3px 3px;background:var(--primary-soft)"></i><i style="flex:1;height:92%;border-radius:8px 8px 3px 3px;background:var(--grad)"></i></div></div>
-<div class="sl-card" style="flex:1 1 320px;min-width:0"><div class="card-t" style="margin-bottom:6px">Việc cần làm</div><div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)"><span class="ib t-r"><i class="ic ic-flag"></i></span><div class="grow"><div class="b">5 báo cáo nội dung</div><div class="muted" style="font-size:13px">Có 1 mức khẩn</div></div><a class="sl-btn sl-btn-sm sl-btn-p" href="~/admin-reports">Xử lý</a></div><div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)"><span class="ib t-a"><i class="ic ic-playc"></i></span><div class="grow"><div class="b">12 kênh chờ duyệt</div><div class="muted" style="font-size:13px">AI đã chấm sơ bộ</div></div><a class="sl-btn sl-btn-sm" href="~/admin-curate">Duyệt</a></div><div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)"><span class="ib t-v"><i class="ic ic-sparkles"></i></span><div class="grow"><div class="b">8 câu hỏi AI gợi ý</div><div class="muted" style="font-size:13px">Chờ người duyệt</div></div><a class="sl-btn sl-btn-sm" href="~/admin-questions">Xem</a></div></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px">
+    <div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Phụ huynh</span><span class="ib t-p" style="width:38px;height:38px"><i class="ic ic-users"></i></span></div><div class="kpi-v">@Model.Parents</div><div class="kpi-d">+@Model.NewParents7 trong 7 ngày</div></div>
+    <div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Hồ sơ bé</span><span class="ib t-v" style="width:38px;height:38px"><i class="ic ic-smile"></i></span></div><div class="kpi-v">@Model.Children</div><div class="kpi-d">@Model.ActiveChildren7 bé học trong 7 ngày</div></div>
+    <div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Hôm nay</span><span class="ib t-a" style="width:38px;height:38px"><i class="ic ic-clock"></i></span></div><div class="kpi-v">@Model.Today.Minutes phút</div><div class="kpi-d">@Model.Today.ActiveChildren bé học · @Model.Today.Lessons bài hoàn thành</div></div>
+    <div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Nội dung</span><span class="ib t-g" style="width:38px;height:38px"><i class="ic ic-book"></i></span></div><div class="kpi-v">@Model.PublishedLessons bài</div><div class="kpi-d">@Model.ApprovedVideos video đã duyệt</div></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;align-items:flex-start">
+    <div class="sl-card" style="flex:2 1 520px;min-width:0">
+        <div class="card-h"><div><div class="card-t">Số phút học theo ngày</div><div class="card-s">14 ngày gần nhất · số liệu ngày cũ được chụp mỗi giờ, hôm nay tính trực tiếp</div></div></div>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:180px;margin-top:14px" role="img" aria-label="Số phút học 14 ngày: @string.Join(", ", Model.Trend.Select(day => $"{day.Day:dd/MM} {day.Minutes} phút"))">
+            @foreach (var day in Model.Trend)
+            {
+                <div class="sl-col" style="flex:1;align-items:center;gap:4px;justify-content:flex-end;height:100%;min-width:0" title="@day.Day.ToString("dd/MM"): @day.Minutes phút, @day.ActiveChildren bé, @day.Lessons bài">
+                    <span class="b" style="font-size:11px">@day.Minutes</span>
+                    <i style="width:100%;height:@(Math.Max(3, (int)(day.Minutes * 130 / maxMinutes)))px;border-radius:8px 8px 3px 3px;background:@(day.Day == Model.Today.Day ? "var(--grad)" : "var(--primary-soft)")"></i>
+                    <span class="muted" style="font-size:10.5px">@day.Day.ToString("dd/MM")</span>
+                </div>
+            }
+        </div>
+        <div class="sl-card" style="padding:6px 0;overflow-x:auto;margin-top:16px;box-shadow:none">
+            <table class="tbl">
+                <thead><tr><th>Ngày</th><th>Phụ huynh đăng nhập</th><th>Bé học</th><th>Phút</th><th>Bài xong</th><th>Báo cáo mở</th><th>Nguồn mới</th></tr></thead>
+                <tbody>
+                    @foreach (var day in Model.Trend.AsEnumerable().Reverse().Take(7))
+                    {
+                        <tr><td>@day.Day.ToString("dd/MM")</td><td>@day.ActiveParents</td><td>@day.ActiveChildren</td><td>@day.Minutes</td><td>@day.Lessons</td><td>@day.OpenReports</td><td>@day.NewSources</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="sl-card" style="flex:1 1 320px;min-width:0">
+        <div class="card-t" style="margin-bottom:6px">Việc cần làm</div>
+        @foreach (var item in todo)
+        {
+            <a class="sl-row" href="@item.Link" style="gap:14px;padding:12px 0;border-top:1px solid var(--line);text-decoration:none;color:inherit">
+                <span class="ib @item.Tone" aria-hidden="true"><i class="ic ic-@item.Icon"></i></span>
+                <span class="grow b">@item.Label</span>
+                <span class="chip @(item.Count > 0 ? item.Tone : "t-n")">@item.Count</span>
+            </a>
+        }
+    </div>
+</div>
