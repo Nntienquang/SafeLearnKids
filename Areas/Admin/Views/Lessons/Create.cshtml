@@ -1,0 +1,21 @@
+@model LessonFormViewModel
+@{
+    ViewData["Title"] = "Bài học mới";
+    ViewData["Page"] = "admin-lessons";
+    ViewData["Nav"] = "lesson";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
+    ViewData["Heading"] = ViewData["Title"];
+    ViewData["Sub"] = $"Môn {Model.SubjectName} · bài mới được tạo ở trạng thái Bản nháp.";
+}
+<form asp-action="Create" method="post" class="sl-card acc-form">
+    <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+    <input type="hidden" asp-for="SubjectId" />
+    <section class="acc-sec">
+        <div class="card-t">Thông tin bài</div>
+        <partial name="_LessonFields" model="Model" />
+    </section>
+    <div class="acc-foot">
+        <a class="sl-btn" href="@Url.Action("Index", "Catalog", new { subject = Model.SubjectId })">Hủy</a>
+        <button class="sl-btn sl-btn-p" type="submit">Tạo bài nháp</button>
+    </div>
+</form>

@@ -485,7 +485,8 @@ public partial class SafeLearnDbContext : DbContext
             entity.HasIndex(e => new { e.SubjectId, e.GradeLevelId, e.Status }, "IX_Lessons_SubjectId_GradeLevelId_Status");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())", "DF_Lessons_CreatedAt");
-            entity.Property(e => e.DurationMin).HasDefaultValue(10, "DF_Lessons_DurationMin");
+            // The length is computed from content, so 0 is a real value and must not fall back to the column default.
+            entity.Property(e => e.DurationMin).HasDefaultValue(10, "DF_Lessons_DurationMin").HasSentinel(-1);
             entity.Property(e => e.LessonType)
                 .HasMaxLength(30)
                 .HasDefaultValue("Video", "DF_Lessons_LessonType");

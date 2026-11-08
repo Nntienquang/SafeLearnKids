@@ -1,0 +1,267 @@
+@model LessonEditorViewModel
+@using SafeLearnKids.Web.Services
+@{
+    var form = Model.Form;
+    var (statusLabel, statusTone) = CatalogOptions.Status(Model.Status);
+    ViewData["Title"] = $"Soạn bài: {form.Title}";
+    ViewData["Page"] = "admin-lessons";
+    ViewData["Nav"] = "lesson";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
+    ViewData["Heading"] = ViewData["Title"];
+    ViewData["Sub"] = $"{form.SubjectName} · cập nhật {Model.UpdatedAt.ToLocalTime():dd/MM/yyyy HH:mm}";
+}
+@section Actions {
+<a class="sl-btn" href="@Url.Action("Index", "Catalog", new { subject = form.SubjectId })"><i class="ic ic-arrowl"></i>Về danh mục</a>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+@if (!Model.SubjectActive)
+{
+    <div class="banner t-a" role="status" style="margin-bottom:16px"><i class="ic ic-alert"></i>Môn @form.SubjectName đang bị ẩn trong danh mục.</div>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+    <form asp-action="Edit" asp-route-id="@form.Id" method="post" class="sl-card acc-form" style="flex:2 1 520px;min-width:0;max-width:none">
+        <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+        <input type="hidden" name="RowVersion" value="@form.RowVersion" />
+        <section class="acc-sec">
+            <div class="card-h">
+                <div class="card-t">Thông tin bài</div>
+                <span class="chip t-@statusTone">@statusLabel</span>
+            </div>
+            <partial name="_LessonFields" model="form" view-data="@(new ViewDataDictionary(ViewData) { ["Locked"] = !Model.Editable })" />
+            @if (!Model.Editable)
+            {
+                <span class="muted ud-hint">Đưa bài về Bản nháp để sửa.</span>
+            }
+        </section>
+        @if (Model.Editable)
+        {
+            <div class="acc-foot">
+                <button class="sl-btn sl-btn-p" type="submit">Lưu thông tin</button>
+            </div>
+        }
+    </form>
+    <div class="sl-col" style="flex:1 1 280px;min-width:0;gap:16px">
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:10px">Trạng thái</div>
+            <div class="sl-row" style="justify-content:space-between;padding:6px 0"><span class="b">Hiện tại</span><span class="chip t-@statusTone">@statusLabel</span></div>
+            <div class="sl-row" style="justify-content:space-between;padding:6px 0"><span class="b">Loại bài</span><span class="muted b">@CatalogOptions.LessonTypeLabel(Model.LessonType)</span></div>
+            <div class="sl-row" style="justify-content:space-between;padding:6px 0"><span class="b">Thời lượng</span><span class="muted b">@Model.DurationMin phút</span></div>
+            @if (Model.PublishedAt is { } publishedAt)
+            {
+                <div class="sl-row" style="justify-content:space-between;padding:6px 0;gap:10px"><span class="b">Xuất bản gần nhất</span><span class="muted" style="text-align:right">@publishedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")@(Model.PublisherName is { } publisher ? $" · {publisher}" : "")</span></div>
+            }
+            <div class="sl-col" style="gap:8px;margin-top:10px">
+                @if (LessonWorkflow.CanChange(Model.Status, LessonWorkflow.Published))
+                {
+                    <form asp-action="ChangeStatus" asp-route-id="@form.Id" method="post">
+                        <input type="hidden" name="RowVersion" value="@form.RowVersion" /><input type="hidden" name="target" value="@LessonWorkflow.Published" />
+                        <button class="sl-btn sl-btn-p sl-btn-block" type="submit"><i class="ic ic-send"></i>Xuất bản</button>
+                    </form>
+                }
+                @if (LessonWorkflow.CanChange(Model.Status, LessonWorkflow.Archived))
+                {
+                    <form asp-action="ChangeStatus" asp-route-id="@form.Id" method="post"
+                          data-icon="alert" data-confirm="Lưu trữ bài này?" data-text="Bé sẽ không thấy bài này nữa." data-ok-label="Lưu trữ">
+                        <input type="hidden" name="RowVersion" value="@form.RowVersion" /><input type="hidden" name="target" value="@LessonWorkflow.Archived" />
+                        <button class="sl-btn sl-btn-block" type="submit">Lưu trữ</button>
+                    </form>
+                }
+                @if (LessonWorkflow.CanChange(Model.Status, LessonWorkflow.Draft))
+                {
+                    var published = Model.Status == LessonWorkflow.Published;
+                    <form asp-action="ChangeStatus" asp-route-id="@form.Id" method="post"
+                          data-icon="alert" data-confirm="@(published ? "Đưa bài về Bản nháp?" : null)" data-text="@(published ? "Bé sẽ tạm không thấy bài cho tới khi bài được xuất bản lại." : null)" data-ok-label="Về bản nháp">
+                        <input type="hidden" name="RowVersion" value="@form.RowVersion" /><input type="hidden" name="target" value="@LessonWorkflow.Draft" />
+                        <button class="sl-btn sl-btn-block" type="submit"><i class="ic ic-edit"></i>Về bản nháp</button>
+                    </form>
+                }
+            </div>
+            @if (Model.Editable)
+            {
+                <span class="muted ud-hint">Cần ít nhất 1 nội dung hợp lệ để xuất bản.</span>
+            }
+        </div>
+        @if (Model.Editable)
+        {
+            <div class="sl-card">
+                <div class="card-t" style="margin-bottom:10px">Xóa bài</div>
+                <form asp-action="Delete" asp-route-id="@form.Id" method="post"
+                      data-icon="trash" data-confirm="Xóa vĩnh viễn bài @form.Title?" data-text="Không thể hoàn tác. Bài đã có dữ liệu học tập sẽ không xóa được." data-ok-label="Xóa bài" data-danger="true">
+                    <input type="hidden" name="RowVersion" value="@form.RowVersion" />
+                    <button class="sl-btn sl-btn-d sl-btn-block" type="submit"><i class="ic ic-trash"></i>Xóa bài nháp</button>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+@{
+    var rowVersion = form.RowVersion;
+    var failed = Model.FailedContent;
+    var failedVideo = failed is { Id: null, ContentKind: LessonWorkflow.VideoContent } ? failed : null;
+    var failedReading = failed is { Id: null, ContentKind: LessonWorkflow.ReadingContent } ? failed : null;
+    string Minutes(int? seconds) => seconds is { } value ? $"{(value + 59) / 60} phút" : "Video";
+    string Excerpt(string? text) => text is { Length: > 400 } ? text[..400] + "…" : text ?? string.Empty;
+}
+<div class="sl-card" style="margin-top:16px">
+    <div class="card-h">
+        <div class="card-t">Nội dung bài</div>
+        <span class="muted b">@Model.Contents.Count phần</span>
+    </div>
+    @if (Model.ContentError is string contentError)
+    {
+        <div class="banner t-r" role="alert" style="margin-top:10px">@contentError</div>
+    }
+    @if (Model.Contents.Count == 0)
+    {
+        <div class="empty" style="margin-top:10px">Bài chưa có nội dung</div>
+    }
+    @for (var index = 0; index < Model.Contents.Count; index++)
+    {
+        var item = Model.Contents[index];
+        var isVideo = item.Kind == LessonWorkflow.VideoContent;
+        var isReading = item.Kind == LessonWorkflow.ReadingContent;
+        var editing = failed?.Id == item.Id ? failed : null;
+        <div class="sl-row" style="gap:12px;padding:12px;border-radius:16px;background:var(--surface-2);margin-top:10px;align-items:flex-start;flex-wrap:wrap">
+            <span class="ib t-@(isVideo ? "p" : "t")"><i class="ic ic-@(isVideo ? "playc" : isReading ? "book" : "file")"></i></span>
+            <div class="grow" style="min-width:180px">
+                <div class="b">@(item.Title ?? item.VideoTitle ?? item.FileName ?? "Bài đọc")</div>
+                <div class="muted" style="font-size:12.5px">
+                    @(isVideo ? (item.Title == item.VideoTitle ? $"Video · {Minutes(item.VideoDurationSec)}" : $"Video · {item.VideoTitle} · {Minutes(item.VideoDurationSec)}") : isReading ? "Bài đọc" : $"Tệp · {item.FileName}")
+                </div>
+                @if (isReading)
+                {
+                    <div style="white-space:pre-wrap;font-size:13.5px;margin-top:6px">@Excerpt(item.Body)</div>
+                }
+                @if (!item.IsValid)
+                {
+                    <span class="chip t-r" style="margin-top:6px">Không còn hợp lệ</span>
+                }
+                @if (item.EmbedUrl is { } embedUrl)
+                {
+                    @* Lazy loading keeps the player from loading until the admin opens the preview. *@
+                    <details style="margin-top:8px">
+                        <summary class="sl-btn sl-btn-sm" style="list-style:none;display:inline-flex"><i class="ic ic-play"></i>Xem thử</summary>
+                        <iframe src="@embedUrl" title="Xem thử: @(item.Title ?? item.VideoTitle)" loading="lazy"
+                                referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture" allowfullscreen
+                                style="display:block;width:100%;max-width:560px;aspect-ratio:16/9;border:0;border-radius:12px;margin-top:10px"></iframe>
+                    </details>
+                }
+                @if (Model.Editable && (isVideo || isReading))
+                {
+                    <details open="@(editing is not null)" style="margin-top:8px">
+                        <summary class="sl-btn sl-btn-sm" style="list-style:none;display:inline-flex">Sửa</summary>
+                        <form asp-action="UpdateContent" asp-route-id="@form.Id" asp-route-contentId="@item.Id" method="post" class="sl-col" style="gap:10px;margin-top:10px">
+                            <input type="hidden" name="RowVersion" value="@(editing?.RowVersion ?? rowVersion)" />
+                            <div class="field">
+                                <label class="lab" for="title-@item.Id">Tiêu đề</label>
+                                <input id="title-@item.Id" name="Title" class="inp" maxlength="150" value="@(editing is not null ? editing.Title : item.Title)" />
+                            </div>
+                            @if (isVideo)
+                            {
+                                var chosen = editing?.SourceVideoId ?? item.SourceVideoId;
+                                <div class="field">
+                                    <label class="lab" for="video-@item.Id">Video</label>
+                                    <select id="video-@item.Id" name="SourceVideoId" class="inp">
+                                        @foreach (var video in Model.Videos)
+                                        {
+                                            <option value="@video.Id" selected="@(video.Id == chosen)">@video.Title</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="field">
+                                    <label class="lab" for="body-@item.Id">Nội dung bài đọc</label>
+                                    <textarea id="body-@item.Id" name="Body" class="inp ta" rows="6" maxlength="20000">@(editing is not null ? editing.Body : item.Body)</textarea>
+                                </div>
+                            }
+                            <div><button class="sl-btn sl-btn-p sl-btn-sm" type="submit">Lưu phần này</button></div>
+                        </form>
+                    </details>
+                }
+            </div>
+            @if (Model.Editable)
+            {
+                <div class="sl-row" style="gap:6px;flex-wrap:wrap">
+                    @if (index > 0)
+                    {
+                        <form asp-action="MoveContent" asp-route-id="@form.Id" asp-route-contentId="@item.Id" method="post">
+                            <input type="hidden" name="RowVersion" value="@rowVersion" /><input type="hidden" name="direction" value="up" />
+                            <button class="sl-btn sl-btn-sm" type="submit" aria-label="Chuyển lên">Lên</button>
+                        </form>
+                    }
+                    @if (index < Model.Contents.Count - 1)
+                    {
+                        <form asp-action="MoveContent" asp-route-id="@form.Id" asp-route-contentId="@item.Id" method="post">
+                            <input type="hidden" name="RowVersion" value="@rowVersion" /><input type="hidden" name="direction" value="down" />
+                            <button class="sl-btn sl-btn-sm" type="submit" aria-label="Chuyển xuống">Xuống</button>
+                        </form>
+                    }
+                    <form asp-action="DeleteContent" asp-route-id="@form.Id" asp-route-contentId="@item.Id" method="post"
+                          data-icon="trash" data-confirm="Xóa phần nội dung này?" data-text="Phần nội dung sẽ bị xóa khỏi bài." data-ok-label="Xóa" data-danger="true">
+                        <input type="hidden" name="RowVersion" value="@rowVersion" />
+                        <button class="sl-btn sl-btn-sm sl-btn-d" type="submit" aria-label="Xóa phần nội dung"><i class="ic ic-trash"></i></button>
+                    </form>
+                </div>
+            }
+        </div>
+    }
+    @if (Model.Editable)
+    {
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)">
+            <form asp-action="AddContent" asp-route-id="@form.Id" method="post" class="sl-col" style="gap:10px">
+                <div class="card-t">Thêm video</div>
+                <input type="hidden" name="RowVersion" value="@(failedVideo?.RowVersion ?? rowVersion)" />
+                <input type="hidden" name="ContentKind" value="@LessonWorkflow.VideoContent" />
+                @if (Model.Videos.Count == 0)
+                {
+                    <span class="muted">Chưa có video nào được duyệt.</span>
+                }
+                else
+                {
+                    <div class="field">
+                        <label class="lab" for="new-video">Video đã duyệt</label>
+                        <select id="new-video" name="SourceVideoId" class="inp">
+                            @foreach (var video in Model.Videos)
+                            {
+                                <option value="@video.Id" selected="@(video.Id == failedVideo?.SourceVideoId)">@video.Title · @Minutes(video.DurationSec)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="lab" for="new-video-title">Tiêu đề (bỏ trống để dùng tên video)</label>
+                        <input id="new-video-title" name="Title" class="inp" maxlength="150" value="@failedVideo?.Title" />
+                    </div>
+                    <div><button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-plus"></i>Thêm video</button></div>
+                }
+            </form>
+            <form asp-action="AddContent" asp-route-id="@form.Id" method="post" class="sl-col" style="gap:10px">
+                <div class="card-t">Thêm bài đọc</div>
+                <input type="hidden" name="RowVersion" value="@(failedReading?.RowVersion ?? rowVersion)" />
+                <input type="hidden" name="ContentKind" value="@LessonWorkflow.ReadingContent" />
+                <div class="field">
+                    <label class="lab" for="new-reading-title">Tiêu đề</label>
+                    <input id="new-reading-title" name="Title" class="inp" maxlength="150" value="@failedReading?.Title" />
+                </div>
+                <div class="field">
+                    <label class="lab" for="new-reading-body">Nội dung bài đọc</label>
+                    <textarea id="new-reading-body" name="Body" class="inp ta" rows="5" maxlength="20000">@failedReading?.Body</textarea>
+                </div>
+                <div><button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-plus"></i>Thêm bài đọc</button></div>
+            </form>
+        </div>
+    }
+    else
+    {
+        <span class="muted ud-hint">Đưa bài về Bản nháp để thêm hoặc sửa nội dung.</span>
+    }
+</div>
+

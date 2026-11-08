@@ -1,0 +1,35 @@
+@model LessonFormViewModel
+@{
+    var locked = ViewData["Locked"] is true;
+}
+<div class="acc-fields">
+    <div class="field" style="grid-column:1/-1">
+        <label asp-for="Title" class="lab"></label>
+        <input asp-for="Title" class="inp" autocomplete="off" required maxlength="200" disabled="@locked" />
+        <span asp-validation-for="Title" class="err"></span>
+    </div>
+    <div class="field">
+        <span class="lab">Môn</span>
+        <input class="inp" value="@Model.SubjectName" readonly aria-label="Môn" />
+    </div>
+    <div class="field">
+        <label asp-for="GradeLevelId" class="lab"></label>
+        <select asp-for="GradeLevelId" class="inp" disabled="@locked">
+            @foreach (var grade in Model.Grades)
+            {
+                <option value="@grade.Id" selected="@(Model.GradeLevelId == grade.Id)">@grade.Name</option>
+            }
+        </select>
+        <span asp-validation-for="GradeLevelId" class="err"></span>
+    </div>
+    <div class="field" style="grid-column:1/-1">
+        <label asp-for="Summary" class="lab"></label>
+        <textarea asp-for="Summary" class="inp ta" maxlength="500" disabled="@locked"></textarea>
+        <span asp-validation-for="Summary" class="err"></span>
+    </div>
+    <div class="field">
+        <label asp-for="SortOrder" class="lab"></label>
+        <input asp-for="SortOrder" class="inp" type="number" min="0" max="999" placeholder="Tự xếp cuối" disabled="@locked" />
+        <span asp-validation-for="SortOrder" class="err"></span>
+    </div>
+</div>
