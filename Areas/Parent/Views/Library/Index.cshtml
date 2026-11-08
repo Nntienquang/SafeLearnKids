@@ -1,14 +1,88 @@
+@model LibraryViewModel
 @{
     ViewData["Title"] = """Thư viện bài học""";
-    ViewData["Page"] = "library";
+    ViewData["Page"] = "library-sql";
     ViewData["Nav"] = "library";
     ViewData["Crumb"] = Html.Raw("""Phụ huynh · Nội dung""");
     ViewData["Heading"] = """Thư viện bài học""";
-    ViewData["Sub"] = """Chọn bài đã được kiểm duyệt và giao cho con theo lớp, môn (US-09).""";
+    ViewData["Sub"] = """Bài học đã được quản trị viên kiểm duyệt, lọc theo môn, lớp và loại bài (US-16).""";
+    var filter = new Dictionary<string, string?>
+    {
+        ["subject"] = Model.Subject, ["grade"] = Model.Grade?.ToString(), ["type"] = Model.Type, ["tag"] = Model.Tag?.ToString(), ["q"] = Model.Q
+    };
+    string Gradient(string key)
+    {
+        var look = Model.Subjects.FirstOrDefault(item => item.Key == key);
+        return look is null ? "var(--grad)" : $"linear-gradient(135deg,{look.C[0]},{look.C[1]})";
+    }
 }
-@section Actions {
-<a class="sl-btn sl-btn-p" href="~/lesson-detail"><i class="ic ic-check"></i>Giao 2 bài đã chọn</a>
+<form method="get" asp-action="Index" class="sl-row" style="gap:10px;flex-wrap:wrap;margin-bottom:18px">
+    <input class="inp inp-sm grow" style="min-width:200px" type="search" name="q" value="@Model.Q" maxlength="200" aria-label="Tìm bài học" placeholder="Tìm theo tên bài, mục tiêu hoặc nhãn" />
+    <select class="inp inp-sm" style="width:auto" name="subject" aria-label="Lọc theo môn">
+        <option value="">Mọi môn</option>
+        @foreach (var subject in Model.Subjects)
+        {
+            <option value="@subject.Key" selected="@(Model.Subject == subject.Key)">@subject.Name</option>
+        }
+    </select>
+    <select class="inp inp-sm" style="width:auto" name="grade" aria-label="Lọc theo lớp">
+        <option value="">Mọi lớp</option>
+        @for (var level = 1; level <= 5; level++)
+        {
+            <option value="@level" selected="@(Model.Grade == level)">Lớp @level</option>
+        }
+    </select>
+    <select class="inp inp-sm" style="width:auto" name="type" aria-label="Lọc theo loại bài">
+        <option value="">Mọi loại</option>
+        @foreach (var type in LessonKind.Types)
+        {
+            <option value="@type" selected="@(Model.Type == type)">@LessonKind.TypeLabel(type)</option>
+        }
+    </select>
+    @if (Model.Tags.Count > 0)
+    {
+        <select class="inp inp-sm" style="width:auto" name="tag" aria-label="Lọc theo nhãn">
+            <option value="">Mọi nhãn</option>
+            @foreach (var tag in Model.Tags)
+            {
+                <option value="@tag.Id" selected="@(Model.Tag == tag.Id)">@tag.Name</option>
+            }
+        </select>
+    }
+    <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-search"></i>Lọc</button>
+</form>
+<div class="muted" style="margin-bottom:12px">@Model.Matching bài học</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px">
+    @foreach (var card in Model.Cards)
+    {
+        <a class="sl-card" asp-action="Details" asp-route-id="@card.Id" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
+            <div style="height:112px;background:@Gradient(card.SubjectKey);display:flex;align-items:center;justify-content:center;color:#fff" aria-hidden="true"><i class="ic ic-@LessonKind.Icon(card.LessonType) ic-xl"></i></div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+                <div class="sl-row" style="gap:6px;flex-wrap:wrap"><span class="chip t-p">@card.Subject</span><span class="chip t-n">@LessonKind.TypeLabel(card.LessonType)</span>@if (card.AssignedTo > 0)
+                {
+                    <span class="chip t-b" style="margin-left:auto">Đã giao @card.AssignedTo bé</span>
+                }</div>
+                <span class="b" style="font-size:16px;line-height:1.3">@card.Title</span>
+                <div class="muted" style="font-size:12.5px">@card.DurationMin phút · Lớp @card.Grade@(card.Tags.Count == 0 ? "" : " · " + string.Join(", ", card.Tags))</div>
+            </div>
+        </a>
+    }
+</div>
+@if (Model.Cards.Count == 0)
+{
+    <div class="empty">Chưa có bài học phù hợp. Hãy thử bỏ bớt bộ lọc.</div>
 }
-<div class="sl-row" style="gap:12px;flex-wrap:wrap;margin-bottom:18px"><div class="seg"><span class="on">Tất cả</span><span>Toán</span><span>Tiếng Việt</span><span>Khoa học</span><span>Tiếng Anh</span></div><div class="seg"><span>Lớp 2</span><span class="on">Lớp 3</span><span>Lớp 4</span></div><span class="grow"></span><button class="sl-btn sl-btn-sm" type="button"><i class="ic ic-filter"></i>Loại: Video, Đọc, Quiz</button></div>
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px"><div class="sl-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column"><div style="height:112px;background:linear-gradient(135deg,#6A4CFF,#38BDF8);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play ic-xl"></i></div><div style="padding:16px;display:flex;flex-direction:column;gap:10px"><div class="sl-row" style="gap:6px"><span class="chip t-p">Toán</span><span class="chip t-n">Video</span><span class="chip t-b" style="margin-left:auto">Đã giao</span></div><a class="b" href="~/lesson-detail" style="font-size:16px;line-height:1.3">Bảng nhân 5</a><div class="muted" style="font-size:12.5px">10 phút · Lớp 3</div></div></div><div class="sl-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column"><div style="height:112px;background:linear-gradient(135deg,#7C3AED,#C084FC);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-book ic-xl"></i></div><div style="padding:16px;display:flex;flex-direction:column;gap:10px"><div class="sl-row" style="gap:6px"><span class="chip t-p">Toán</span><span class="chip t-n">Bài đọc</span><span class="chip t-g" style="margin-left:auto">Đã học</span></div><a class="b" href="~/lesson-detail" style="font-size:16px;line-height:1.3">Phân số cơ bản</a><div class="muted" style="font-size:12.5px">8 phút · Lớp 3</div></div></div><div class="sl-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column"><div style="height:112px;background:linear-gradient(135deg,#14B8A6,#22C55E);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play ic-xl"></i></div><div style="padding:16px;display:flex;flex-direction:column;gap:10px"><div class="sl-row" style="gap:6px"><span class="chip t-g">Tiếng Việt</span><span class="chip t-n">Video</span><span class="chip t-n" style="margin-left:auto">Chưa giao</span></div><a class="b" href="~/lesson-detail" style="font-size:16px;line-height:1.3">Câu kể Ai làm gì?</a><div class="muted" style="font-size:12.5px">12 phút · Lớp 3</div></div></div><div class="sl-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column"><div style="height:112px;background:linear-gradient(135deg,#F59E0B,#FB7185);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play ic-xl"></i></div><div style="padding:16px;display:flex;flex-direction:column;gap:10px"><div class="sl-row" style="gap:6px"><span class="chip t-a">Khoa học</span><span class="chip t-n">Video</span><span class="chip t-b" style="margin-left:auto">Đã giao</span></div><a class="b" href="~/lesson-detail" style="font-size:16px;line-height:1.3">Vòng đời của bướm</a><div class="muted" style="font-size:12.5px">9 phút · Lớp 3</div></div></div><div class="sl-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column"><div style="height:112px;background:linear-gradient(135deg,#4F46E5,#EC4899);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-pen ic-xl"></i></div><div style="padding:16px;display:flex;flex-direction:column;gap:10px"><div class="sl-row" style="gap:6px"><span class="chip t-p">Toán</span><span class="chip t-n">Quiz</span><span class="chip t-g" style="margin-left:auto">Đã học</span></div><a class="b" href="~/lesson-detail" style="font-size:16px;line-height:1.3">Quiz: bảng nhân 2 và 5</a><div class="muted" style="font-size:12.5px">6 phút · Lớp 3</div></div></div><div class="sl-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column"><div style="height:112px;background:linear-gradient(135deg,#0EA5E9,#14B8A6);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-book ic-xl"></i></div><div style="padding:16px;display:flex;flex-direction:column;gap:10px"><div class="sl-row" style="gap:6px"><span class="chip t-g">Tiếng Việt</span><span class="chip t-n">Bài đọc</span><span class="chip t-n" style="margin-left:auto">Chưa giao</span></div><a class="b" href="~/lesson-detail" style="font-size:16px;line-height:1.3">Từ chỉ hoạt động</a><div class="muted" style="font-size:12.5px">7 phút · Lớp 3</div></div></div><div class="sl-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column"><div style="height:112px;background:linear-gradient(135deg,#F97316,#FACC15);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play ic-xl"></i></div><div style="padding:16px;display:flex;flex-direction:column;gap:10px"><div class="sl-row" style="gap:6px"><span class="chip t-a">Khoa học</span><span class="chip t-n">Video</span><span class="chip t-n" style="margin-left:auto">Chưa giao</span></div><a class="b" href="~/lesson-detail" style="font-size:16px;line-height:1.3">Động vật sống ở đâu?</a><div class="muted" style="font-size:12.5px">11 phút · Lớp 3</div></div></div><div class="sl-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column"><div style="height:112px;background:linear-gradient(135deg,#F43F5E,#FB923C);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play ic-xl"></i></div><div style="padding:16px;display:flex;flex-direction:column;gap:10px"><div class="sl-row" style="gap:6px"><span class="chip t-r">Tiếng Anh</span><span class="chip t-n">Video</span><span class="chip t-n" style="margin-left:auto">Chưa giao</span></div><a class="b" href="~/lesson-detail" style="font-size:16px;line-height:1.3">Greetings</a><div class="muted" style="font-size:12.5px">8 phút · Lớp 3</div></div></div></div>
-<div class="sl-row" style="justify-content:center;gap:8px;margin-top:22px"><span class="icbtn" style="width:40px;height:40px"><i class="ic ic-arrowl"></i></span><span class="sl-btn sl-btn-p sl-btn-sm">1</span><span class="sl-btn sl-btn-sm">2</span><span class="sl-btn sl-btn-sm">3</span><span class="icbtn" style="width:40px;height:40px"><i class="ic ic-arrowr"></i></span></div>
+@if (Model.TotalPages > 1)
+{
+    <div class="sl-row" style="gap:10px;margin-top:20px;justify-content:center;align-items:center">
+        @if (Model.Page > 1)
+        {
+            <a class="sl-btn sl-btn-sm" asp-action="Index" asp-all-route-data="filter!" asp-route-page="@(Model.Page - 1)">Trước</a>
+        }
+        <span class="muted">Trang @Model.Page/@Model.TotalPages</span>
+        @if (Model.Page < Model.TotalPages)
+        {
+            <a class="sl-btn sl-btn-sm" asp-action="Index" asp-all-route-data="filter!" asp-route-page="@(Model.Page + 1)">Sau</a>
+        }
+    </div>
+}

@@ -71,21 +71,29 @@ function bind(){
   }
   state.session={email:u.email,name:u.name,role:u.role};save();
 }
+/* The admins' subject catalog replaces the built-in subject list; inactive ones stay for children who have them. */
+function subjects(){
+  (window.SL_SUBJECTS||[]).forEach(function(r){SUBJECTS[r.key]={name:r.name,tone:r.tone,icon:r.icon,c:r.c,active:r.active};});
+}
 /* SQL owns the profiles; usage, progress and colours stay local until those modules move too. */
 function sync(){
   var rows=window.SL_CHILDREN;if(!rows)return;
   var old={},ids={};state.children.forEach(function(c){old[c.id]=c;});
   state.children=rows.map(function(r,i){ids[r.id]=1;
     ['assigned','progress','stars','streak','badges'].forEach(function(k){if(state[k][r.id]==null)state[k][r.id]=k==='assigned'?[]:k==='progress'?{}:k==='badges'?[]:0;});
-    return Object.assign({c:PALETTE[i%4],limit:60,used:0,extra:0,search:true},old[r.id],r);});
+    /* Minutes today (limit, used) come from the server; extra time is already inside the limit. */
+    return Object.assign({c:PALETTE[i%4],limit:60,used:0,extra:0,search:true},old[r.id],r,{extra:0});});
   if(!ids[state.parentChild])state.parentChild=rows.length?rows[0].id:null;
   if(!ids[state.kidsChild])state.kidsChild=null;
+  /* In child mode the server says which child is learning. */
+  if(window.SL_KID&&ids[String(window.SL_KID)])state.kidsChild=String(window.SL_KID);
   save();
 }
 load();
 // Remove credentials persisted by earlier mock-auth versions. Identity owns all passwords.
 state.accounts=[];state.lock={};if(!window.SL_USER)state.session=null;save();
 bind();
+subjects();
 sync();
 var S={
  SUBJECTS:SUBJECTS,LESSONS:LESSONS,PATH:PATH,QUIZ:QUIZ,BADGES:BADGES,PALETTE:PALETTE,

@@ -12,6 +12,7 @@ body{margin:0;background:#F5F6FB}
 .sl-btn:hover{transform:translateY(-1px)}
 a.k-card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
 .sl-btn:active,.k-btn:active{transform:translateY(1px)}
+.k-btn:disabled,.sl-btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none}
 .sl-btn[disabled]{opacity:.5;pointer-events:none}
 .hamb{display:none}
 .scrim{position:fixed;inset:0;background:rgba(8,10,30,.5);z-index:55;display:none}

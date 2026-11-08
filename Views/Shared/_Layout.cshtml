@@ -7,6 +7,7 @@
     var children = User.IsInRole("Parent")
         ? await ChildProfiles.ForParentAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value, Context.RequestAborted)
         : null;
+    var subjects = children is null ? null : await ChildProfiles.SubjectsAsync(Context.RequestAborted);
 }
 <!DOCTYPE html>
 <html lang="vi" data-bs-theme="light">
@@ -43,6 +44,7 @@
         @if (children is not null)
         {
             <text>window.SL_CHILDREN = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(children, System.Text.Json.JsonSerializerOptions.Web));
+        window.SL_SUBJECTS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(subjects, System.Text.Json.JsonSerializerOptions.Web));
         window.SL_CSRF = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Antiforgery.GetAndStoreTokens(Context).RequestToken));</text>
         }
     </script>

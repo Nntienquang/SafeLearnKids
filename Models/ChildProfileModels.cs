@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SafeLearnKids.Web.Services;
 
 namespace SafeLearnKids.Web.Models;
 
@@ -18,6 +19,7 @@ public class ChildProfileInput
 }
 
 // Matches the child shape store.js keeps, so demo pages read SQL profiles unchanged.
-public record ParentChildRow(string Id, string Name, int Cls, int? BirthYear, string Init, IReadOnlyList<string> Subjects);
+// Limit and Used are today's minutes from the server (Limit includes extra time granted today).
+public record ParentChildRow(string Id, string Name, int Cls, int? BirthYear, string Init, IReadOnlyList<string> Subjects, int Limit = StudyTimeService.DefaultDailyMinutes, int Used = 0);
 
 public record ChildSaveResult(ParentChildRow? Child, string? Error, bool NotFound = false);

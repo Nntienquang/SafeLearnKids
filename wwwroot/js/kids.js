@@ -9,7 +9,9 @@ function kind(k){return k==='Video'?'play':k==='Quiz'?'pen':'book';}
 function href(l){return '/'+(l.kind==='Quiz'?'kids-quiz':l.kind==='Bài đọc'?'kids-reading':'kids-lesson')+'?id='+l.id;}
 function thumb(c,ic,w,h){return '<div style="width:'+w+'px;height:'+h+'px;flex:0 0 auto;border-radius:18px;background:linear-gradient(135deg,'+c[0]+','+c[1]+');display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-'+ic+'"></i></div>';}
 function subjStat(c,sj){var ls=S.LESSONS.filter(function(l){return l.subj===sj;});return {d:ls.filter(function(l){return S.prog(c.id,l.id).done;}).length,t:ls.length};}
-function paintTop(){var c=kc();if(!c)return;var y=$('.k-top .k-pill.y');if(y)y.innerHTML='<i class="ic ic-clock"></i>Còn '+S.remaining(c)+' phút';
+/* Minutes left come from the server; the local store is only a fallback for the demo pages. */
+function left(){var c=kc();return window.SL_KID_LEFT!=null?window.SL_KID_LEFT:c?S.remaining(c):0;}
+function paintTop(){var c=kc();if(!c)return;var y=$('.k-top .k-pill.y');if(y)y.innerHTML='<i class="ic ic-clock"></i>Còn '+left()+' phút';
   var p=$('.k-top .k-pill.p');if(p)p.innerHTML='<span class="av av-s" style="background:linear-gradient(135deg,'+c.c[0]+','+c.c[1]+')">'+esc(c.init)+'</span>'+esc(c.name);}
 /* usage timer: server-side in production (30s heartbeat); simulated here */
 var timer=null;
@@ -46,7 +48,6 @@ var exitLink=$$('a[href="/kids-picker"]');
 if(P==='kids-picker'){
   var cs=S.get().children;
   var row=$('main > div[style*="gap:24px"]');
-  row.innerHTML=cs.map(function(c){return '<a class="k-card" href="/kids-home" data-c="'+c.id+'" style="width:230px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px"><span class="av" style="width:112px;height:112px;font-size:44px;background:linear-gradient(135deg,'+c.c[0]+','+c.c[1]+')">'+esc(c.init)+'</span><div class="kf" style="font-size:28px">'+esc(c.name)+'</div><span class="k-note">Lớp '+c.cls+' · còn '+S.remaining(c)+' phút</span></a>';}).join('');
   row.addEventListener('click',function(e){var a=e.target.closest('[data-c]');if(!a)return;S.set(function(s){s.kidsChild=a.dataset.c;});});
   var par=$('main > a.sl-btn');par.innerHTML='<i class="ic ic-lock"></i>Dành cho ba mẹ (cần PIN)';
   S.set(function(s){s.kidsChild=null;});
@@ -70,64 +71,24 @@ if(P==='kids-exit'){
   document.addEventListener('keydown',function(e){if(/^\d$/.test(e.key))type(e.key);else if(e.key==='Backspace')type('back');});
 }
 
-/* ---------- home ---------- */
-if(P==='kids-home'){
-  var c=kc(),asg=(S.get().assigned[c.id]||[]).map(S.lesson).filter(Boolean);
-  var next=asg.filter(function(l){return !S.prog(c.id,l.id).done;})[0]||asg[0];
-  var hero=$('.k-card.grow,.k-card[style*="var(--grad)"]');
-  if(hero){hero.querySelector('.kf').innerHTML='Chào '+esc(c.name)+'!<br>'+(next?'Học tiếp nhé':'Hôm nay con nghỉ nhé');
-    hero.querySelector('.chip').innerHTML='<i class="ic ic-flame"></i>'+(S.get().streak[c.id]||0)+' ngày liên tiếp';
-    var info=hero.querySelector('div[style*="opacity:.92"]');if(info)info.textContent=next?next.title+' · '+(S.prog(c.id,next.id).pct?'đã học '+S.prog(c.id,next.id).pct+'%':S.SUBJECTS[next.subj].name):'Ba mẹ chưa giao bài mới';
-    var b=hero.querySelector('.k-btn');if(next)b.href=href(next);else b.classList.add('hidden');}
-  var dn=$('.donut'),pct=Math.min(100,Math.round(c.used*100/(c.limit+c.extra)));if(dn){dn.style.background='conic-gradient(#FFB020 0 '+pct+'%,var(--surface-2) '+pct+'% 100%)';dn.querySelector('b').innerHTML=c.used+'<small>phút</small>';var ss=dn.parentNode.querySelector('.k-note');ss.textContent='Còn '+S.remaining(c)+' phút';}
-  var grid=$$('main > div')[1].querySelector('div[style*="gap:18px"]');
-  grid.innerHTML=c.subjects.map(function(k){var sj=S.SUBJECTS[k],st=subjStat(c,k);return '<a class="k-card" href="/kids-subject?s='+k+'" style="flex:1 1 200px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,'+sj.c[0]+','+sj.c[1]+');color:#fff;border-color:transparent"><i class="ic ic-'+sj.icon+' ic-xl"></i><div class="kf" style="font-size:26px">'+sj.name+'</div><div style="font-weight:700;font-size:14px;opacity:.95">'+st.d+'/'+st.t+' bài</div><div style="height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><i style="display:block;height:8px;border-radius:4px;background:#fff;width:'+Math.round(st.d*100/st.t)+'%"></i></div></a>';}).join('');
-  var lst=$$('main > div')[2].querySelector('div[style*="gap:18px"]');
-  lst.innerHTML=asg.length?asg.map(function(l){var sj=S.SUBJECTS[l.subj],d=S.prog(c.id,l.id).done;return '<a class="k-card" href="'+href(l)+'" style="flex:1 1 260px;display:flex;gap:14px;align-items:center">'+thumb(l.c,kind(l.kind),88,70)+'<div><div class="b" style="font-size:16px">'+esc(l.title)+'</div><span class="k-note">'+sj.name+' · '+l.mins+' phút'+(d?' · Đã xong':'')+'</span></div></a>';}).join(''):'<div class="empty" style="flex:1">Ba mẹ chưa giao bài nào. Nhờ ba mẹ chọn bài nhé!</div>';
+/* ---------- SQL child pages: today's minutes, study-time heartbeat, the parent's search switch ---------- */
+if(P==='kids-home-sql'){
+  var c=kc(),dn=$('[data-today]');
+  if(c&&dn){var tot=Math.max(1,c.limit+c.extra),pct=Math.min(100,Math.round(c.used*100/tot));dn.style.background='conic-gradient(#FFB020 0 '+pct+'%,var(--surface-2) '+pct+'% 100%)';dn.querySelector('b').innerHTML=c.used+'<small>phút</small>';$('[data-left]').textContent='Còn '+left()+' phút';}
 }
-
-/* ---------- subject ---------- */
-if(P==='kids-subject'){
-  var c=kc(),k=q.get('s')||'toan',sj=S.SUBJECTS[k]||S.SUBJECTS.toan,ls=S.LESSONS.filter(function(l){return l.subj===k;}),st=subjStat(c,k);
-  $('.kf').textContent=sj.name+' · Lớp '+c.cls;$('.k-pill.p:not(.k-top *)')&&0;
-  $$('main .k-pill.p')[0].textContent=st.d+'/'+st.t+' bài';
-  $('.bar.bar-l i').style.width=Math.round(st.d*100/st.t)+'%';
-  var cur=-1;ls.forEach(function(l,i){if(cur<0&&!S.prog(c.id,l.id).done&&!S.locked(c.id,l.id))cur=i;});
-  $('main > div:last-child').innerHTML=ls.map(function(l,i){var lk=S.locked(c.id,l.id),d=S.prog(c.id,l.id).done,now=i===cur;
-    var inner='<span class="av" style="width:56px;height:56px;background:'+(d?'var(--green)':now?'var(--primary)':lk?'var(--surface-2)':'var(--primary-soft)')+';color:'+(d||now?'#fff':'var(--text-3)')+'"><i class="ic ic-'+(d?'check':lk?'lock':kind(l.kind))+'"></i></span><div class="grow"><div class="b" style="font-size:17px">'+esc(l.title)+'</div><span class="k-note">'+l.kind+' · '+l.mins+' phút</span></div>';
-    return lk?'<div class="k-card" aria-disabled="true" style="display:flex;gap:14px;align-items:center;opacity:.55">'+inner+'</div>':'<a class="k-card" href="'+href(l)+'" style="display:flex;gap:14px;align-items:center">'+inner+'</a>';}).join('');
+if(P==='kids-lesson-sql'){
+  var id=$('main').dataset.lesson;
+  /* Report visible study time every 30 seconds; the server counts it, caps each report and says when time is up. */
+  setInterval(function(){if(document.hidden)return;var f=new FormData();f.append('seconds','30');
+    fetch('/kids-lesson/'+id+'/heartbeat',{method:'POST',credentials:'same-origin',headers:{'RequestVerificationToken':window.SL_CSRF||''},body:f})
+      .then(function(r){return r.ok?r.json():null;}).then(function(s){if(!s)return;window.SL_KID_LEFT=s.left;paintTop();
+        if(s.breakDue)UI.toast('Con nghỉ mắt 5 phút rồi học tiếp nhé!');
+        if(s.left===5)UI.toast('Còn 5 phút nữa là hết giờ học nhé!');
+        if(!s.allowed)location.href='/kids-time-up';}).catch(function(){});},30000);
 }
-
-/* ---------- lesson (video) ---------- */
-if(P==='kids-lesson'){
-  var c=kc(),l=S.lesson(q.get('id')||'nhan5')||S.lesson('nhan5'),pr=S.prog(c.id,l.id),pct=pr.done?100:(pr.pct||0),playing=false;
-  $('.kf').textContent=l.title;$('.k-pill:not(.k-top *)');
-  var back=$('main .k-pill');back.href='/kids-subject?s='+l.subj;back.innerHTML='<i class="ic ic-arrowl"></i>'+S.SUBJECTS[l.subj].name;
-  var player=$('div[style*="aspect-ratio"]');player.style.background='linear-gradient(135deg,'+l.c[0]+','+l.c[1]+')';player.setAttribute('role','button');player.tabIndex=0;player.setAttribute('aria-label','Phát hoặc tạm dừng video');
-  var playBtn=player.querySelector('span'),bar=player.querySelector('div[style*="bottom"]');
-  bar.innerHTML='<i class="ic ic-play" id="pi"></i><div style="flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><i id="pb" style="display:block;height:8px;border-radius:4px;background:#FFC93C;width:'+pct+'%"></i></div><span id="pt" style="font-weight:700;font-size:13px"></span>';
-  function paintP(){var tot=l.mins*60,cur=Math.round(tot*pct/100);$('#pb').style.width=pct+'%';$('#pt').textContent=Math.floor(cur/60)+':'+('0'+cur%60).slice(-2)+' / '+l.mins+':00';$('#pi').className='ic ic-'+(playing?'pause':'play');playBtn.style.display=playing?'none':'flex';}
-  function save(){S.set(function(s){var p=s.progress[c.id]=s.progress[c.id]||{};var q2=p[l.id]=p[l.id]||{};if(!q2.done)q2.pct=Math.min(99,Math.round(pct));});}
-  function toggle(){if(S.remaining(c)<=0){location.href='/kids-time-up';return;}playing=!playing;if(playing)startTimer(function(){pct=Math.min(100,pct+100/l.mins);save();paintP();if(pct>=100){playing=false;stopTimer();paintP();var f=markDone(l.id);UI.toast(f?'Xem xong rồi! +10 sao':'Xem xong rồi!');paintList();}});else{stopTimer();save();}paintP();}
-  player.addEventListener('click',toggle);player.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}});
-  var note=document.createElement('p');note.className='k-note';note.style.marginTop='8px';note.textContent='Bản demo: 1 phút học tính bằng '+(TICK/1000)+' giây thật.';player.parentNode.appendChild(note);
-  var card=$$('main .k-card').filter(function(x){return /Trong bài này/.test(x.textContent);})[0];
-  function paintList(){var d=S.prog(c.id,l.id).done;card.innerHTML='<div class="kf" style="font-size:22px;margin-bottom:10px">Trong bài này</div>'+[['playc','p','Xem video',null,d],['book','t','Đọc ghi nhớ','/kids-reading?id='+l.id,0],['target','a','Làm quiz','/kids-quiz?id='+l.id,(S.prog(c.id,l.id).score!=null)]].map(function(r){var inner='<span class="ib t-'+r[1]+'"><i class="ic ic-'+r[0]+'"></i></span><div class="grow b">'+r[2]+'</div><i class="ic ic-'+(r[4]?'checkc':'chevr')+'" style="color:var(--'+(r[4]?'green':'text-3')+')"></i>';return r[3]?'<a class="sl-row" href="'+r[3]+'" style="gap:12px;padding:10px 0;border-top:1px solid var(--line)">'+inner+'</a>':'<div class="sl-row" style="gap:12px;padding:10px 0;border-top:1px solid var(--line)">'+inner+'</div>';}).join('');}
-  paintList();
-  var qz=$('a.k-btn');qz.href='/kids-quiz?id='+l.id;
-  var more=$$('main a.sl-btn').filter(function(x){return /thêm giờ/.test(x.textContent);})[0];if(more)more.href='/kids-time-up';
-  UI.on(UI.byText('main button','Video này có gì lạ'),function(){reportModal(l.id);});
-  paintP();
-}
-
-/* ---------- reading ---------- */
-if(P==='kids-reading'){
-  var c=kc(),l=S.lesson(q.get('id')||'nhan5')||S.lesson('nhan5');
-  var back=$('main .k-pill');back.href='/kids-subject?s='+l.subj;back.innerHTML='<i class="ic ic-arrowl"></i>'+S.SUBJECTS[l.subj].name;
-  if(l.id!=='nhan5'){$('article h1').textContent=l.title;$$('article p').forEach(function(p,i){p.innerHTML=i===0?'Hôm nay con sẽ học bài <b>'+esc(l.title)+'</b>. Hãy đọc thật chậm và tìm ý chính nhé.':'Sau khi đọc xong, con làm quiz nhỏ để nhớ bài lâu hơn.';});var g=$('article > div');if(g)g.remove();}
-  var qz=$('a.k-btn');qz.href='/kids-quiz?id='+l.id;
-  var done=document.createElement('button');done.type='button';done.className='sl-btn btn-lg btn-block';done.innerHTML='<i class="ic ic-checkc"></i>Con đọc xong rồi';done.addEventListener('click',function(){var f=markDone(l.id);UI.toast(f?'Giỏi lắm! +10 sao':'Đã ghi nhận');done.disabled=true;});qz.parentNode.appendChild(done);
-  startTimer();
+if(P==='kids-search-sql'){
+  var c=kc();
+  if(c&&c.search===false){var m=$('main');m.innerHTML='<div class="empty"><div class="b" style="font-size:16px;color:var(--text-2)">Ba mẹ đã tắt tìm kiếm.</div><div style="font-size:14px;margin-top:4px">Con học bài ba mẹ giao ở trang học nhé.</div></div>';}
 }
 
 /* ---------- quiz ---------- */
@@ -160,36 +121,6 @@ if(P==='kids-result'){
   var bn=$('.banner.t-p');if(r.badge){var b=S.BADGES.filter(function(x){return x.id===r.badge;})[0];bn.innerHTML='<i class="ic ic-sparkles"></i>Huy hiệu mới: '+b.name+'!';}else bn.classList.add('hidden');
   var again=$('a.sl-btn-lg');again.href='/kids-quiz?id='+r.id;
   var hint=document.createElement('p');hint.className='k-note';hint.textContent=r.score/r.total>=.6?'Bài này đã hoàn thành.':'Con làm lại để nhớ bài hơn nhé.';again.parentNode.parentNode.appendChild(hint);
-}
-
-/* ---------- search ---------- */
-if(P==='kids-search'){
-  var c=kc(),bar=$('main > div.sl-row'),box=bar.querySelector('.k-card');
-  box.innerHTML='<i class="ic ic-search"></i><input id="ks" type="search" aria-label="Tìm bài học" autocomplete="off" placeholder="Con muốn học gì?" style="all:unset;flex:1;font-size:20px;font-weight:700;color:var(--text)">';
-  var inp=$('#ks'),res=$$('main > *')[2],cnt=$('.k-note'),empty=$('.empty');
-  var grid=$('main > div[style*="grid-template-columns"]');
-  function draw(){var v=UI.vn(inp.value.trim()),ok=c.search!==false,pool=(S.get().assigned[c.id]||[]).map(S.lesson).filter(Boolean);
-    var rs=ok?pool.filter(function(l){return !v||UI.vn(l.title).indexOf(v)>-1||UI.vn(S.SUBJECTS[l.subj].name).indexOf(v)>-1;}):[];
-    cnt.textContent=ok?rs.length+' bài ba mẹ cho con học':'Ba mẹ đã tắt tìm kiếm';
-    grid.innerHTML=rs.map(function(l){return '<a class="k-card" href="'+href(l)+'" style="display:flex;gap:14px;align-items:center">'+thumb(l.c,kind(l.kind),88,70)+'<div><div class="b" style="font-size:16px">'+esc(l.title)+'</div><span class="k-note">'+S.SUBJECTS[l.subj].name+' · '+l.mins+' phút</span></div></a>';}).join('');
-    empty.classList.toggle('hidden',rs.length>0&&true);}
-  inp.addEventListener('input',draw);draw();inp.focus();
-}
-
-/* ---------- time up ---------- */
-if(P==='kids-time-up'){
-  var c=kc(),rem=S.remaining(c),h=$('.kf'),p=$('main p'),btn=UI.byText('button','Xin ba mẹ thêm giờ'),ok=$('.banner.t-g');
-  ok.classList.add('hidden');
-  if(rem>0){h.textContent='Con muốn học thêm?';p.textContent='Hôm nay con còn '+rem+' phút. Nếu cần thêm, con xin ba mẹ nhé.';}
-  else p.textContent='Con đã học '+(c.limit+c.extra)+' phút, giỏi lắm. Nghỉ ngơi, chơi và mai học tiếp nhé.';
-  function pending(){return S.pendingReqs().filter(function(r){return r.cid===c.id;})[0];}
-  function paint(){if(!btn)return;var r=pending();c=kc();
-    if(r){btn.disabled=true;btn.innerHTML='<i class="ic ic-clock"></i>Đang chờ ba mẹ...';ok.classList.remove('hidden');ok.innerHTML='<i class="ic ic-checkc"></i>Đã gửi cho ba mẹ. Đợi ba mẹ trả lời nhé!';}
-    else{var last=S.get().reqs.filter(function(z){return z.cid===c.id;}).slice(-1)[0];btn.disabled=false;btn.innerHTML='<i class="ic ic-send"></i>Xin ba mẹ thêm giờ';
-      if(last&&last.status==='approved'&&S.remaining(c)>0){ok.classList.remove('hidden');ok.innerHTML='<i class="ic ic-checkc"></i>Ba mẹ cho con thêm '+last.mins+' phút rồi!';h.textContent='Học tiếp nào!';p.textContent='Con còn '+S.remaining(c)+' phút.';btn.outerHTML='<a class="k-btn" href="/kids-home">Về trang học</a>';btn=null;}
-      else if(last&&last.status==='rejected'){ok.classList.remove('hidden');ok.className='banner t-a';ok.innerHTML='<i class="ic ic-info"></i>Ba mẹ muốn con nghỉ ngơi. Hẹn con ngày mai nhé!';}}}
-  if(btn)btn.addEventListener('click',function(){if(pending())return;var d=new Date();S.set(function(s){s.reqs.push({id:'q'+Date.now(),cid:c.id,mins:15,note:'Con muốn học nốt bài ạ',time:('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2),status:'pending'});});S.notify({ic:'clock',tone:'a',t:c.name+' xin thêm 15 phút',s:'Chờ ba mẹ duyệt'});paint();});
-  document.addEventListener('kl:change',paint);paint();
 }
 
 /* ---------- badges ---------- */

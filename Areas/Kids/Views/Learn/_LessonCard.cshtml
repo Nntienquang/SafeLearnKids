@@ -1,0 +1,16 @@
+@model KidLessonCard
+<a class="k-card" href="/kids-lesson?id=@Model.Id" style="display:flex;gap:14px;align-items:center;min-width:0">
+    <div style="width:88px;height:70px;flex:0 0 auto;border-radius:16px;background:linear-gradient(135deg,@Model.Gradient[0],@Model.Gradient[1]);display:flex;align-items:center;justify-content:center;color:#fff" aria-hidden="true"><i class="ic ic-@(Model.Done ? "check" : LessonKind.Icon(Model.LessonType))"></i></div>
+    <div class="grow" style="min-width:0">
+        <div class="b" style="font-size:16px">@Model.Title</div>
+        <span class="k-note">@Model.Subject · @Model.DurationMin phút@(Model.Done ? " · Đã xong" : Model.Percent > 0 ? $" · {Model.Percent}%" : "")@(Model.DueDate is { } due && !Model.Done ? " · Hạn " + due.ToString("dd/MM") : "")</span>
+        @if (Model.Percent > 0 && !Model.Done)
+        {
+            <div class="bar" style="margin-top:8px"><i style="width:@(Model.Percent)%"></i></div>
+        }
+    </div>
+    @if (Model.Favorite)
+    {
+        <i class="ic ic-heart" style="color:var(--rose)" aria-label="Bài yêu thích"></i>
+    }
+</a>

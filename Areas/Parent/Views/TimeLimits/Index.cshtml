@@ -1,20 +1,107 @@
+@model TimePageViewModel
 @{
     ViewData["Title"] = """Thời gian học""";
-    ViewData["Page"] = "time";
+    ViewData["Page"] = "time-sql";
     ViewData["Nav"] = "time";
     ViewData["Crumb"] = Html.Raw("""Phụ huynh · Giám sát""");
     ViewData["Heading"] = """Thời gian học""";
-    ViewData["Sub"] = """Đặt giới hạn mỗi ngày và duyệt yêu cầu thêm giờ (US-17, 19).""";
+    ViewData["Sub"] = """Máy chủ đếm giờ và tự dừng bài học khi hết giờ hoặc ngoài khung giờ (US-30 đến US-32).""";
+    string[] days = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+    var today = Model.Today;
+    var total = today.LimitMinutes + today.ExtraMinutes;
+    var pct = total == 0 ? 100 : Math.Min(100, today.UsedMinutes * 100 / total);
+    var pending = Model.Requests.Where(item => item.Status == RequestStatus.Pending).ToList();
 }
-@section Actions {
-<button class="sl-btn sl-btn-p" type="button">Lưu cài đặt</button>
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+@if (Model.Children.Count > 1)
+{
+    <nav class="sl-row" style="gap:8px;flex-wrap:wrap;margin-bottom:16px" aria-label="Chọn bé">
+        @foreach (var child in Model.Children)
+        {
+            <a class="sl-btn sl-btn-sm @(child.Id == Model.Child.Id ? "sl-btn-p" : "")" asp-action="Index" asp-route-child="@child.Id" aria-current="@(child.Id == Model.Child.Id ? "page" : null)">@child.Name</a>
+        }
+    </nav>
 }
 <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
-<div class="sl-card" style="flex:2 1 460px;min-width:0"><div class="card-h"><div><div class="card-t">Giới hạn theo ngày · Minh An</div><div class="card-s">Máy chủ tự dừng bài học khi hết giờ.</div></div><div class="seg"><span class="on">Từng ngày</span><span>Mọi ngày</span></div></div>
-<div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T2</span><div class="bar grow"><i style="width:50%"></i></div><span class="b" style="width:68px;text-align:right">45 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T3</span><div class="bar grow"><i style="width:50%"></i></div><span class="b" style="width:68px;text-align:right">45 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;background:var(--primary-soft)"><span class="b" style="width:36px">T4</span><div class="bar grow"><i style="width:66%"></i></div><span class="b" style="width:68px;text-align:right">60 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T5</span><div class="bar grow"><i style="width:50%"></i></div><span class="b" style="width:68px;text-align:right">45 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T6</span><div class="bar grow"><i style="width:50%"></i></div><span class="b" style="width:68px;text-align:right">45 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">T7</span><div class="bar grow"><i style="width:100%"></i></div><span class="b" style="width:68px;text-align:right">90 phút</span></div><div class="sl-row" style="gap:12px;padding:10px 12px;border-radius:14px;"><span class="b" style="width:36px">CN</span><div class="bar grow"><i style="width:100%"></i></div><span class="b" style="width:68px;text-align:right">90 phút</span></div>
-<div class="field" style="margin-top:16px"><span class="lab">Khung giờ được học</span><div class="sl-row" style="gap:10px"><input class="inp" value="17:00" style="width:110px"><span class="muted">đến</span><input class="inp" value="20:30" style="width:110px"></div></div></div>
-<div class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px">
-<div class="sl-card" style="border:1px solid var(--sun);"><div class="sl-row" style="gap:12px"><span class="ib t-a"><i class="ic ic-clock"></i></span><div class="grow"><div class="b">Minh An xin thêm 15 phút</div><div class="muted" style="font-size:12.5px">19:40 · "Con muốn xem hết bài ạ"</div></div></div>
-<div class="sl-row" style="gap:8px;margin-top:14px"><button class="sl-btn grow" type="button">Từ chối</button><button class="sl-btn sl-btn-p grow" type="button">Cho thêm 15 phút</button></div></div>
-<div class="sl-card"><div class="card-t" style="margin-bottom:12px">Hôm nay</div><div class="sl-row" style="gap:18px"><div class="donut" style="background:conic-gradient(var(--primary) 0 53%,var(--surface-2) 53% 100%)"><b>32<small>phút đã học</small></b></div><div class="sl-col" style="gap:8px;font-size:13.5px"><span class="muted b">Giới hạn 60 phút</span><span class="chip t-g">Còn 28 phút</span></div></div></div>
-<div class="sl-card"><div class="card-h"><div class="card-t">Nhắc nghỉ mắt</div><span class="switch on"></span></div><div class="card-s">Gợi ý bé nghỉ 5 phút sau mỗi 25 phút học.</div></div></div></div>
+    <form asp-action="Save" asp-route-childId="@Model.Child.Id" method="post" class="sl-card" style="flex:2 1 460px;min-width:0;display:flex;flex-direction:column;gap:16px">
+        <div><div class="card-t">Giới hạn của @Model.Child.Name</div><div class="card-s">Lưu xong áp dụng ngay. Để trống một ngày nghĩa là giống mọi ngày.</div></div>
+        <div asp-validation-summary="All" class="err" role="alert"></div>
+        <div class="field">
+            <label asp-for="Form.DailyMinutes" class="lab">Số phút mỗi ngày</label>
+            <input asp-for="Form.DailyMinutes" class="inp" type="number" min="0" max="600" style="max-width:160px" />
+        </div>
+        <fieldset style="border:0;padding:0;margin:0">
+            <legend class="lab" style="margin-bottom:8px">Riêng từng thứ (phút)</legend>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px">
+                @for (var i = 0; i < 7; i++)
+                {
+                    <label class="field" style="gap:4px"><span class="muted b" style="font-size:12.5px">@days[i]</span><input class="inp" type="number" min="0" max="600" name="Form.Weekdays[@i]" value="@Model.Form.Weekdays.ElementAtOrDefault(i)" placeholder="@Model.Form.DailyMinutes" aria-label="Số phút @days[i]" /></label>
+                }
+            </div>
+        </fieldset>
+        <div class="field">
+            <span class="lab">Khung giờ được học (không bắt buộc)</span>
+            <div class="sl-row" style="gap:10px;flex-wrap:wrap"><input asp-for="Form.StudyStart" class="inp" type="time" style="width:140px" aria-label="Được học từ" /><span class="muted">đến</span><input asp-for="Form.StudyEnd" class="inp" type="time" style="width:140px" aria-label="Học đến" /></div>
+        </div>
+        <div class="field">
+            <label asp-for="Form.BreakEveryMinutes" class="lab">Nhắc bé nghỉ mắt sau mỗi (phút, không bắt buộc)</label>
+            <input asp-for="Form.BreakEveryMinutes" class="inp" type="number" min="5" max="180" style="max-width:160px" />
+        </div>
+        <div class="sl-row" style="justify-content:flex-end"><button class="sl-btn sl-btn-p" type="submit">Lưu cài đặt</button></div>
+    </form>
+    <div class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px">
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:12px">Hôm nay · @Model.Child.Name</div>
+            <div class="sl-row" style="gap:18px">
+                <div class="donut" style="background:conic-gradient(var(--primary) 0 @(pct)%,var(--surface-2) @(pct)% 100%)"><b>@today.UsedMinutes<small>phút đã học</small></b></div>
+                <div class="sl-col" style="gap:8px;font-size:13.5px">
+                    <span class="muted b">Giới hạn @today.LimitMinutes phút@(today.ExtraMinutes > 0 ? $" + {today.ExtraMinutes} thêm" : "")</span>
+                    <span class="chip @(today.Allowed ? "t-g" : "t-r")">@(today.Allowed ? $"Còn {today.RemainingMinutes} phút" : "Đang bị chặn")</span>
+                    @if (!today.Allowed)
+                    {
+                        <span class="muted">@today.Blocked</span>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:6px">Yêu cầu thêm giờ</div>
+            @foreach (var request in pending)
+            {
+                <div style="padding:12px 0;border-top:1px solid var(--line)">
+                    <div class="b">@request.ChildName xin thêm @request.RequestedMinutes phút</div>
+                    <div class="muted" style="font-size:12.5px">@request.RequestedAt.ToLocalTime().ToString("HH:mm dd/MM")@(request.Reason is null ? "" : " · \"" + request.Reason + "\"")</div>
+                    <div class="sl-row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+                        <form asp-action="Decide" asp-route-id="@request.Id" method="post" class="sl-row" style="gap:8px">
+                            <input type="hidden" name="decision" value="approve" /><input type="hidden" name="rowVersion" value="@request.RowVersion" />
+                            <input class="inp inp-sm" type="number" name="minutes" min="1" max="@request.RequestedMinutes" value="@request.RequestedMinutes" style="width:84px" aria-label="Số phút cho thêm" />
+                            <button class="sl-btn sl-btn-sm sl-btn-p" type="submit">Cho thêm</button>
+                        </form>
+                        <form asp-action="Decide" asp-route-id="@request.Id" method="post">
+                            <input type="hidden" name="decision" value="deny" /><input type="hidden" name="rowVersion" value="@request.RowVersion" />
+                            <button class="sl-btn sl-btn-sm" type="submit">Từ chối</button>
+                        </form>
+                    </div>
+                </div>
+            }
+            @if (pending.Count == 0)
+            {
+                <p class="muted" style="margin:6px 0 0">Không có yêu cầu đang chờ.</p>
+            }
+            @foreach (var request in Model.Requests.Where(item => item.Status != RequestStatus.Pending).Take(5))
+            {
+                <div class="sl-row" style="gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:13px">
+                    <span class="grow">@request.ChildName · @request.RequestedMinutes phút · @request.RequestedAt.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                    <span class="chip @RequestStatus.Tone(request.Status)">@RequestStatus.Label(request.Status)@(request.GrantedMinutes is { } granted && request.Status == RequestStatus.Approved ? $" {granted}p" : "")</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>

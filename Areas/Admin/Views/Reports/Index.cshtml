@@ -1,15 +1,71 @@
+@model AdminReportsViewModel
 @{
     ViewData["Title"] = """Xử lý báo cáo nội dung""";
-    ViewData["Page"] = "admin-reports";
+    ViewData["Page"] = "admin-reports-sql";
     ViewData["Nav"] = "reports";
     ViewData["Crumb"] = Html.Raw("""Quản trị · Vận hành""");
     ViewData["Heading"] = """Xử lý báo cáo nội dung""";
-    ViewData["Sub"] = """Báo cáo từ phụ huynh và bé về nội dung không phù hợp (US-22).""";
+    ViewData["Sub"] = """Báo cáo từ bé và phụ huynh về nội dung không phù hợp (US-34).""";
+    int Count(params string[] statuses) => statuses.Sum(status => Model.Counts.TryGetValue(status, out var count) ? count : 0);
 }
 @section Actions {
-<div class="seg"><span class="on">Chờ xử lý (5)</span><span>Đã xử lý</span></div>
+<div class="sl-row" style="gap:8px">
+    <a class="sl-btn sl-btn-sm @(Model.Status == "open" ? "sl-btn-p" : "")" asp-action="Index" asp-route-status="open">Cần xử lý (@Count(ReportStatus.Open, ReportStatus.InReview))</a>
+    <a class="sl-btn sl-btn-sm @(Model.Status == "done" ? "sl-btn-p" : "")" asp-action="Index" asp-route-status="done">Đã xử lý (@Count(ReportStatus.Resolved, ReportStatus.Dismissed))</a>
+</div>
 }
-<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="sl-card" style="flex:2 1 520px;min-width:0;padding:6px 0"><table class="tbl"><thead><tr><th>Nội dung</th><th>Người gửi</th><th>Mức</th><th></th></tr></thead><tbody>
-<tr><td><div class="b">Vòng đời của bướm</div><div class="muted" style="font-size:12.5px">Có quảng cáo lạ</div></td><td class="muted">Phụ huynh · Thu Hà</td><td><span class="chip t-r">Khẩn</span></td><td style="text-align:right"><button class="sl-btn sl-btn-sm" type="button">Mở</button></td></tr><tr><td><div class="b">Greetings</div><div class="muted" style="font-size:12.5px">Âm thanh quá lớn</div></td><td class="muted">Phụ huynh · Lan</td><td><span class="chip t-a">Vừa</span></td><td style="text-align:right"><button class="sl-btn sl-btn-sm" type="button">Mở</button></td></tr><tr><td><div class="b">Động vật sống ở đâu?</div><div class="muted" style="font-size:12.5px">Hình ảnh gây sợ</div></td><td class="muted">Bé · Minh An</td><td><span class="chip t-a">Vừa</span></td><td style="text-align:right"><button class="sl-btn sl-btn-sm" type="button">Mở</button></td></tr></tbody></table></div>
-<div class="sl-card" style="flex:1 1 340px;min-width:0"><div class="sl-row" style="gap:12px"><div style="width:84px;height:56px;flex:0 0 auto;border-radius:16px;background:linear-gradient(135deg,#F59E0B,#FB7185);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play"></i></div><div><div class="b">Vòng đời của bướm</div><span class="chip t-r">Khẩn</span></div></div><p class="sub" style="margin-top:12px;line-height:1.6">"Có quảng cáo lạ ở phút 6" · Thu Hà · hôm qua</p>
-<div class="field" style="margin-top:10px"><label class="lab" for="ar1">Ghi chú xử lý</label><textarea id="ar1" class="inp ta">Đã kiểm tra, gỡ khỏi lộ trình.</textarea></div><div class="sl-row" style="gap:8px;margin-top:14px"><button class="sl-btn grow" type="button">Giữ nội dung</button><button class="sl-btn sl-btn-d grow" type="button">Gỡ nội dung</button></div></div></div>
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div class="sl-col" style="gap:16px">
+    @foreach (var report in Model.Rows)
+    {
+        <div class="sl-card">
+            <div class="sl-row" style="gap:12px;flex-wrap:wrap">
+                <span class="ib t-r"><i class="ic ic-flag"></i></span>
+                <div class="grow" style="min-width:200px">
+                    <div class="b">@report.Target</div>
+                    <div class="muted" style="font-size:12.5px">@ReportStatus.Reason(report.Reason)@(report.Comment is null ? "" : " · \"" + report.Comment + "\"") · @report.From · @report.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</div>
+                </div>
+                <span class="chip @ReportStatus.Tone(report.Status)">@ReportStatus.Label(report.Status)</span>
+                @if (report.LessonId is { } lessonId)
+                {
+                    <a class="sl-btn sl-btn-sm" asp-controller="Catalog" asp-action="EditLesson" asp-route-id="@lessonId">Mở bài</a>
+                }
+                @if (report.VideoKey is not null)
+                {
+                    <a class="sl-btn sl-btn-sm" href="https://www.youtube.com/watch?v=@report.VideoKey" target="_blank" rel="noopener noreferrer">Xem video</a>
+                }
+            </div>
+            @if (report.Resolution is not null)
+            {
+                <p style="margin:12px 0 0;font-size:13.5px">Kết quả: @report.Resolution@(report.HandledBy is null ? "" : " · " + report.HandledBy)</p>
+            }
+            @if (report.Status is ReportStatus.Open or ReportStatus.InReview)
+            {
+                <form asp-action="Handle" asp-route-id="@report.Id" method="post" style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
+                    <input type="hidden" name="rowVersion" value="@report.RowVersion" />
+                    <label class="lab" for="resolution-@report.Id">Kết quả xử lý (gửi cho gia đình)</label>
+                    <textarea class="inp ta" id="resolution-@report.Id" name="resolution" rows="2" maxlength="500"></textarea>
+                    <div class="sl-row" style="gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                        @if (report.Status == ReportStatus.Open)
+                        {
+                            <button class="sl-btn" type="submit" name="action" value="review">Nhận xem</button>
+                        }
+                        <button class="sl-btn" type="submit" name="action" value="keep">Giữ nội dung</button>
+                        <button class="sl-btn sl-btn-d" type="submit" name="action" value="remove">@(report.VideoId is not null ? "Chặn video" : "Gỡ bài học")</button>
+                    </div>
+                </form>
+            }
+        </div>
+    }
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="empty">Không có báo cáo nào ở đây.</div>
+    }
+</div>

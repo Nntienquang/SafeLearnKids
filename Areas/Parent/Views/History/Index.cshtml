@@ -1,23 +1,92 @@
+@model HistoryViewModel
 @{
     ViewData["Title"] = """Lịch sử học""";
-    ViewData["Page"] = "history";
+    ViewData["Page"] = "history-sql";
     ViewData["Nav"] = "history";
     ViewData["Crumb"] = Html.Raw("""Phụ huynh · Giám sát""");
-    ViewData["Heading"] = """Lịch sử học và báo cáo nội dung""";
-    ViewData["Sub"] = """Xem bé đã học gì, bao lâu, và xử lý báo cáo nội dung (US-20, 21).""";
+    ViewData["Heading"] = """Lịch sử học""";
+    ViewData["Sub"] = """Bé đã học gì, bao lâu, tìm gì và báo cáo nội dung nào (US-29, US-33).""";
+    var maxMinutes = Math.Max(1, Model.Days.Max(day => day.Minutes));
 }
 @section Actions {
-<button class="sl-btn" type="button"><i class="ic ic-download"></i>Xuất CSV</button>
+<a class="sl-btn" asp-action="Export" asp-route-child="@Model.Child.Id"><i class="ic ic-download"></i>Xuất CSV</a>
 }
-<div class="tabs" style="margin-bottom:18px"><span class="on">Lịch sử học</span><span>Báo cáo nội dung (1)</span></div>
+@if (Model.Children.Count > 1)
+{
+    <nav class="sl-row" style="gap:8px;flex-wrap:wrap;margin-bottom:16px" aria-label="Chọn bé">
+        @foreach (var child in Model.Children)
+        {
+            <a class="sl-btn sl-btn-sm @(child.Id == Model.Child.Id ? "sl-btn-p" : "")" asp-action="Index" asp-route-child="@child.Id" aria-current="@(child.Id == Model.Child.Id ? "page" : null)">@child.Name</a>
+        }
+    </nav>
+}
 <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
-<div class="sl-card" style="flex:2 1 520px;min-width:0;padding:6px 0"><table class="tbl"><thead><tr><th>Bài học</th><th>Thời điểm</th><th>Thời lượng</th><th>Kết quả</th></tr></thead><tbody>
-<tr><td><div class="sl-row" style="gap:12px"><span class="ib t-p"><i class="ic ic-playc"></i></span><div><div class="b">Bảng nhân 5</div><div class="muted" style="font-size:12.5px">Toán · Video</div></div></div></td><td class="muted">Hôm nay 18:12</td><td class="b">10 phút</td><td><span class="chip t-b">Đang học 62%</span></td></tr>
-<tr><td><div class="sl-row" style="gap:12px"><span class="ib t-a"><i class="ic ic-target"></i></span><div><div class="b">Quiz bảng nhân 2 và 5</div><div class="muted" style="font-size:12.5px">Toán · Quiz</div></div></div></td><td class="muted">Hôm nay 17:40</td><td class="b">6 phút</td><td><span class="chip t-g">9/10 điểm</span></td></tr>
-<tr><td><div class="sl-row" style="gap:12px"><span class="ib t-v"><i class="ic ic-book"></i></span><div><div class="b">Phân số cơ bản</div><div class="muted" style="font-size:12.5px">Toán · Bài đọc</div></div></div></td><td class="muted">Hôm qua 18:05</td><td class="b">8 phút</td><td><span class="chip t-r">5/10 điểm</span></td></tr>
-<tr><td><div class="sl-row" style="gap:12px"><span class="ib t-t"><i class="ic ic-playc"></i></span><div><div class="b">Vòng đời của bướm</div><div class="muted" style="font-size:12.5px">Khoa học · Video</div></div></div></td><td class="muted">Hôm qua 17:20</td><td class="b">9 phút</td><td><span class="chip t-g">Hoàn thành</span></td></tr>
-<tr><td><div class="sl-row" style="gap:12px"><span class="ib t-g"><i class="ic ic-playc"></i></span><div><div class="b">Câu kể Ai làm gì?</div><div class="muted" style="font-size:12.5px">Tiếng Việt · Video</div></div></div></td><td class="muted">Thứ Hai 18:30</td><td class="b">12 phút</td><td><span class="chip t-g">Hoàn thành</span></td></tr>
-</tbody></table></div>
-<div class="sl-card" style="flex:1 1 320px;min-width:0"><div class="sl-row" style="gap:12px"><span class="ib t-r"><i class="ic ic-flag"></i></span><div class="grow"><div class="card-t">Báo cáo nội dung</div><div class="card-s">Từ Minh An · hôm qua 18:40</div></div><span class="chip t-a">Chờ xử lý</span></div>
-<div class="sl-row" style="gap:12px;margin-top:14px;padding:12px;border-radius:14px;background:var(--surface-2)"><div style="width:72px;height:48px;flex:0 0 auto;border-radius:16px;background:linear-gradient(135deg,#F59E0B,#FB7185);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play"></i></div><div><div class="b" style="font-size:14px">Vòng đời của bướm</div><div class="muted" style="font-size:12.5px">Lý do: "Có quảng cáo lạ"</div></div></div>
-<div class="sl-row" style="gap:8px;margin-top:14px"><button class="sl-btn grow" type="button">Bỏ qua</button><button class="sl-btn sl-btn-d grow" type="button">Chặn và báo quản trị</button></div></div></div>
+    <div class="sl-col" style="flex:2 1 520px;min-width:0;gap:16px">
+        <div class="sl-card" style="padding:6px 0;overflow-x:auto">
+            <table class="tbl">
+                <thead><tr><th>Bài học</th><th>Lần gần nhất</th><th>Thời gian xem</th><th>Kết quả</th></tr></thead>
+                <tbody>
+                    @foreach (var row in Model.Lessons)
+                    {
+                        <tr>
+                            <td><div class="b">@row.Title</div><div class="muted" style="font-size:12.5px">@row.Subject</div></td>
+                            <td class="muted">@row.UpdatedAt.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                            <td class="b">@row.WatchMinutes phút</td>
+                            <td><span class="chip @(row.Status == "Completed" ? "t-g" : "t-b")">@(row.Status == "Completed" ? "Hoàn thành" : $"Đang học {row.Percent}%")</span></td>
+                        </tr>
+                    }
+                    @if (Model.Lessons.Count == 0)
+                    {
+                        <tr><td colspan="4"><div class="empty">@Model.Child.Name chưa học bài nào</div></td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:10px">Tìm kiếm gần đây</div>
+            @foreach (var search in Model.Searches)
+            {
+                <div class="sl-row" style="gap:10px;padding:8px 0;border-top:1px solid var(--line)">
+                    <span class="grow">"@search.Query"</span>
+                    <span class="muted" style="font-size:12.5px">@search.At.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                    <span class="chip @(search.Blocked ? "t-r" : "t-n")">@(search.Blocked ? "Từ khóa bị chặn" : $"{search.Results} kết quả")</span>
+                </div>
+            }
+            @if (Model.Searches.Count == 0)
+            {
+                <p class="muted" style="margin:0">Chưa tìm kiếm lần nào.</p>
+            }
+        </div>
+    </div>
+    <div class="sl-col" style="flex:1 1 320px;min-width:0;gap:16px">
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:10px">Số phút học 14 ngày qua</div>
+            @foreach (var (day, minutes) in Model.Days)
+            {
+                <div class="sl-row" style="gap:10px;padding:4px 0;font-size:13px">
+                    <span class="muted" style="width:52px">@day.ToString("dd/MM")</span>
+                    <div class="bar grow"><i style="width:@(minutes * 100 / maxMinutes)%"></i></div>
+                    <span class="b" style="width:56px;text-align:right">@minutes phút</span>
+                </div>
+            }
+        </div>
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:10px">Báo cáo nội dung của bé</div>
+            @foreach (var report in Model.Reports)
+            {
+                <div style="padding:10px 0;border-top:1px solid var(--line)">
+                    <div class="sl-row" style="gap:8px"><span class="b grow">@report.Target</span><span class="chip @ReportStatus.Tone(report.Status)">@ReportStatus.Label(report.Status)</span></div>
+                    <div class="muted" style="font-size:12.5px">@ReportStatus.Reason(report.Reason)@(report.Comment is null ? "" : " · \"" + report.Comment + "\"") · @report.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</div>
+                    @if (report.Resolution is not null)
+                    {
+                        <div style="font-size:12.5px;margin-top:4px">Quản trị viên: @report.Resolution</div>
+                    }
+                </div>
+            }
+            @if (Model.Reports.Count == 0)
+            {
+                <p class="muted" style="margin:0">Bé chưa báo cáo nội dung nào.</p>
+            }
+        </div>
+    </div>
+</div>

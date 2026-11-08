@@ -1,0 +1,38 @@
+@model VideoRow
+@{
+    var back = Context.Request.Path + Context.Request.QueryString;
+}
+<div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line);align-items:flex-start;flex-wrap:wrap">
+    <a href="https://www.youtube.com/watch?v=@Model.VideoId" target="_blank" rel="noopener noreferrer" style="flex:0 0 auto" aria-label="Xem trên YouTube: @Model.Title">
+        @if (Model.ThumbnailUrl is not null)
+        {
+            <img src="@Model.ThumbnailUrl" alt="" width="128" height="72" style="border-radius:12px;object-fit:cover;background:var(--surface-2)" loading="lazy" referrerpolicy="no-referrer" />
+        }
+    </a>
+    <div class="grow" style="min-width:200px">
+        <div class="b">@Model.Title</div>
+        <div class="muted" style="font-size:12.5px">@string.Join(", ", Model.Sources)@(Model.PublishedAt is { } at ? " · " + at.ToLocalTime().ToString("dd/MM/yyyy") : "")@(Model.PublishedLessons > 0 ? $" · dùng trong {Model.PublishedLessons} bài đã xuất bản" : "")</div>
+        @if (Model.ReviewNote is not null)
+        {
+            <div class="muted" style="font-size:12.5px;margin-top:4px">Ghi chú: @Model.ReviewNote</div>
+        }
+    </div>
+    <span class="chip @VideoStatus.Tone(Model.Status)">@VideoStatus.Label(Model.Status)</span>
+    <div class="sl-row" style="gap:8px;flex-wrap:wrap">
+        @if (Model.Status != VideoStatus.Approved)
+        {
+            <form asp-action="SetVideoStatus" asp-route-id="@Model.Id" method="post">
+                <input type="hidden" name="to" value="@VideoStatus.Approved" /><input type="hidden" name="back" value="@back" />
+                <button class="sl-btn sl-btn-sm sl-btn-p" type="submit">Duyệt</button>
+            </form>
+        }
+        @if (Model.Status != VideoStatus.Blocked)
+        {
+            <form asp-action="SetVideoStatus" asp-route-id="@Model.Id" method="post" class="sl-row" style="gap:6px">
+                <input type="hidden" name="to" value="@VideoStatus.Blocked" /><input type="hidden" name="back" value="@back" />
+                <input class="inp inp-sm" name="note" maxlength="500" required placeholder="Lý do chặn" aria-label="Lý do chặn video @Model.Title" style="width:150px" />
+                <button class="sl-btn sl-btn-sm sl-btn-d" type="submit">Chặn</button>
+            </form>
+        }
+    </div>
+</div>

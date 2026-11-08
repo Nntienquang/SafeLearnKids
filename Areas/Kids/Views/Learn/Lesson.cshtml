@@ -1,12 +1,113 @@
+@model KidLessonViewModel
 @{
-    ViewData["Title"] = """Xem video an toàn""";
-    ViewData["Page"] = "kids-lesson";
+    var lesson = Model.Lesson;
+    ViewData["Title"] = lesson.Title;
+    ViewData["Page"] = "kids-lesson-sql";
+    var total = Model.Sections.Count;
+    var allDone = lesson.Done || Model.SectionsDone >= total;
+    var back = Context.Request.Path + Context.Request.QueryString;
 }
-<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px"><div class="sl-row" style="gap:14px;flex-wrap:wrap"><a class="k-pill" href="~/kids-subject"><i class="ic ic-arrowl"></i>Toán</a><div class="kf" style="font-size:34px">Bảng nhân 5</div></div>
-<div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start"><div class="sl-col" style="flex:2 1 560px;min-width:0;gap:16px">
-<div style="aspect-ratio:16/9;border-radius:28px;background:linear-gradient(135deg,#1E1B4B,#4F46E5);display:flex;align-items:center;justify-content:center;position:relative;color:#fff;box-shadow:var(--shadow)"><span style="width:92px;height:92px;border-radius:46px;background:#fff;color:#4F46E5;display:flex;align-items:center;justify-content:center"><i class="ic ic-play ic-xl"></i></span>
-<div style="position:absolute;left:18px;right:18px;bottom:16px;display:flex;align-items:center;gap:14px"><i class="ic ic-pause"></i><div style="flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><i style="display:block;width:62%;height:8px;border-radius:4px;background:#FFC93C"></i></div><span style="font-weight:700;font-size:13px">6:12 / 10:00</span></div></div>
-<div class="k-card sl-row" style="gap:14px;justify-content:space-between;flex-wrap:wrap"><div class="sl-row" style="gap:12px"><span class="k-pill y"><i class="ic ic-clock"></i>Còn 28 phút</span><span class="k-note">Đang học · ba mẹ đã duyệt</span></div><a class="sl-btn sl-btn-sm" href="~/kids-time-up">Xin thêm giờ</a></div></div>
-<div class="sl-col" style="flex:1 1 280px;min-width:0;gap:16px"><div class="k-card"><div class="kf" style="font-size:22px;margin-bottom:10px">Trong bài này</div>
-<div class="sl-row" style="gap:12px;padding:10px 0;border-top:1px solid var(--line)"><span class="ib t-p"><i class="ic ic-playc"></i></span><div class="grow b">Xem video</div><i class="ic ic-chevr" style="color:var(--text-3)"></i></div><div class="sl-row" style="gap:12px;padding:10px 0;border-top:1px solid var(--line)"><span class="ib t-t"><i class="ic ic-book"></i></span><div class="grow b">Đọc quy luật</div><i class="ic ic-chevr" style="color:var(--text-3)"></i></div><div class="sl-row" style="gap:12px;padding:10px 0;border-top:1px solid var(--line)"><span class="ib t-a"><i class="ic ic-target"></i></span><div class="grow b">Làm quiz 5 câu</div><i class="ic ic-chevr" style="color:var(--text-3)"></i></div></div>
-<a class="k-btn" href="~/kids-quiz" style="text-align:center;justify-content:center">Làm quiz ngay</a><button class="sl-btn sl-btn-block" type="button"><i class="ic ic-flag"></i>Video này có gì lạ?</button></div></div></main>
+<main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px" data-lesson="@lesson.Id">
+<div class="sl-row" style="gap:14px;flex-wrap:wrap">
+    <a class="k-pill" href="/kids-subject?s=@SafeLearnKids.Web.Services.SubjectCatalog.Key(lesson.SubjectCode)"><i class="ic ic-arrowl"></i>@lesson.Subject</a>
+    <h1 class="kf grow" style="font-size:34px">@lesson.Title</h1>
+    <form asp-action="Favorite" asp-route-id="@lesson.Id" method="post">
+        <input type="hidden" name="back" value="@back" />
+        <button class="k-pill" type="submit" aria-pressed="@(lesson.Favorite ? "true" : "false")" style="@(lesson.Favorite ? "color:var(--rose-text)" : "")"><i class="ic ic-heart"></i>@(lesson.Favorite ? "Đã thích" : "Yêu thích")</button>
+    </form>
+</div>
+@if (TempData["Kid"] is string praise)
+{
+    <div class="banner t-g" role="status" style="font-weight:700;font-size:16px"><i class="ic ic-trophy"></i>@praise</div>
+}
+<div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+    <div class="sl-col" style="flex:2 1 560px;min-width:0;gap:16px">
+        @for (var i = 0; i < total; i++)
+        {
+            var part = Model.Sections[i];
+            var current = !lesson.Done && i == Model.SectionsDone;
+            var locked = !lesson.Done && i > Model.SectionsDone;
+            <section class="k-card" id="@(current ? "current" : $"part-{i + 1}")" style="display:flex;flex-direction:column;gap:14px;@(locked ? "opacity:.5" : "")" aria-label="Phần @(i + 1)">
+                <div class="sl-row" style="gap:12px"><span class="ib t-@Model.Look.Tone"><i class="ic ic-@(i < Model.SectionsDone || lesson.Done ? "check" : LessonKind.Icon(part.Kind))"></i></span><div class="kf grow" style="font-size:22px">Phần @(i + 1): @(part.Title ?? LessonKind.ContentLabel(part.Kind))</div></div>
+                @if (locked)
+                {
+                    <p class="k-note">Con học xong phần trước để mở phần này nhé.</p>
+                }
+                else
+                {
+                    @switch (part.Kind)
+                    {
+                        case "Reading":
+                            <div style="white-space:pre-line;font-size:19px;line-height:1.85;font-weight:600">@part.Body</div>
+                            break;
+                        case "Video":
+                            <div style="position:relative;padding-top:56.25%;border-radius:24px;overflow:hidden;background:#000">
+                                <iframe src="https://www.youtube-nocookie.com/embed/@(part.VideoId)?rel=0&amp;modestbranding=1" title="@(part.Title ?? lesson.Title)"
+                                        style="position:absolute;inset:0;width:100%;height:100%;border:0" loading="lazy"
+                                        referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation"
+                                        allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>
+                            </div>
+                            break;
+                        case "Image":
+                            <img src="@part.FileUrl" alt="@(part.Title ?? lesson.Title)" style="max-width:100%;border-radius:20px" loading="lazy" />
+                            break;
+                        default:
+                            <a class="sl-btn" href="@part.FileUrl" target="_blank" rel="noopener"><i class="ic ic-file"></i>Mở tài liệu</a>
+                            break;
+                    }
+                    @if (current)
+                    {
+                        <form asp-action="Next" asp-route-id="@lesson.Id" method="post">
+                            <button class="k-btn" type="submit"><i class="ic ic-check"></i>Con xong phần này rồi</button>
+                        </form>
+                    }
+                }
+            </section>
+        }
+        @if (total == 0)
+        {
+            <div class="empty">Bài này đang được ba mẹ và thầy cô chuẩn bị thêm nội dung.</div>
+        }
+    </div>
+    <div class="sl-col" style="flex:1 1 280px;min-width:0;gap:16px">
+        <div class="k-card">
+            <div class="kf" style="font-size:22px;margin-bottom:10px">Tiến độ của con</div>
+            <div class="bar bar-l" style="height:14px"><i style="width:@(lesson.Done ? 100 : total == 0 ? 0 : Model.SectionsDone * 100 / total)%;background:#22C55E"></i></div>
+            <p class="k-note" style="margin:10px 0 0">@(lesson.Done ? "Con đã học xong bài này." : $"Đã xong {Model.SectionsDone}/{total} phần. Lần sau con học tiếp từ phần đang dở.")</p>
+            @if (Model.AssignmentNote is not null)
+            {
+                <p style="margin:12px 0 0;font-weight:600">Ba mẹ nhắn: @Model.AssignmentNote</p>
+            }
+            @if (lesson.DueDate is { } due && !lesson.Done)
+            {
+                <p class="k-note" style="margin:8px 0 0">Hạn hoàn thành: @due.ToString("dd/MM/yyyy")</p>
+            }
+        </div>
+        @if (!lesson.Done)
+        {
+            <form asp-action="Complete" asp-route-id="@lesson.Id" method="post">
+                <button class="k-btn y" type="submit" style="width:100%;justify-content:center" disabled="@(!allDone)"><i class="ic ic-trophy"></i>Con học xong rồi</button>
+            </form>
+            @if (!allDone)
+            {
+                <p class="k-note">Học hết các phần để bấm hoàn thành nhé.</p>
+            }
+        }
+        <details class="k-card">
+            <summary class="b" style="cursor:pointer"><i class="ic ic-flag"></i> Bài này có gì lạ?</summary>
+            <form asp-action="Report" asp-route-id="@lesson.Id" method="post" style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+                @foreach (var reason in ReportStatus.Reasons)
+                {
+                    <label class="sl-row" style="gap:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);font-weight:600"><input type="radio" name="reason" value="@reason" required />@ReportStatus.Reason(reason)</label>
+                }
+                <input class="inp" name="comment" maxlength="500" placeholder="Con kể thêm (không bắt buộc)" aria-label="Con kể thêm" />
+                <button class="sl-btn" type="submit"><i class="ic ic-send"></i>Gửi cho ba mẹ</button>
+            </form>
+        </details>
+        @if (Model.Summary is not null)
+        {
+            <div class="k-card"><div class="kf" style="font-size:20px;margin-bottom:8px">Con sẽ học được</div><p style="margin:0;font-weight:600;line-height:1.6">@Model.Summary</p></div>
+        }
+    </div>
+</div>
+</main>

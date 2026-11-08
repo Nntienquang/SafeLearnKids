@@ -3,6 +3,11 @@
     ViewData["Area"] = "kids";
     ViewData["AppStyle"] = "flex-direction:column;flex-wrap:nowrap";
 }
+@if (ViewData["KidId"] is int kidId)
+{
+    @* Read by store.js, which loads after the body, so the page shows the child the server chose. *@
+    <script>window.SL_KID = "@kidId";@if (ViewData["KidLeft"] is int left) {<text>window.SL_KID_LEFT = @left;</text>}</script>
+}
 @if (!(ViewData["NoTop"] is true))
 {
     <partial name="_KidsTop" />

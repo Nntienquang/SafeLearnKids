@@ -1,0 +1,103 @@
+@model SubjectFormViewModel
+@using SafeLearnKids.Web.Services
+@{
+    var creating = Model.Id is null;
+    ViewData["Title"] = creating ? "Thêm môn học" : "Sửa môn học";
+    ViewData["Page"] = "admin-catalog-sql";
+    ViewData["Nav"] = "catalog";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Môn học""");
+    ViewData["Heading"] = ViewData["Title"];
+    ViewData["Sub"] = creating ? "Môn mới hiện với phụ huynh khi được đánh dấu đang dùng." : $"{Model.Name} · {Model.Lessons} bài học";
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<form asp-action="@(creating ? "CreateSubject" : "EditSubject")" asp-route-id="@Model.Id" method="post" class="sl-card acc-form">
+    <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+    <section class="acc-sec">
+        <div class="card-t">Thông tin môn</div>
+        <div class="acc-fields">
+            <div class="field">
+                <label asp-for="Name" class="lab"></label>
+                <input asp-for="Name" class="inp" autocomplete="off" required maxlength="80" />
+                <span asp-validation-for="Name" class="err"></span>
+            </div>
+            <div class="field">
+                <label asp-for="Code" class="lab"></label>
+                @if (creating)
+                {
+                    <input asp-for="Code" class="inp" autocomplete="off" required maxlength="30" placeholder="Ví dụ: ART" style="text-transform:uppercase" />
+                    <span class="muted ud-hint">Không đổi được sau khi tạo.</span>
+                }
+                else
+                {
+                    <input class="inp" value="@Model.Code" readonly aria-readonly="true" id="Code" />
+                    <span class="muted ud-hint">Mã gắn với hồ sơ của bé nên không đổi được.</span>
+                }
+                <span asp-validation-for="Code" class="err"></span>
+            </div>
+            <div class="field" style="grid-column:1/-1">
+                <label asp-for="Description" class="lab"></label>
+                <textarea asp-for="Description" class="inp ta" rows="2" maxlength="300"></textarea>
+                <span asp-validation-for="Description" class="err"></span>
+            </div>
+            <div class="field">
+                <label asp-for="ColorKey" class="lab"></label>
+                <select asp-for="ColorKey" class="inp">
+                    @foreach (var color in SubjectCatalog.Colors)
+                    {
+                        <option value="@color.Key">@color.Value.Label</option>
+                    }
+                </select>
+                <span asp-validation-for="ColorKey" class="err"></span>
+            </div>
+            <div class="field">
+                <label asp-for="IconKey" class="lab"></label>
+                <select asp-for="IconKey" class="inp">
+                    @foreach (var icon in SubjectCatalog.Icons)
+                    {
+                        <option value="@icon.Key">@icon.Label</option>
+                    }
+                </select>
+                <span asp-validation-for="IconKey" class="err"></span>
+            </div>
+            <div class="field">
+                <label asp-for="SortOrder" class="lab"></label>
+                <input asp-for="SortOrder" class="inp" type="number" min="0" max="999" />
+                <span asp-validation-for="SortOrder" class="err"></span>
+            </div>
+            <div class="field">
+                <span class="lab">Trạng thái</span>
+                <label class="sl-row" style="gap:10px;height:48px"><input asp-for="IsActive" type="checkbox" /><span>Đang dùng (phụ huynh chọn được cho bé)</span></label>
+            </div>
+        </div>
+    </section>
+    <section class="acc-sec">
+        <div class="card-t">Áp dụng cho lớp</div>
+        <fieldset style="border:0;padding:0;margin:0">
+            <legend class="muted ud-hint" style="margin-bottom:10px">Bài học của môn chỉ tạo được ở các lớp đã chọn.</legend>
+            <div class="sl-row" style="gap:10px;flex-wrap:wrap">
+                @for (var level = 1; level <= 5; level++)
+                {
+                    <label class="sl-row" style="gap:8px;padding:10px 14px;border-radius:14px;border:1px solid var(--line);font-weight:600"><input type="checkbox" name="Grades" value="@level" checked="@Model.Grades.Contains(level)" />Lớp @level</label>
+                }
+            </div>
+        </fieldset>
+        <span asp-validation-for="Grades" class="err"></span>
+    </section>
+    <div class="acc-foot">
+        <a class="sl-btn" asp-action="Index" asp-route-subject="@Model.Id">Hủy</a>
+        <button class="sl-btn sl-btn-p" type="submit">@(creating ? "Thêm môn" : "Lưu thay đổi")</button>
+    </div>
+</form>
+@if (!creating)
+{
+    <div class="sl-card" style="margin-top:16px">
+        <div class="card-t">Xóa môn học</div>
+        <p class="muted" style="margin:6px 0 12px">Chỉ xóa được môn chưa có bài học và chưa bé nào học. Môn đang dùng hãy bỏ chọn "Đang dùng" để ẩn.</p>
+        <form asp-action="DeleteSubject" asp-route-id="@Model.Id" method="post" data-confirm="Xóa môn @Model.Name?" data-text="Không thể hoàn tác." data-ok-label="Xóa môn" data-danger="true">
+            <button class="sl-btn sl-btn-d" type="submit"><i class="ic ic-trash"></i>Xóa môn</button>
+        </form>
+    </div>
+}
