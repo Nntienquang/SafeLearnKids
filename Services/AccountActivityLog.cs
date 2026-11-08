@@ -11,6 +11,8 @@ public sealed class AccountActivityLog(
     ILogger<AccountActivityLog> logger)
 {
     public const string UserEntity = "User";
+    public const string SubjectEntity = "Subject";
+    public const string LessonEntity = "Lesson";
     public const string TermsVersion = "v1.0";
 
     public Task LoginAsync(string? userId, string email, bool succeeded, string? failReason) => SaveAsync(db =>
@@ -47,6 +49,18 @@ public sealed class AccountActivityLog(
             Action = action,
             EntityType = UserEntity,
             EntityId = Limit(targetUserId, 64),
+            Detail = detail,
+            IpAddress = IpAddress,
+            CreatedAt = DateTime.UtcNow
+        }));
+
+    public Task EntityActionAsync(string actorId, string action, string entityType, int entityId, string? detail = null) => SaveAsync(db =>
+        db.AuditLogs.Add(new AuditLog
+        {
+            ActorId = actorId,
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Detail = detail,
             IpAddress = IpAddress,
             CreatedAt = DateTime.UtcNow

@@ -4,8 +4,6 @@
 var S=KL,UI=window.UI,$=UI.$,$$=UI.$$,esc=S.esc;
 function body(html){var m=$('.main'),h=$('.head',m);Array.prototype.slice.call(m.children).forEach(function(x){if(x!==h&&!x.hasAttribute('data-keep')&&h.compareDocumentPosition(x)&4)x.remove();});var d=document.createElement('div');d.innerHTML=html;m.appendChild(d);return d;}
 function hashScore(n){var h=0;for(var i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))%1000;return 42+h%52;}
-var DRAFT={hinhhoc:1,tadovat:1};
-function kind(k){return k==='Video'?'playc':k==='Quiz'?'target':'book';}
 document.addEventListener('kl:ui',function(){
 var P=UI.PAGE,st=S.get();
 
@@ -16,30 +14,6 @@ if(P==='admin-home'){
   var rows=$$('.sl-row[style*="border-top"]',card);
   rows[0].querySelector('.b').textContent=open+' báo cáo nội dung';rows[0].querySelector('.muted').textContent=open?'Có '+st.reports.filter(function(r){return r.status==='open'&&r.sev==='Khẩn';}).length+' mức khẩn':'Không còn báo cáo';
   rows[1].querySelector('.b').textContent=rev+' kênh chờ duyệt';
-}
-
-if(P==='admin-catalog'){
-  var cur='toan',tb=$('.tbl tbody'),side=$$('.sl-card')[0];
-  function drawSub(){var h='<div class="card-t" style="margin-bottom:10px">Môn học</div>'+Object.keys(S.SUBJECTS).map(function(k){var s=S.SUBJECTS[k],n=S.LESSONS.filter(function(l){return l.subj===k;}).length;return '<button type="button" data-s="'+k+'" aria-pressed="'+(k===cur)+'" class="sl-row" style="all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;cursor:pointer;'+(k===cur?'background:var(--primary-soft)':'')+'"><span class="ib t-'+s.tone+'" style="width:36px;height:36px"><i class="ic ic-'+s.icon+'"></i></span><span class="b grow">'+s.name+'</span><span class="muted b">'+n+'</span></button>';}).join('');side.innerHTML=h;}
-  function drawT(){$('.tbl thead th').textContent='Bài học · '+S.SUBJECTS[cur].name;tb.innerHTML=S.LESSONS.filter(function(l){return l.subj===cur;}).map(function(l){var d=DRAFT[l.id];return '<tr><td><div class="sl-row" style="gap:12px"><span class="ib t-'+S.SUBJECTS[cur].tone+'"><i class="ic ic-'+kind(l.kind)+'"></i></span><div class="b">'+esc(l.title)+'</div></div></td><td>Lớp '+l.cls+'</td><td class="b">'+(l.kind==='Quiz'?1:3)+'</td><td><span class="chip t-'+(d?'a':'g')+'">'+(d?'Bản nháp':'Đã xuất bản')+'</span></td><td style="text-align:right"><a class="sl-btn sl-btn-sm" href="/admin-lesson?id='+l.id+'">Sửa</a></td></tr>';}).join('');}
-  drawSub();drawT();side.addEventListener('click',function(e){var b=e.target.closest('[data-s]');if(!b)return;cur=b.dataset.s;drawSub();drawT();});
-}
-
-if(P==='admin-lesson'){
-  var id=new URLSearchParams(location.search).get('id'),l=id&&S.lesson(id);
-  var items=l?[[ 'playc','p','Video: '+l.title,'Học Toán Vui · '+l.mins+' phút'],['book','t','Bài đọc: Ghi nhớ','Văn bản · 3 phút'],['target','a','Quiz: 5 câu','Đạt khi đúng 3/5']]:[];
-  var title=$('#al1');title.value=l?l.title:'';title.classList.remove('f');title.placeholder='Ví dụ: Bảng nhân 5';
-  $('.head .sl-h1').textContent=l?'Soạn bài học: '+l.title:'Bài học mới';
-  var list=$$('.sl-card')[1],stat=$$('.sl-card')[2].querySelector('.chip');
-  function draw(){list.innerHTML='<div class="card-h"><div class="card-t">Nội dung bài</div><button class="sl-btn sl-btn-sm" type="button" id="addc"><i class="ic ic-plus"></i>Thêm nội dung</button></div>'+(items.map(function(it,i){return '<div class="sl-row" style="gap:12px;padding:12px;border-radius:16px;background:var(--surface-2);margin-top:10px"><i class="ic ic-menu" style="color:var(--text-3)"></i><span class="ib t-'+it[1]+'"><i class="ic ic-'+it[0]+'"></i></span><div class="grow"><div class="b">'+esc(it[2])+'</div><div class="muted" style="font-size:12.5px">'+esc(it[3])+'</div></div><button type="button" class="icbtn" style="width:36px;height:36px" data-up="'+i+'" aria-label="Chuyển lên"><i class="ic ic-arrowl" style="transform:rotate(90deg)"></i></button><button type="button" class="icbtn" style="width:36px;height:36px" data-rm="'+i+'" aria-label="Xóa nội dung"><i class="ic ic-trash"></i></button></div>';}).join('')||'<div class="empty" style="margin-top:12px">Chưa có nội dung. Bấm "Thêm nội dung".</div>');
-    $('#addc').addEventListener('click',function(){UI.modal({title:'Thêm nội dung',icon:'plus',tone:'p',ok:'Thêm',html:'<div class="field"><span class="lab">Loại</span><div class="seg" id="ty"><span class="on" data-t="v">Video</span><span data-t="r">Bài đọc</span><span data-t="q">Quiz</span></div></div><div class="field" style="margin-top:12px"><label class="lab" for="nm">Tiêu đề</label><input id="nm" class="inp" placeholder="Tên nội dung"></div>',value:function(o){return [o.querySelector('#ty .on').dataset.t,o.querySelector('#nm').value.trim()];}}).then(function(v){if(!v)return;if(!v[1])return UI.toast('Nhập tiêu đề nội dung','err');items.push(v[0]==='v'?['playc','p','Video: '+v[1],'Nguồn đã duyệt']:v[0]==='r'?['book','t','Bài đọc: '+v[1],'Văn bản']:['target','a','Quiz: '+v[1],'Chờ duyệt câu hỏi']);draw();UI.toast('Đã thêm nội dung');});});}
-  draw();
-  list.addEventListener('click',function(e){var r=e.target.closest('[data-rm]'),u=e.target.closest('[data-up]');if(r){items.splice(+r.dataset.rm,1);draw();}if(u&&+u.dataset.up>0){var i=+u.dataset.up,t=items[i];items[i]=items[i-1];items[i-1]=t;draw();}});
-  var pub=false;
-  UI.on(UI.byText('.head button','Lưu nháp'),function(){if(!UI.field(title,!title.value.trim()?'Nhập tên bài học.':''))return title.focus();S.audit('quantri · Bài học',(l?'Lưu nháp ':'Tạo bài ')+title.value.trim());UI.toast('Đã lưu bản nháp');});
-  UI.on(UI.byText('.head button','Xuất bản'),function(){var ok=UI.field(title,!title.value.trim()?'Nhập tên bài học.':'');if(!ok)return title.focus();
-    if(!items.some(function(i){return i[0]==='target';})||items.length<1){UI.toast('Cần ít nhất 1 nội dung và 1 quiz đã duyệt','err');return;}
-    stat.className='chip t-g';stat.textContent='Đã xuất bản';S.audit('quantri · Bài học','Xuất bản '+title.value.trim());UI.toast('Đã xuất bản bài học');});
 }
 
 if(P==='admin-questions'){
@@ -88,10 +62,9 @@ if(P==='admin-reports'){
   draw();document.addEventListener('kl:change',function(){var a=document.activeElement;if(!a||a.tagName!=='TEXTAREA')draw();});
 }
 
-if(P==='admin-users'){
-  document.addEventListener('submit',function(e){var f=e.target;if(!f.dataset.confirm||f.dataset.confirmed)return;e.preventDefault();
-    UI.confirm({title:f.dataset.confirm,text:f.dataset.text,ok:f.dataset.okLabel,danger:f.dataset.danger==='true',icon:'lock'}).then(function(ok){if(!ok)return;f.dataset.confirmed='1';f.submit();});});
-}
+// Any admin form with data-confirm asks first: users, subjects and lessons all rely on it.
+document.addEventListener('submit',function(e){var f=e.target;if(!f.dataset.confirm||f.dataset.confirmed)return;e.preventDefault();
+  UI.confirm({title:f.dataset.confirm,text:f.dataset.text,ok:f.dataset.okLabel,danger:f.dataset.danger==='true',icon:f.dataset.icon||'lock'}).then(function(ok){if(!ok)return;f.dataset.confirmed='1';f.submit();});});
 
 if(P==='admin-audit'){
   var mode=0,seg=$('.seg');

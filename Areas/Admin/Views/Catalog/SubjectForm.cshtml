@@ -1,0 +1,113 @@
+@model SubjectFormViewModel
+@{
+    var creating = Model.Id is null;
+    ViewData["Title"] = creating ? "Thêm môn học" : "Sửa môn học";
+    ViewData["Page"] = "admin-catalog";
+    ViewData["Nav"] = "catalog";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
+    ViewData["Heading"] = ViewData["Title"];
+    ViewData["Sub"] = creating ? "Mã môn không đổi được sau khi tạo." : $"Mã {Model.Code}";
+    var back = Url.Action("Index", creating ? null : new { subject = Model.Id });
+}
+<form asp-action="@(creating ? "Create" : "Edit")" asp-route-id="@Model.Id" method="post" class="sl-card acc-form">
+    <div asp-validation-summary="All" class="err" role="alert"></div>
+    <section class="acc-sec">
+        <div class="card-t">Thông tin môn</div>
+        <div class="acc-fields">
+            <div class="field">
+                <label asp-for="Code" class="lab"></label>
+                <input asp-for="Code" class="inp" autocomplete="off" required maxlength="30" readonly="@(!creating)" placeholder="Ví dụ: MUSIC" />
+                <span asp-validation-for="Code" class="err"></span>
+            </div>
+            <div class="field">
+                <label asp-for="Name" class="lab"></label>
+                <input asp-for="Name" class="inp" autocomplete="off" required maxlength="80" />
+                <span asp-validation-for="Name" class="err"></span>
+            </div>
+            <div class="field" style="grid-column:1/-1">
+                <label asp-for="Description" class="lab"></label>
+                <textarea asp-for="Description" class="inp ta" maxlength="300"></textarea>
+                <span asp-validation-for="Description" class="err"></span>
+            </div>
+            <div class="field">
+                <label asp-for="SortOrder" class="lab"></label>
+                <input asp-for="SortOrder" class="inp" type="number" min="0" max="999" />
+                <span asp-validation-for="SortOrder" class="err"></span>
+            </div>
+        </div>
+    </section>
+    <section class="acc-sec">
+        <div class="card-t">Hiển thị</div>
+        <fieldset class="field" style="border:0;margin:0;padding:0">
+            <legend class="lab">Biểu tượng</legend>
+            <div class="sl-row" style="gap:8px;flex-wrap:wrap">
+                @foreach (var icon in CatalogOptions.Icons)
+                {
+                    <label class="sl-row" style="gap:6px;cursor:pointer">
+                        <input type="radio" name="IconKey" value="@icon" checked="@(Model.IconKey == icon)" required />
+                        <span class="ib t-@CatalogOptions.Tone(Model.ColorKey)" style="width:36px;height:36px"><i class="ic ic-@icon"></i></span>
+                    </label>
+                }
+            </div>
+        </fieldset>
+        <fieldset class="field" style="border:0;margin:0;padding:0">
+            <legend class="lab">Màu</legend>
+            <div class="sl-row" style="gap:8px;flex-wrap:wrap">
+                @foreach (var tone in CatalogOptions.Tones)
+                {
+                    <label class="sl-row" style="gap:6px;cursor:pointer">
+                        <input type="radio" name="ColorKey" value="@tone" checked="@(Model.ColorKey == tone)" required />
+                        <span class="ib t-@tone" style="width:36px;height:36px" aria-label="Màu @tone"><i class="ic ic-@CatalogOptions.Icon(Model.IconKey)"></i></span>
+                    </label>
+                }
+            </div>
+        </fieldset>
+    </section>
+    <section class="acc-sec">
+        <div class="card-t">Lớp áp dụng</div>
+        <div class="sl-row" style="gap:18px;flex-wrap:wrap">
+            @foreach (var grade in Model.Grades)
+            {
+                <label class="sl-row" style="gap:8px;cursor:pointer">
+                    <input class="chk" type="checkbox" name="GradeLevelIds" value="@grade.Id" checked="@Model.GradeLevelIds.Contains(grade.Id)" />
+                    <span class="b">@grade.Name</span>
+                </label>
+            }
+        </div>
+        @if (!creating && Model.Lessons > 0)
+        {
+            <span class="muted ud-hint">Không bỏ được lớp đã có bài của môn này.</span>
+        }
+    </section>
+    <div class="acc-foot">
+        <a class="sl-btn" href="@back">Hủy</a>
+        <button class="sl-btn sl-btn-p" type="submit">@(creating ? "Thêm môn" : "Lưu thay đổi")</button>
+    </div>
+</form>
+@if (!creating)
+{
+    <div class="sl-card acc-form" style="margin-top:16px">
+        <section class="acc-sec">
+            <div class="card-t">Trạng thái môn</div>
+            <div class="sl-row" style="gap:10px;flex-wrap:wrap">
+                @if (Model.IsActive)
+                {
+                    <form asp-action="Visibility" asp-route-id="@Model.Id" method="post" data-icon="eye" data-confirm="Ẩn môn @Model.Name?" data-text="Môn sẽ được đánh dấu đã ẩn trong danh mục. Bài học và dữ liệu của bé vẫn giữ nguyên." data-ok-label="Ẩn môn">
+                        <input type="hidden" name="active" value="false" />
+                        <button class="sl-btn" type="submit"><i class="ic ic-eye"></i>Ẩn môn</button>
+                    </form>
+                }
+                else
+                {
+                    <form asp-action="Visibility" asp-route-id="@Model.Id" method="post">
+                        <input type="hidden" name="active" value="true" />
+                        <button class="sl-btn" type="submit"><i class="ic ic-eye"></i>Hiện môn</button>
+                    </form>
+                }
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" data-icon="trash" data-confirm="Xóa vĩnh viễn môn @Model.Name?" data-text="Không thể hoàn tác. Môn đã có bài hoặc được bé chọn sẽ không xóa được." data-ok-label="Xóa môn" data-danger="true">
+                    <button class="sl-btn sl-btn-d" type="submit"><i class="ic ic-trash"></i>Xóa môn</button>
+                </form>
+            </div>
+        </section>
+    </div>
+}
