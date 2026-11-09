@@ -9,7 +9,15 @@
     ViewData["Sub"] = $"{lesson.Subject} · Lớp {lesson.Grade} · {LessonKind.TypeLabel(lesson.LessonType)} · khoảng {lesson.DurationMin} phút";
 }
 @section Actions {
+@if (lesson.Source == "family")
+{
+    <a class="sl-btn sl-btn-p" href="/family-lessons/@lesson.Id"><i class="ic ic-pen"></i>Sửa bài</a>
+}
 <a class="sl-btn" asp-action="Index"><i class="ic ic-arrowl"></i>Thư viện</a>
+}
+@if (lesson.Source is not null)
+{
+    <div class="banner @(lesson.Source == "family" ? "t-a" : "t-p")" style="margin-bottom:16px"><i class="ic ic-@(lesson.Source == "family" ? "home" : "users")"></i>@(lesson.Source == "family" ? "Bài của gia đình bạn: chỉ gia đình bạn thấy bài này." : "Bài cộng đồng" + (lesson.Author is null ? "" : " do phụ huynh " + lesson.Author + " đóng góp") + ", đã được quản trị viên duyệt.")</div>
 }
 <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
     <div class="sl-col" style="flex:2 1 520px;min-width:0;gap:16px">
@@ -171,7 +179,7 @@
         <div class="sl-card">
             <div class="card-t" style="margin-bottom:12px">Thông tin an toàn</div>
             <div class="sl-col" style="gap:10px;font-size:13.5px;color:var(--text-2)">
-                <div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Bài đã được quản trị viên xuất bản</div>
+                <div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>@(lesson.Source switch { "family" => "Bài do gia đình bạn tự soạn, chỉ gia đình bạn thấy", "community" => "Bài cộng đồng đã được quản trị viên duyệt", _ => "Bài đã được quản trị viên xuất bản" })</div>
                 <div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Chỉ hiện video đã duyệt, phát bằng trình phát nhúng</div>
                 <div class="sl-row" style="gap:10px"><i class="ic ic-checkc" style="color:var(--green)"></i>Phù hợp lớp @lesson.Grade</div>
             </div>

@@ -49,9 +49,10 @@ public sealed class KidContext(IHttpContextAccessor accessor, IServiceProvider s
         return rows.Select(row => new KidChoice(row.Id, row.DisplayName, row.Level, new StringInfo(row.DisplayName).SubstringByTextElements(0, 1).ToUpperInvariant())).ToList();
     }
 
-    // Lessons a child may open: published, subject in use, and either assigned to them or in their grade and chosen subjects.
+    // Lessons a child may open: visible to the family (standard, community or their own), published, subject in use,
+    // and either assigned to them or in their grade and chosen subjects.
     public static IQueryable<Lesson> Openable(SafeLearnDbContext db, KidInfo kid) =>
-        db.Lessons.AsNoTracking().Where(lesson => lesson.Status == LessonStatus.Published && lesson.Subject.IsActive
+        LessonAccess.ForFamily(db.Lessons.AsNoTracking(), kid.ParentId).Where(lesson => lesson.Status == LessonStatus.Published && lesson.Subject.IsActive
             && ((lesson.GradeLevelId == kid.GradeLevelId && kid.SubjectIds.Contains(lesson.SubjectId))
                 || lesson.Assignments.Any(item => item.ChildProfileId == kid.Id && item.Status != AssignmentStatus.Cancelled)));
 
@@ -63,6 +64,6 @@ public sealed class KidContext(IHttpContextAccessor accessor, IServiceProvider s
                 child.Id, child.DisplayName, child.GradeLevel.Level, child.GradeLevelId,
                 Subjects = child.ChildSubjects.Select(item => item.SubjectId).ToList()
             }).FirstOrDefaultAsync(cancellationToken);
-        return row is null ? null : new KidInfo(row.Id, row.DisplayName, row.Level, row.GradeLevelId, row.Subjects);
+        return row is null ? null : new KidInfo(row.Id, row.DisplayName, row.Level, row.GradeLevelId, row.Subjects, parentId);
     }
 }

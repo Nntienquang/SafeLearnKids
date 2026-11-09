@@ -29,7 +29,7 @@ public static class AssignmentStatus
     };
 }
 
-public record KidInfo(int Id, string Name, int Grade, int GradeLevelId, IReadOnlyList<int> SubjectIds);
+public record KidInfo(int Id, string Name, int Grade, int GradeLevelId, IReadOnlyList<int> SubjectIds, string ParentId = "");
 
 public record KidLessonCard(int Id, string Title, string SubjectCode, string Subject, string? ColorKey, string LessonType, int DurationMin, int Percent, bool Done, bool Favorite, DateOnly? DueDate)
 {

@@ -202,6 +202,8 @@ using (var scope = app.Services.CreateScope())
         await db.Database.OpenConnectionAsync();
         app.Logger.LogInformation("Database: SQL Server={Server}, Database={Database}", connection.DataSource, connection.Database);
         await db.Database.CloseConnectionAsync();
+        // Columns and tables added after the first release (family lessons, community library, lesson requests).
+        await SchemaUpdater.RunAsync(scope.ServiceProvider.GetRequiredService<SafeLearnDbContext>(), app.Logger);
     }
 
     await DemoSeeder.SeedAsync(scope.ServiceProvider, useInMemory, app.Configuration.GetValue<bool>("Demo:SeedDemoAccounts"));

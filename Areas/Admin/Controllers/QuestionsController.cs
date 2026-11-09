@@ -30,7 +30,7 @@ public class QuestionsController(
     public async Task<IActionResult> Index(int? lesson, int? subject, string? q, bool pending = false, CancellationToken cancellationToken = default)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var lessons = db.Lessons.AsNoTracking().Where(item => item.Status != LessonStatus.Archived);
+        var lessons = LessonAccess.Standard(db).AsNoTracking().Where(item => item.Status != LessonStatus.Archived);
         if (subject is not null) lessons = lessons.Where(item => item.SubjectId == subject);
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -42,10 +42,10 @@ public class QuestionsController(
         if (lesson is not null)
         {
             chosen = picks.FirstOrDefault(item => item.Id == lesson)
-                ?? await Picks(db.Lessons.AsNoTracking().Where(item => item.Id == lesson)).FirstOrDefaultAsync(cancellationToken);
+                ?? await Picks(LessonAccess.Standard(db).AsNoTracking().Where(item => item.Id == lesson)).FirstOrDefaultAsync(cancellationToken);
             if (chosen is null) return NotFound();
         }
-        var questions = db.Questions.AsNoTracking().AsQueryable();
+        var questions = db.Questions.AsNoTracking().Where(item => item.Lesson.OwnerParentId == null);
         questions = pending ? questions.Where(item => item.Status == QuestionStatus.InReview)
             : chosen is null ? questions.Where(_ => false) : questions.Where(item => item.LessonId == chosen.Id);
         return View(new QuestionBankViewModel
@@ -62,7 +62,7 @@ public class QuestionsController(
             Quizzes = chosen is null ? [] : await db.Quizzes.AsNoTracking().Where(item => item.LessonId == chosen.Id).OrderBy(item => item.Id)
                 .Select(item => new QuizRow(item.Id, item.Title, item.Status, item.PassPercent, item.TimeLimitSec, item.QuizQuestions.Count, item.QuizAttempts.Count))
                 .ToListAsync(cancellationToken),
-            PendingTotal = await db.Questions.CountAsync(item => item.Status == QuestionStatus.InReview, cancellationToken),
+            PendingTotal = await db.Questions.CountAsync(item => item.Status == QuestionStatus.InReview && item.Lesson.OwnerParentId == null, cancellationToken),
             AiConfigured = suggester.Configured
         });
     }
@@ -73,7 +73,7 @@ public class QuestionsController(
     public async Task<IActionResult> Create(int lesson, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var title = await db.Lessons.Where(item => item.Id == lesson).Select(item => item.Title).FirstOrDefaultAsync(cancellationToken);
+        var title = await LessonAccess.Standard(db).Where(item => item.Id == lesson).Select(item => item.Title).FirstOrDefaultAsync(cancellationToken);
         return title is null ? NotFound() : View("QuestionForm", new QuestionFormViewModel { LessonId = lesson, LessonTitle = title });
     }
 
@@ -84,7 +84,7 @@ public class QuestionsController(
         if (Db is not { } db) return View("SqlOnly");
         model.Id = null;
         model.Origin = QuestionOrigin.Manual;
-        var title = await db.Lessons.Where(item => item.Id == model.LessonId).Select(item => item.Title).FirstOrDefaultAsync(cancellationToken);
+        var title = await LessonAccess.Standard(db).Where(item => item.Id == model.LessonId).Select(item => item.Title).FirstOrDefaultAsync(cancellationToken);
         if (title is null) return NotFound();
         model.LessonTitle = title;
         var options = Validate(model, allowReview: false);
@@ -111,7 +111,7 @@ public class QuestionsController(
     public async Task<IActionResult> Edit(int id, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var question = await db.Questions.AsNoTracking().Where(item => item.Id == id).Select(item => new
+        var question = await db.Questions.AsNoTracking().Where(item => item.Id == id && item.Lesson.OwnerParentId == null).Select(item => new
         {
             item.Id, item.LessonId, Lesson = item.Lesson.Title, item.Text, item.QuestionType, item.Difficulty, item.Explanation, item.Status, item.Origin, item.AiModelName,
             Options = item.QuestionOptions.OrderBy(option => option.SortOrder).ThenBy(option => option.Id).Select(option => new { option.Text, option.IsCorrect }).ToList(),
@@ -133,7 +133,7 @@ public class QuestionsController(
     public async Task<IActionResult> Edit(int id, QuestionFormViewModel model, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var question = await db.Questions.Include(item => item.QuestionOptions).Include(item => item.Lesson).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var question = await db.Questions.Include(item => item.QuestionOptions).Include(item => item.Lesson).FirstOrDefaultAsync(item => item.Id == id && item.Lesson.OwnerParentId == null, cancellationToken);
         if (question is null) return NotFound();
         model.Id = id;
         model.LessonId = question.LessonId;
@@ -174,7 +174,7 @@ public class QuestionsController(
     public async Task<IActionResult> Status(int id, [FromForm] string action, [FromForm] bool pending, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var question = await db.Questions.Include(item => item.QuestionOptions).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var question = await db.Questions.Include(item => item.QuestionOptions).FirstOrDefaultAsync(item => item.Id == id && item.Lesson.OwnerParentId == null, cancellationToken);
         if (question is null) return NotFound();
         var target = action switch
         {
@@ -218,7 +218,7 @@ public class QuestionsController(
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var question = await db.Questions.Include(item => item.QuestionOptions).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var question = await db.Questions.Include(item => item.QuestionOptions).FirstOrDefaultAsync(item => item.Id == id && item.Lesson.OwnerParentId == null, cancellationToken);
         if (question is null) return NotFound();
         if (await db.QuizQuestions.AnyAsync(item => item.QuestionId == id, cancellationToken) || await db.QuizAttemptAnswers.AnyAsync(item => item.QuestionId == id, cancellationToken))
         {
@@ -242,7 +242,7 @@ public class QuestionsController(
     public async Task<IActionResult> Suggest([FromForm] int lesson, [FromForm] int count, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var source = await db.Lessons.AsNoTracking().Where(item => item.Id == lesson).Select(item => new
+        var source = await LessonAccess.Standard(db).AsNoTracking().Where(item => item.Id == lesson).Select(item => new
         {
             item.Title, Subject = item.Subject.Name, item.GradeLevel.Level, item.Summary,
             Readings = item.LessonContents.Where(content => content.ContentKind == "Reading" && content.Body != null)
@@ -279,7 +279,7 @@ public class QuestionsController(
     public async Task<IActionResult> CreateQuiz(int lesson, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var title = await db.Lessons.Where(item => item.Id == lesson).Select(item => item.Title).FirstOrDefaultAsync(cancellationToken);
+        var title = await LessonAccess.Standard(db).Where(item => item.Id == lesson).Select(item => item.Title).FirstOrDefaultAsync(cancellationToken);
         if (title is null) return NotFound();
         return View("QuizForm", new QuizFormViewModel
         {
@@ -293,7 +293,7 @@ public class QuestionsController(
     {
         if (Db is not { } db) return View("SqlOnly");
         model.Id = null;
-        var title = await db.Lessons.Where(item => item.Id == model.LessonId).Select(item => item.Title).FirstOrDefaultAsync(cancellationToken);
+        var title = await LessonAccess.Standard(db).Where(item => item.Id == model.LessonId).Select(item => item.Title).FirstOrDefaultAsync(cancellationToken);
         if (title is null) return NotFound();
         model.LessonTitle = title;
         await ValidateQuizAsync(db, model, cancellationToken);
@@ -321,7 +321,7 @@ public class QuestionsController(
     public async Task<IActionResult> EditQuiz(int id, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var quiz = await db.Quizzes.AsNoTracking().Where(item => item.Id == id).Select(item => new
+        var quiz = await db.Quizzes.AsNoTracking().Where(item => item.Id == id && item.Lesson.OwnerParentId == null).Select(item => new
         {
             item.Id, item.LessonId, Lesson = item.Lesson.Title, item.Title, item.PassPercent, item.TimeLimitSec, item.ShuffleQuestions, item.Status,
             Questions = item.QuizQuestions.OrderBy(link => link.SortOrder).ThenBy(link => link.Id).Select(link => link.QuestionId).ToList(),
@@ -341,7 +341,7 @@ public class QuestionsController(
     public async Task<IActionResult> EditQuiz(int id, QuizFormViewModel model, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var quiz = await db.Quizzes.Include(item => item.QuizQuestions).Include(item => item.Lesson).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var quiz = await db.Quizzes.Include(item => item.QuizQuestions).Include(item => item.Lesson).FirstOrDefaultAsync(item => item.Id == id && item.Lesson.OwnerParentId == null, cancellationToken);
         if (quiz is null) return NotFound();
         model.Id = id;
         model.LessonId = quiz.LessonId;
@@ -376,7 +376,7 @@ public class QuestionsController(
     public async Task<IActionResult> DeleteQuiz(int id, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var quiz = await db.Quizzes.Include(item => item.QuizQuestions).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var quiz = await db.Quizzes.Include(item => item.QuizQuestions).FirstOrDefaultAsync(item => item.Id == id && item.Lesson.OwnerParentId == null, cancellationToken);
         if (quiz is null) return NotFound();
         if (await db.QuizAttempts.AnyAsync(item => item.QuizId == id, cancellationToken) || await db.Assignments.AnyAsync(item => item.QuizId == id, cancellationToken))
         {

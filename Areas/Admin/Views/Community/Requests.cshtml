@@ -1,0 +1,71 @@
+@model AdminLessonRequestsViewModel
+@{
+    ViewData["Title"] = """Đề xuất bài học""";
+    ViewData["Page"] = "admin-community-sql";
+    ViewData["Nav"] = "requests";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
+    ViewData["Heading"] = """Đề xuất bài học""";
+    ViewData["Sub"] = """Phụ huynh cho biết con cần học gì. Xếp theo số gia đình cùng cần; trả lời sẽ được gửi cho tất cả các gia đình đó.""";
+    int Count(string status) => Model.Counts.TryGetValue(status, out var count) ? count : 0;
+}
+@section Actions {
+<div class="sl-row" style="gap:8px;flex-wrap:wrap">
+    @foreach (var status in RequestState.All)
+    {
+        <a class="sl-btn sl-btn-sm @(Model.Status == status ? "sl-btn-p" : "")" asp-action="Requests" asp-route-status="@status">@RequestState.Label(status) (@Count(status))</a>
+    }
+</div>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div class="sl-col" style="gap:16px">
+    @foreach (var row in Model.Rows)
+    {
+        <div class="sl-card">
+            <div class="sl-row" style="gap:12px;flex-wrap:wrap">
+                <span class="ib t-p" aria-hidden="true"><i class="ic ic-send"></i></span>
+                <div class="grow" style="min-width:200px">
+                    <div class="b">@row.Topic</div>
+                    <div class="muted" style="font-size:12.5px">@row.Subject · Lớp @row.Grade · @row.Parent · @row.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                </div>
+                <span class="chip t-v">@row.Votes gia đình cần</span>
+                <span class="chip @RequestState.Tone(row.Status)">@RequestState.Label(row.Status)</span>
+            </div>
+            @if (row.Note is not null)
+            {
+                <p style="margin:10px 0 0;font-size:13.5px">Ghi chú: @row.Note</p>
+            }
+            @if (row.Reply is not null)
+            {
+                <p style="margin:6px 0 0;font-size:13.5px">Đã trả lời: @row.Reply@(row.LessonId is { } done ? $" · bài #{done}" : "")</p>
+            }
+            @if (row.Status is RequestState.Open or RequestState.Planned)
+            {
+                <form asp-action="Handle" asp-route-id="@row.Id" method="post" class="sl-col" style="gap:8px;margin-top:12px">
+                    <div class="sl-row" style="gap:8px;flex-wrap:wrap">
+                        <label class="sr-only" for="status-@row.Id">Trạng thái</label>
+                        <select class="inp" id="status-@row.Id" name="status" style="width:auto">
+                            <option value="@RequestState.Planned">Đang soạn</option>
+                            <option value="@RequestState.Done">Đã có bài</option>
+                            <option value="@RequestState.Declined">Chưa thực hiện</option>
+                        </select>
+                        <label class="sr-only" for="lesson-@row.Id">Mã bài đáp ứng</label>
+                        <input class="inp" id="lesson-@row.Id" name="lessonId" type="number" min="1" style="width:160px" placeholder="Mã bài (nếu đã có)" />
+                    </div>
+                    <textarea class="inp ta" name="reply" rows="2" maxlength="500" placeholder="Trả lời gửi các gia đình (bắt buộc khi chưa thực hiện)" aria-label="Trả lời"></textarea>
+                    <button class="sl-btn sl-btn-p" type="submit" style="align-self:flex-start"><i class="ic ic-send"></i>Cập nhật và báo gia đình</button>
+                </form>
+            }
+        </div>
+    }
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="sl-card"><div class="empty">Không có đề xuất nào.</div></div>
+    }
+</div>

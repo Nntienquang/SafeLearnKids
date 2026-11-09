@@ -1,0 +1,234 @@
+@model FamilyEditorViewModel
+@{
+    var editing = Model.Id is not null;
+    var form = Model.Form;
+    ViewData["Title"] = editing ? "Sửa bài của gia đình" : "Soạn bài mới";
+    ViewData["Page"] = "family-lessons-sql";
+    ViewData["Nav"] = "family";
+    ViewData["Crumb"] = Html.Raw("""<a href="/family-lessons">Bài của gia đình</a>""");
+    ViewData["Heading"] = editing ? form.Title : "Soạn bài mới";
+    ViewData["Sub"] = editing ? $"{FamilyRules.Label(form.Status)} · {LessonAccess.ShareLabel(Model.ShareStatus)}" + (Model.Learners > 0 ? $" · {Model.Learners} lượt bé đã học" : "") : "Bước 1: thông tin bài. Sau khi lưu, thêm nội dung và câu hỏi.";
+}
+@section Actions {
+@if (editing)
+{
+    <a class="sl-btn" href="/lesson-detail/@Model.Id"><i class="ic ic-eye"></i>Xem như phụ huynh</a>
+}
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+<div class="sl-col" style="flex:2 1 520px;min-width:0;gap:16px">
+    <form method="post" asp-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" class="sl-card acc-form">
+        <div class="card-t">Thông tin bài</div>
+        <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+        <section class="acc-sec">
+            <div class="field">
+                <label class="lab" for="fl-title">Tên bài</label>
+                <input class="inp" id="fl-title" name="Title" value="@form.Title" maxlength="200" required autocomplete="off" placeholder="Ví dụ: Ôn bảng nhân 3 cô giao" />
+                @Html.ValidationMessage("Title", new { @class = "err" })
+            </div>
+            <div class="field">
+                <label class="lab" for="fl-summary">Mục tiêu bài học (không bắt buộc)</label>
+                <textarea class="inp ta" id="fl-summary" name="Summary" rows="2" maxlength="500">@form.Summary</textarea>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px">
+                <div class="field" style="flex:2 1 180px">
+                    <label class="lab" for="fl-subject">Môn</label>
+                    <select class="inp" id="fl-subject" name="SubjectId">
+                        @foreach (var subject in Model.Subjects)
+                        {
+                            <option value="@subject.Id" selected="@(subject.Id == form.SubjectId)">@subject.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="field" style="flex:1 1 110px">
+                    <label class="lab" for="fl-grade">Lớp</label>
+                    <select class="inp" id="fl-grade" name="Grade">
+                        @for (var level = 1; level <= 5; level++)
+                        {
+                            <option value="@level" selected="@(level == form.Grade)">Lớp @level</option>
+                        }
+                    </select>
+                    @Html.ValidationMessage("Grade", new { @class = "err" })
+                </div>
+                <div class="field" style="flex:1 1 140px">
+                    <label class="lab" for="fl-type">Loại bài</label>
+                    <select class="inp" id="fl-type" name="LessonType">
+                        @foreach (var type in LessonKind.Types)
+                        {
+                            <option value="@type" selected="@(type == form.LessonType)">@LessonKind.TypeLabel(type)</option>
+                        }
+                    </select>
+                </div>
+                <div class="field" style="flex:1 1 120px">
+                    <label class="lab" for="fl-duration">Thời lượng (phút)</label>
+                    <input class="inp" id="fl-duration" name="DurationMin" type="number" min="1" max="180" value="@form.DurationMin" required />
+                </div>
+            </div>
+            @if (editing)
+            {
+                <fieldset class="field" style="border:0;padding:0;margin:0">
+                    <legend class="lab">Trạng thái</legend>
+                    <div class="sl-row" style="gap:10px;flex-wrap:wrap">
+                        <label class="sl-row" style="gap:8px;padding:10px 14px;border-radius:14px;border:1px solid var(--line)"><input type="radio" name="Status" value="@LessonStatus.Draft" checked="@(form.Status != LessonStatus.Published)" />Nháp (bé chưa thấy)</label>
+                        <label class="sl-row" style="gap:8px;padding:10px 14px;border-radius:14px;border:1px solid var(--line)"><input type="radio" name="Status" value="@LessonStatus.Published" checked="@(form.Status == LessonStatus.Published)" />Bé học được</label>
+                    </div>
+                    @Html.ValidationMessage("Status", new { @class = "err" })
+                </fieldset>
+            }
+        </section>
+        <div class="acc-foot">
+            <a class="sl-btn" asp-action="Index">Về danh sách</a>
+            <button class="sl-btn sl-btn-p" type="submit">@(editing ? "Lưu thông tin" : "Tạo bài")</button>
+        </div>
+    </form>
+
+    @if (editing)
+    {
+        <div class="sl-card" id="contents">
+            <div class="card-t" style="margin-bottom:8px">Nội dung bài (theo thứ tự bé học)</div>
+            @for (var i = 0; i < Model.Contents.Count; i++)
+            {
+                var content = Model.Contents[i];
+                <div class="sl-row" style="gap:10px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+                    <span class="ib t-p" aria-hidden="true"><i class="ic ic-@LessonKind.Icon(content.Kind)"></i></span>
+                    <div class="grow" style="min-width:180px">
+                        <div class="b">Phần @(i + 1) · @LessonKind.ContentLabel(content.Kind)@(content.Title is null ? "" : ": " + content.Title)</div>
+                        <div class="muted" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px">@(content.Kind switch { "Reading" => content.Body, "Video" => content.VideoTitle, _ => content.FileName })</div>
+                    </div>
+                    <form asp-action="MoveContent" asp-route-id="@Model.Id" asp-route-contentId="@content.Id" method="post"><input type="hidden" name="up" value="true" /><button class="sl-btn sl-btn-sm" type="submit" disabled="@(i == 0)" aria-label="Đưa phần @(i + 1) lên">↑</button></form>
+                    <form asp-action="MoveContent" asp-route-id="@Model.Id" asp-route-contentId="@content.Id" method="post"><input type="hidden" name="up" value="false" /><button class="sl-btn sl-btn-sm" type="submit" disabled="@(i == Model.Contents.Count - 1)" aria-label="Đưa phần @(i + 1) xuống">↓</button></form>
+                    <form asp-action="DeleteContent" asp-route-id="@Model.Id" asp-route-contentId="@content.Id" method="post"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Xóa phần @(i + 1)"><i class="ic ic-trash"></i></button></form>
+                </div>
+            }
+            @if (Model.Contents.Count == 0)
+            {
+                <div class="empty">Chưa có nội dung. Thêm ít nhất 1 phần để bé học được bài.</div>
+            }
+            <details style="margin-top:12px" open="@(Model.Contents.Count == 0)">
+                <summary class="b" style="cursor:pointer"><i class="ic ic-book"></i> Thêm bài đọc</summary>
+                <form asp-action="AddContent" asp-route-id="@Model.Id" method="post" class="sl-col" style="gap:8px;margin-top:10px">
+                    <input type="hidden" name="Kind" value="Reading" />
+                    <input class="inp" name="Title" maxlength="150" placeholder="Tiêu đề phần (không bắt buộc)" aria-label="Tiêu đề phần bài đọc" />
+                    <textarea class="inp ta" name="Body" rows="5" maxlength="20000" required placeholder="Nội dung bài đọc cho bé" aria-label="Nội dung bài đọc"></textarea>
+                    <button class="sl-btn sl-btn-p" type="submit" style="align-self:flex-start">Thêm bài đọc</button>
+                </form>
+            </details>
+            <details style="margin-top:10px">
+                <summary class="b" style="cursor:pointer"><i class="ic ic-play"></i> Thêm video đã duyệt</summary>
+                <form asp-action="AddContent" asp-route-id="@Model.Id" method="post" class="sl-col" style="gap:8px;margin-top:10px">
+                    <input type="hidden" name="Kind" value="Video" />
+                    <label class="lab" for="fl-video">Video (@Model.Videos.Count video đã được quản trị viên duyệt)</label>
+                    <select class="inp" id="fl-video" name="VideoId" required>
+                        <option value="">Chọn video</option>
+                        @foreach (var video in Model.Videos)
+                        {
+                            <option value="@video.Id">@video.Title</option>
+                        }
+                    </select>
+                    <input class="inp" name="Title" maxlength="150" placeholder="Tiêu đề phần (để trống thì dùng tên video)" aria-label="Tiêu đề phần video" />
+                    <span class="muted" style="font-size:12.5px">Chưa có video bạn cần? Đề xuất nguồn ở trang <a href="/sources">Nguồn YouTube</a> hoặc gửi <a href="/lesson-requests">Đề xuất bài học</a>.</span>
+                    <button class="sl-btn sl-btn-p" type="submit" style="align-self:flex-start">Thêm video</button>
+                </form>
+            </details>
+            <details style="margin-top:10px">
+                <summary class="b" style="cursor:pointer"><i class="ic ic-file"></i> Thêm ảnh hoặc PDF</summary>
+                <form asp-action="AddContent" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="sl-col" style="gap:8px;margin-top:10px">
+                    <select class="inp" name="Kind" aria-label="Loại tệp">
+                        <option value="Image">Ảnh (JPG, PNG, WebP)</option>
+                        <option value="Document">Tài liệu PDF</option>
+                    </select>
+                    <input class="inp" name="Title" maxlength="150" placeholder="Tiêu đề phần (không bắt buộc)" aria-label="Tiêu đề phần tệp" />
+                    <input class="inp" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*" required aria-label="Chọn tệp" />
+                    <span class="muted" style="font-size:12.5px">Tối đa 5 MB. Ví dụ: phiếu bài tập cô giáo gửi.</span>
+                    <button class="sl-btn sl-btn-p" type="submit" style="align-self:flex-start">Tải lên</button>
+                </form>
+            </details>
+        </div>
+
+        <div class="sl-card" id="questions">
+            <div class="card-t" style="margin-bottom:4px">Câu hỏi cho bé</div>
+            <p class="muted" style="margin:0 0 8px;font-size:12.5px">Các câu hỏi tự thành bài tập của bài: bé làm, hệ thống chấm điểm và cho xem giải thích. @(Model.QuizId is null ? "" : "Ba mẹ có thể giao bài tập này kèm hạn nộp ở trang chi tiết bài.")</p>
+            @foreach (var question in Model.Questions)
+            {
+                <div class="sl-row" style="gap:10px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+                    <div class="grow" style="min-width:200px">
+                        <div class="b">@question.Text</div>
+                        <div class="muted" style="font-size:12.5px">@QuestionType.Label(question.Type) · Đáp án đúng: @string.Join(", ", question.Answers.Where(answer => answer.Correct).Select(answer => answer.Text))</div>
+                    </div>
+                    <form asp-action="DeleteQuestion" asp-route-id="@Model.Id" asp-route-questionId="@question.Id" method="post"><button class="sl-btn sl-btn-sm" type="submit" aria-label="Bỏ câu hỏi @question.Text"><i class="ic ic-trash"></i></button></form>
+                </div>
+            }
+            @if (Model.Questions.Count == 0)
+            {
+                <div class="empty">Chưa có câu hỏi.</div>
+            }
+            <details style="margin-top:12px">
+                <summary class="b" style="cursor:pointer"><i class="ic ic-plus"></i> Thêm câu hỏi</summary>
+                <form asp-action="AddQuestion" asp-route-id="@Model.Id" method="post" class="sl-col" style="gap:8px;margin-top:10px">
+                    <textarea class="inp ta" name="Text" rows="2" maxlength="500" required placeholder="Câu hỏi" aria-label="Câu hỏi"></textarea>
+                    <select class="inp" name="Type" aria-label="Loại câu hỏi" style="width:auto">
+                        <option value="@QuestionType.SingleChoice">Trắc nghiệm (2–4 đáp án)</option>
+                        <option value="@QuestionType.TrueFalse">Đúng / Sai</option>
+                    </select>
+                    <span class="lab">Đáp án (chọn đáp án đúng). Với câu Đúng/Sai: chọn hàng 1 là "Đúng", hàng 2 là "Sai".</span>
+                    @for (var i = 0; i < QuizRules.MaxOptions; i++)
+                    {
+                        <label class="sl-row" style="gap:10px">
+                            <input type="radio" name="Correct" value="@i" checked="@(i == 0)" aria-label="Đáp án @(i + 1) là đúng" />
+                            <input class="inp grow" name="Options[@i]" maxlength="300" placeholder="Đáp án @(i + 1)@(i >= 2 ? " (không bắt buộc)" : "")" aria-label="Đáp án @(i + 1)" />
+                        </label>
+                    }
+                    <textarea class="inp ta" name="Explanation" rows="2" maxlength="500" placeholder="Giải thích (bé xem sau khi nộp bài)" aria-label="Giải thích"></textarea>
+                    <button class="sl-btn sl-btn-p" type="submit" style="align-self:flex-start">Thêm câu hỏi</button>
+                </form>
+            </details>
+        </div>
+    }
+</div>
+@if (editing)
+{
+    <div class="sl-col" style="flex:1 1 300px;min-width:0;gap:16px">
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:8px">Cho bé học</div>
+            <p class="muted" style="margin:0;font-size:13px">Khi bài ở trạng thái "Bé học được", bé thấy bài trong môn và lớp đã chọn. Muốn giao riêng kèm hạn, mở <a href="/lesson-detail/@Model.Id">trang chi tiết bài</a>.</p>
+        </div>
+        <div class="sl-card" id="share">
+            <div class="card-t" style="margin-bottom:8px">Chia sẻ lên kho cộng đồng</div>
+            <span class="chip @LessonAccess.ShareTone(Model.ShareStatus)">@LessonAccess.ShareLabel(Model.ShareStatus)</span>
+            @if (Model.ShareNote is not null)
+            {
+                <p style="margin:10px 0 0;font-size:13px">Ghi chú của quản trị viên: @Model.ShareNote</p>
+            }
+            @if (Model.ShareStatus is null or LessonAccess.Rejected)
+            {
+                <form asp-action="Share" asp-route-id="@Model.Id" method="post" class="sl-col" style="gap:8px;margin-top:12px">
+                    <p class="muted" style="margin:0;font-size:13px">Bài tốt có thể giúp nhiều gia đình khác. Quản trị viên duyệt trước khi bài hiện cho mọi người. Sửa bài sau khi đã duyệt sẽ cần duyệt lại.</p>
+                    <label class="sl-row" style="gap:8px;font-size:13px"><input type="checkbox" name="agree" value="true" required />Tôi đồng ý chia sẻ bài và hiển thị tên của tôi là người đóng góp.</label>
+                    <button class="sl-btn sl-btn-p" type="submit" disabled="@(form.Status != LessonStatus.Published)">Gửi chia sẻ</button>
+                    @if (form.Status != LessonStatus.Published)
+                    {
+                        <span class="muted" style="font-size:12.5px">Chuyển bài sang "Bé học được" trước khi chia sẻ.</span>
+                    }
+                </form>
+            }
+            else
+            {
+                <form asp-action="Unshare" asp-route-id="@Model.Id" method="post" style="margin-top:12px"><button class="sl-btn" type="submit">Rút khỏi cộng đồng</button></form>
+            }
+        </div>
+        <div class="sl-card">
+            <div class="card-t" style="margin-bottom:8px">Xóa bài</div>
+            <p class="muted" style="margin:0 0 10px;font-size:13px">Nếu bé đã học hoặc làm bài, bài chỉ được ẩn để giữ tiến độ và điểm.</p>
+            <form asp-action="Delete" asp-route-id="@Model.Id" method="post"><button class="sl-btn sl-btn-d" type="submit"><i class="ic ic-trash"></i>@(Model.Learners > 0 ? "Ẩn bài" : "Xóa bài")</button></form>
+        </div>
+    </div>
+}
+</div>

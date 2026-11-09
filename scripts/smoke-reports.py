@@ -221,7 +221,7 @@ def checks(url, directory):
         bad.post_form("/login", {"Email": PARENT, "Password": "wrong-password"})
         page = admin.request(f"/admin-audit?tab=logins&q={PARENT}&result=failed")[2]
         check(PARENT in page and "Thất bại" in page, "failed sign-ins are listed and filterable")
-        status, _, page = admin.request("/admin-audit?type=ParentPinChanged")
+        status, _, page = admin.request(f"/admin-audit?type=ParentPinChanged&q={PARENT}")
         found = (status, PARENT in page, "ParentPinChanged" in page, "1 dòng" in page)
         check(found == (200, True, True, True), f"actions can be filtered by type and show who did them {found}")
         status, _, body = admin.request(f"/admin-audit/export?tab=logins&q={PARENT}")

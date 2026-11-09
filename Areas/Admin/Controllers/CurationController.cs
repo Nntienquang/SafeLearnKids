@@ -294,6 +294,65 @@ public class CurationController(
         return Redirect(target);
     }
 
+    // A single video added by link, without adding its whole channel. It waits for review like synced videos,
+    // unless the admin ticks "approve now"; titles with a blocked keyword and videos YouTube will not embed never pass.
+    [HttpPost("admin-videos/add")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("account")]
+    public async Task<IActionResult> AddVideo([FromForm] string? url, [FromForm] bool approve, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        var back = Url.Action(nameof(Videos))!;
+        if (SourceUrl.ParseVideo(url) is not { } videoId) return RefuseVideo(back, SourceUrl.NotVideo);
+        var existing = await db.SourceVideos.AsNoTracking().Where(video => video.Platform == "YouTube" && video.VideoId == videoId)
+            .Select(video => new { video.Id, video.Status }).FirstOrDefaultAsync(cancellationToken);
+        if (existing is not null)
+        {
+            TempData["Info"] = $"Video này đã có trong hệ thống ({VideoStatus.Label(existing.Status)}).";
+            return RedirectToAction(nameof(Videos), new { status = "all", q = videoId });
+        }
+        var found = await sync.LookupVideoAsync(videoId, cancellationToken);
+        if (found.Error is not null) return RefuseVideo(back, found.Error);
+        if (!found.Embeddable) return RefuseVideo(back, "Video này để riêng tư hoặc chủ kênh không cho phát trong trang khác, nên không dùng được trong bài học.");
+        var title = string.IsNullOrWhiteSpace(found.Title) ? $"Video {videoId}" : found.Title;
+        if (title.Length > 250) title = title[..250];
+        var keywords = await db.BlockedKeywords.Where(keyword => keyword.ParentId == null).Select(keyword => keyword.Keyword).ToListAsync(cancellationToken);
+        var hit = keywords.FirstOrDefault(keyword => title.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+        var now = DateTime.UtcNow;
+        var status = hit is not null ? VideoStatus.Blocked : approve ? VideoStatus.Approved : VideoStatus.Pending;
+        var note = hit is not null ? $"Tự chặn khi thêm: tiêu đề chứa từ khóa bị chặn \"{hit}\"."
+            : "Thêm lẻ bởi quản trị viên" + (found.Channel is { Length: > 0 } channel ? $" · kênh {channel}" : "") + ".";
+        var video = new SourceVideo
+        {
+            Platform = "YouTube",
+            VideoId = videoId,
+            Title = title,
+            // Thumbnails come from YouTube's own image host, never from a URL in the response.
+            ThumbnailUrl = $"https://i.ytimg.com/vi/{videoId}/hqdefault.jpg",
+            DurationSec = found.DurationSec,
+            PublishedAt = found.PublishedAt,
+            CheckedAt = now,
+            Status = status,
+            ReviewNote = note.Length > 500 ? note[..500] : note,
+            ReviewedById = status == VideoStatus.Approved ? ActorId : null,
+            ReviewedAt = status == VideoStatus.Approved ? now : null
+        };
+        db.SourceVideos.Add(video);
+        if (!await SaveAsync(db, cancellationToken))
+        {
+            // Another admin added the same video a moment earlier.
+            TempData["Info"] = "Video này vừa được thêm.";
+            return RedirectToAction(nameof(Videos), new { status = "all", q = videoId });
+        }
+        await activity.ContentActionAsync(ActorId, "SourceVideo", video.Id, "AddVideo", $"{status} · {videoId} · {title}");
+        TempData[status == VideoStatus.Blocked ? "Error" : "Info"] = status switch
+        {
+            VideoStatus.Blocked => $"Đã thêm nhưng tự chặn video: tiêu đề chứa từ khóa bị chặn \"{hit}\".",
+            VideoStatus.Approved => "Đã thêm và duyệt video. Có thể gắn vào bài học ngay.",
+            _ => "Đã thêm video, đang chờ duyệt."
+        };
+        return RedirectToAction(nameof(Videos), new { status, q = videoId });
+    }
+
     private static IQueryable<SourceRow> Rows(IQueryable<ContentSource> query) =>
         query.Select(source => new SourceRow(source.Id, source.Name, source.Platform, source.Url, source.Status,
             source.SourceVideoSources.Count, source.SourceVideoSources.Count(link => link.SourceVideo.Status == VideoStatus.Pending),

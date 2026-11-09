@@ -49,6 +49,12 @@
             }
         </select>
     }
+    <select class="inp inp-sm" style="width:auto" name="source" aria-label="Lọc theo nguồn bài">
+        <option value="">Mọi nguồn</option>
+        <option value="standard" selected="@(Model.Source == "standard")">Thư viện chuẩn</option>
+        <option value="community" selected="@(Model.Source == "community")">Cộng đồng</option>
+        <option value="family" selected="@(Model.Source == "family")">Bài của gia đình</option>
+    </select>
     <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-search"></i>Lọc</button>
 </form>
 <div class="muted" style="margin-bottom:12px">@Model.Matching bài học</div>
@@ -58,12 +64,15 @@
         <a class="sl-card" asp-action="Details" asp-route-id="@card.Id" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
             <div style="height:112px;background:@Gradient(card.SubjectKey);display:flex;align-items:center;justify-content:center;color:#fff" aria-hidden="true"><i class="ic ic-@LessonKind.Icon(card.LessonType) ic-xl"></i></div>
             <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
-                <div class="sl-row" style="gap:6px;flex-wrap:wrap"><span class="chip t-p">@card.Subject</span><span class="chip t-n">@LessonKind.TypeLabel(card.LessonType)</span>@if (card.AssignedTo > 0)
+                <div class="sl-row" style="gap:6px;flex-wrap:wrap"><span class="chip t-p">@card.Subject</span><span class="chip t-n">@LessonKind.TypeLabel(card.LessonType)</span>@if (card.Source is not null)
+                {
+                    <span class="chip @card.SourceTone">@card.SourceLabel</span>
+                }@if (card.AssignedTo > 0)
                 {
                     <span class="chip t-b" style="margin-left:auto">Đã giao @card.AssignedTo bé</span>
                 }</div>
                 <span class="b" style="font-size:16px;line-height:1.3">@card.Title</span>
-                <div class="muted" style="font-size:12.5px">@card.DurationMin phút · Lớp @card.Grade@(card.Tags.Count == 0 ? "" : " · " + string.Join(", ", card.Tags))</div>
+                <div class="muted" style="font-size:12.5px">@card.DurationMin phút · Lớp @card.Grade@(card.Tags.Count == 0 ? "" : " · " + string.Join(", ", card.Tags))@(card.Source == "community" && card.Author is not null ? " · chia sẻ bởi " + card.Author : "")</div>
             </div>
         </a>
     }

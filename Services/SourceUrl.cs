@@ -45,6 +45,29 @@ public static partial class SourceUrl
         return ("Website", key, url);
     }
 
+    public const string NotVideo = "Hãy dán liên kết của một video YouTube, ví dụ youtube.com/watch?v=..., youtu.be/... hoặc youtube.com/shorts/...";
+
+    // A single video: watch?v=, youtu.be/, shorts/, embed/, live/ links, or the bare 11-character id. Returns the id or null.
+    public static string? ParseVideo(string? text)
+    {
+        text = text?.Trim();
+        if (string.IsNullOrEmpty(text)) return null;
+        if (VideoId().IsMatch(text)) return text;
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") || !string.IsNullOrEmpty(uri.UserInfo)) return null;
+        var host = uri.Host.ToLowerInvariant();
+        foreach (var prefix in new[] { "www.", "m.", "music." })
+            if (host.StartsWith(prefix, StringComparison.Ordinal)) host = host[prefix.Length..];
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        string? id = host switch
+        {
+            "youtu.be" => segments.FirstOrDefault(),
+            "youtube.com" or "youtube-nocookie.com" when uri.AbsolutePath == "/watch" => System.Web.HttpUtility.ParseQueryString(uri.Query)["v"],
+            "youtube.com" or "youtube-nocookie.com" when segments.Length >= 2 && segments[0] is "shorts" or "embed" or "live" or "v" => segments[1],
+            _ => null
+        };
+        return id is not null && VideoId().IsMatch(id) ? id : null;
+    }
+
     [GeneratedRegex("^[A-Za-z0-9_-]{10,64}$")]
     public static partial Regex PlaylistId();
 

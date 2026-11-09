@@ -21,7 +21,8 @@ public class ReportsController(UserManager<ApplicationUser> users, AccountActivi
     {
         if (Db is not { } db) return View("SqlOnly");
         status ??= "open";
-        var query = db.ContentReports.AsNoTracking();
+        // Reports about a family's private lesson stay with that family (they see them in History).
+        var query = db.ContentReports.AsNoTracking().Where(item => item.Lesson == null || item.Lesson.OwnerParentId == null || item.Lesson.ShareStatus == LessonAccess.Approved);
         query = status switch
         {
             "open" => query.Where(item => item.Status == ReportStatus.Open || item.Status == ReportStatus.InReview),
@@ -41,7 +42,7 @@ public class ReportsController(UserManager<ApplicationUser> users, AccountActivi
         return View(new AdminReportsViewModel
         {
             Status = status,
-            Counts = await db.ContentReports.GroupBy(item => item.Status).Select(group => new { group.Key, Count = group.Count() })
+            Counts = await db.ContentReports.Where(item => item.Lesson == null || item.Lesson.OwnerParentId == null || item.Lesson.ShareStatus == LessonAccess.Approved).GroupBy(item => item.Status).Select(group => new { group.Key, Count = group.Count() })
                 .ToDictionaryAsync(item => item.Key, item => item.Count, cancellationToken),
             Rows = rows.Select(item => new AdminReportRow(item.Id, item.Lesson ?? item.Video ?? "Nội dung đã xóa", item.LessonId, item.SourceVideoId, item.VideoKey,
                 item.Reason, item.Comment, item.Status, item.Resolution, item.Child is null ? $"Phụ huynh · {item.Parent}" : $"Bé {item.Child} · {item.Parent}",
@@ -54,7 +55,7 @@ public class ReportsController(UserManager<ApplicationUser> users, AccountActivi
     {
         if (Db is not { } db) return View("SqlOnly");
         var report = await db.ContentReports.Include(item => item.ChildProfile).Include(item => item.Lesson).Include(item => item.SourceVideo)
-            .FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(item => item.Id == id && (item.Lesson == null || item.Lesson.OwnerParentId == null || item.Lesson.ShareStatus == LessonAccess.Approved), cancellationToken);
         if (report is null) return NotFound();
         resolution = string.IsNullOrWhiteSpace(resolution) ? null : resolution.Trim();
         if (report.Status is ReportStatus.Resolved or ReportStatus.Dismissed) return Back("Báo cáo này đã được xử lý.");
@@ -73,6 +74,15 @@ public class ReportsController(UserManager<ApplicationUser> users, AccountActivi
                 video.ReviewedById = ActorId;
                 video.ReviewedAt = DateTime.UtcNow;
                 removed = "video";
+            }
+            else if (report.Lesson is { OwnerParentId: not null } shared)
+            {
+                // A community lesson leaves the community library; the family that wrote it keeps it.
+                shared.ShareStatus = LessonAccess.Rejected;
+                shared.ShareNote = "Gỡ khỏi cộng đồng theo báo cáo: " + resolution;
+                if (shared.ShareNote.Length > 500) shared.ShareNote = shared.ShareNote[..500];
+                shared.ShareReviewedAt = DateTime.UtcNow;
+                removed = "bài cộng đồng";
             }
             else if (report.Lesson is { } lesson)
             {

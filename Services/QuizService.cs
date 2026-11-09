@@ -13,6 +13,7 @@ public static class QuizService
     public static IQueryable<Quiz> Playable(SafeLearnDbContext db, KidInfo kid) =>
         db.Quizzes.AsNoTracking().Where(quiz => quiz.Status == QuestionStatus.Published
             && quiz.Lesson.Status == LessonStatus.Published && quiz.Lesson.Subject.IsActive
+            && (quiz.Lesson.OwnerParentId == null || quiz.Lesson.ShareStatus == LessonAccess.Approved || quiz.Lesson.OwnerParentId == kid.ParentId)
             && quiz.QuizQuestions.Any(link => link.Question.Status == QuestionStatus.Published)
             && ((quiz.Lesson.GradeLevelId == kid.GradeLevelId && kid.SubjectIds.Contains(quiz.Lesson.SubjectId))
                 || quiz.Assignments.Any(item => item.ChildProfileId == kid.Id && item.Status != AssignmentStatus.Cancelled)

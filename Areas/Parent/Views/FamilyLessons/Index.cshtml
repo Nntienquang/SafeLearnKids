@@ -1,0 +1,46 @@
+@model FamilyLessonsViewModel
+@{
+    ViewData["Title"] = """Bài của gia đình""";
+    ViewData["Page"] = "family-lessons-sql";
+    ViewData["Nav"] = "family";
+    ViewData["Crumb"] = Html.Raw("""Phụ huynh · Nội dung""");
+    ViewData["Heading"] = """Bài của gia đình""";
+    ViewData["Sub"] = """Ba mẹ tự soạn bài cho con: bài đọc, video đã duyệt, ảnh, PDF và câu hỏi. Chỉ gia đình bạn thấy, trừ khi bạn chia sẻ lên kho cộng đồng.""";
+}
+@section Actions {
+<a class="sl-btn" href="/lesson-requests"><i class="ic ic-send"></i>Đề xuất bài học</a>
+<a class="sl-btn sl-btn-p" asp-action="Create"><i class="ic ic-plus"></i>Soạn bài mới</a>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div class="sl-card" style="padding:6px 0;overflow-x:auto">
+    <table class="tbl">
+        <thead><tr><th>Bài</th><th>Lớp</th><th>Nội dung</th><th>Câu hỏi</th><th>Bé đã học</th><th>Trạng thái</th><th>Chia sẻ</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr style="@(row.Status == LessonStatus.Archived ? "opacity:.6" : "")">
+                    <td><a class="b" asp-action="Edit" asp-route-id="@row.Id">@row.Title</a><div class="muted" style="font-size:12px">@row.Subject · sửa @row.UpdatedAt.ToLocalTime().ToString("dd/MM HH:mm")</div></td>
+                    <td>Lớp @row.Grade</td>
+                    <td>@row.Contents</td>
+                    <td>@row.Questions</td>
+                    <td>@row.Learners</td>
+                    <td><span class="chip @FamilyRules.Tone(row.Status)">@FamilyRules.Label(row.Status)</span></td>
+                    <td><span class="chip @LessonAccess.ShareTone(row.ShareStatus)">@LessonAccess.ShareLabel(row.ShareStatus)</span></td>
+                    <td><a class="sl-btn sl-btn-sm" asp-action="Edit" asp-route-id="@row.Id">Sửa</a></td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty">Chưa có bài nào. Bấm "Soạn bài mới" để tạo bài đầu tiên cho bé.</div></td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+<div class="banner t-p" style="margin-top:16px;font-size:13.5px"><i class="ic ic-shield"></i>Video trong bài chỉ chọn được từ danh sách đã được quản trị viên duyệt. Từ khóa bị chặn được kiểm tra trong tiêu đề, bài đọc và câu hỏi.</div>

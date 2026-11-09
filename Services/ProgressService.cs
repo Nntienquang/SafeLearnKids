@@ -85,14 +85,16 @@ public static class ProgressService
     public static async Task<IReadOnlyList<SubjectProgressRow>> SubjectRowsAsync(SafeLearnDbContext db, int kidId, CancellationToken cancellationToken)
     {
         var child = await db.ChildProfiles.AsNoTracking().Where(item => item.Id == kidId)
-            .Select(item => new { item.GradeLevelId, Subjects = item.ChildSubjects.Select(link => link.SubjectId).ToList() }).FirstAsync(cancellationToken);
+            .Select(item => new { item.GradeLevelId, item.ParentId, Subjects = item.ChildSubjects.Select(link => link.SubjectId).ToList() }).FirstAsync(cancellationToken);
         var subjects = await db.Subjects.AsNoTracking().Where(subject => subject.IsActive && child.Subjects.Contains(subject.Id))
             .OrderBy(subject => subject.SortOrder).ThenBy(subject => subject.Name)
             .Select(subject => new
             {
                 subject.Id, subject.Code, subject.Name, subject.ColorKey, subject.IconKey,
-                Total = subject.Lessons.Count(lesson => lesson.Status == LessonStatus.Published && lesson.GradeLevelId == child.GradeLevelId),
+                Total = subject.Lessons.Count(lesson => lesson.Status == LessonStatus.Published && lesson.GradeLevelId == child.GradeLevelId
+                    && (lesson.OwnerParentId == null || lesson.ShareStatus == LessonAccess.Approved || lesson.OwnerParentId == child.ParentId)),
                 Completed = subject.Lessons.Count(lesson => lesson.Status == LessonStatus.Published && lesson.GradeLevelId == child.GradeLevelId
+                    && (lesson.OwnerParentId == null || lesson.ShareStatus == LessonAccess.Approved || lesson.OwnerParentId == child.ParentId)
                     && lesson.LessonActivities.Any(item => item.ChildProfileId == kidId && item.Status == "Completed"))
             }).ToListAsync(cancellationToken);
         // Average of the best score per quiz, by subject.

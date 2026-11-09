@@ -39,15 +39,18 @@ public class DashboardController(IServiceProvider services) : Controller
             NewParents7 = await parents.CountAsync(user => user.CreatedAt >= week, cancellationToken),
             Children = await db.ChildProfiles.CountAsync(child => child.IsActive, cancellationToken),
             ActiveChildren7 = await db.DailyUsages.Where(item => item.UsageDate >= weekAgo && item.Seconds > 0).Select(item => item.ChildProfileId).Distinct().CountAsync(cancellationToken),
-            PublishedLessons = await db.Lessons.CountAsync(lesson => lesson.Status == LessonStatus.Published, cancellationToken),
+            PublishedLessons = await LessonAccess.Standard(db).CountAsync(lesson => lesson.Status == LessonStatus.Published, cancellationToken),
             ApprovedVideos = await db.SourceVideos.CountAsync(video => video.Status == "Approved", cancellationToken),
             Today = todayMetric,
             Trend = trend,
-            OpenReports = await db.ContentReports.CountAsync(report => report.Status == ReportStatus.Open || report.Status == ReportStatus.InReview, cancellationToken),
+            OpenReports = await db.ContentReports.CountAsync(report => (report.Status == ReportStatus.Open || report.Status == ReportStatus.InReview)
+                && (report.Lesson == null || report.Lesson.OwnerParentId == null || report.Lesson.ShareStatus == LessonAccess.Approved), cancellationToken),
             PendingSources = await db.ContentSources.CountAsync(source => source.Status == "Suggested", cancellationToken),
             PendingVideos = await db.SourceVideos.CountAsync(video => video.Status == "Pending", cancellationToken),
             PendingQuestions = await db.Questions.CountAsync(question => question.Status == QuestionStatus.InReview, cancellationToken),
             PendingDataRequests = await db.DataRequests.CountAsync(request => request.Status == DataRequestStatus.Pending || request.Status == DataRequestStatus.Processing, cancellationToken),
+            PendingCommunity = await db.Lessons.CountAsync(lesson => lesson.ShareStatus == LessonAccess.Pending, cancellationToken),
+            OpenLessonRequests = await db.LessonRequests.CountAsync(request => request.Status == RequestState.Open, cancellationToken),
             FailedLogins24h = await db.LoginHistories.CountAsync(login => !login.Succeeded && login.CreatedAt >= dayAgo, cancellationToken)
         });
     }

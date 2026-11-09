@@ -1,0 +1,104 @@
+@model LessonRequestsViewModel
+@{
+    ViewData["Title"] = """Đề xuất bài học""";
+    ViewData["Page"] = "lesson-requests-sql";
+    ViewData["Nav"] = "requests";
+    ViewData["Crumb"] = Html.Raw("""Phụ huynh · Nội dung""");
+    ViewData["Heading"] = """Đề xuất bài học""";
+    ViewData["Sub"] = """Cho quản trị viên biết bé cần học gì. Đề xuất được nhiều gia đình cùng cần sẽ được ưu tiên soạn vào thư viện chung.""";
+    var form = Model.Form;
+}
+@section Actions {
+<a class="sl-btn" href="/family-lessons"><i class="ic ic-pen"></i>Tự soạn bài cho con</a>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+    <div class="sl-col" style="flex:2 1 480px;min-width:0;gap:16px">
+        <form method="post" asp-action="Create" class="sl-card acc-form">
+            <div class="card-t">Gửi đề xuất mới</div>
+            <div asp-validation-summary="ModelOnly" class="err" role="alert"></div>
+            <section class="acc-sec">
+                <div style="display:flex;flex-wrap:wrap;gap:12px">
+                    <div class="field" style="flex:2 1 180px">
+                        <label class="lab" for="rq-subject">Môn</label>
+                        <select class="inp" id="rq-subject" name="SubjectId">
+                            @foreach (var subject in Model.Subjects)
+                            {
+                                <option value="@subject.Id" selected="@(subject.Id == form.SubjectId)">@subject.Name</option>
+                            }
+                        </select>
+                        @Html.ValidationMessage("SubjectId", new { @class = "err" })
+                    </div>
+                    <div class="field" style="flex:1 1 110px">
+                        <label class="lab" for="rq-grade">Lớp</label>
+                        <select class="inp" id="rq-grade" name="Grade">
+                            @for (var level = 1; level <= 5; level++)
+                            {
+                                <option value="@level" selected="@(level == form.Grade)">Lớp @level</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="lab" for="rq-topic">Chủ đề bé cần học</label>
+                    <input class="inp" id="rq-topic" name="Topic" value="@form.Topic" maxlength="200" required placeholder="Ví dụ: Phân biệt dấu hỏi và dấu ngã" />
+                    @Html.ValidationMessage("Topic", new { @class = "err" })
+                </div>
+                <div class="field">
+                    <label class="lab" for="rq-note">Ghi chú thêm (không bắt buộc)</label>
+                    <textarea class="inp ta" id="rq-note" name="Note" rows="2" maxlength="500" placeholder="Bé đang gặp khó ở đâu, cô giáo dạy tới đâu…">@form.Note</textarea>
+                </div>
+            </section>
+            <div class="acc-foot"><button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-send"></i>Gửi đề xuất</button></div>
+        </form>
+        <div class="sl-card" id="others">
+            <div class="card-t" style="margin-bottom:4px">Các gia đình khác đang cần</div>
+            <p class="muted" style="margin:0 0 8px;font-size:12.5px">Bấm "Tôi cũng cần" nếu con bạn cũng cần chủ đề này. Không hiện tên người gửi.</p>
+            @foreach (var row in Model.Others)
+            {
+                <div class="sl-row" style="gap:10px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+                    <div class="grow" style="min-width:200px"><div class="b">@row.Topic</div><div class="muted" style="font-size:12.5px">@row.Subject · Lớp @row.Grade · @row.Votes gia đình cùng cần</div></div>
+                    <span class="chip @RequestState.Tone(row.Status)">@RequestState.Label(row.Status)</span>
+                    <form asp-action="Vote" asp-route-id="@row.Id" method="post"><button class="sl-btn sl-btn-sm @(row.Voted ? "sl-btn-p" : "")" type="submit" aria-pressed="@(row.Voted ? "true" : "false")">@(row.Voted ? "Đã cần" : "Tôi cũng cần")</button></form>
+                </div>
+            }
+            @if (Model.Others.Count == 0)
+            {
+                <p class="muted" style="margin:0">Chưa có đề xuất nào của gia đình khác.</p>
+            }
+        </div>
+    </div>
+    <div class="sl-card" style="flex:1 1 340px;min-width:0">
+        <div class="card-t" style="margin-bottom:8px">Đề xuất của gia đình bạn</div>
+        @foreach (var row in Model.Mine)
+        {
+            <div style="padding:10px 0;border-top:1px solid var(--line)">
+                <div class="sl-row" style="gap:8px;flex-wrap:wrap"><span class="b grow">@row.Topic</span><span class="chip @RequestState.Tone(row.Status)">@RequestState.Label(row.Status)</span></div>
+                <div class="muted" style="font-size:12.5px">@row.Subject · Lớp @row.Grade · @row.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy") · @row.Votes gia đình cùng cần</div>
+                @if (row.Reply is not null)
+                {
+                    <p style="margin:6px 0 0;font-size:13px">Quản trị viên: @row.Reply</p>
+                }
+                @if (row.LessonId is { } lessonId)
+                {
+                    <a class="sl-btn sl-btn-sm" style="margin-top:6px" href="/lesson-detail/@lessonId"><i class="ic ic-book"></i>Xem bài</a>
+                }
+                @if (row.Status == RequestState.Open)
+                {
+                    <form asp-action="Withdraw" asp-route-id="@row.Id" method="post" style="margin-top:6px"><button class="sl-btn sl-btn-sm" type="submit">Rút đề xuất</button></form>
+                }
+            </div>
+        }
+        @if (Model.Mine.Count == 0)
+        {
+            <p class="muted" style="margin:0">Bạn chưa gửi đề xuất nào.</p>
+        }
+    </div>
+</div>

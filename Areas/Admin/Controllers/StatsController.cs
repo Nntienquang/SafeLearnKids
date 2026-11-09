@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SafeLearnKids.Web.Data;
 using SafeLearnKids.Web.Models;
+using SafeLearnKids.Web.Services;
 
 namespace SafeLearnKids.Web.Areas.Admin.Controllers;
 
@@ -40,7 +41,7 @@ public class StatsController(IServiceProvider services) : Controller
         days = Ranges.Contains(days) ? days : 30;
         var since = DateTime.UtcNow.AddDays(-days);
         // Anonymous projections first: EF can sort and filter those in SQL, then the rows become records.
-        var lessons = (await db.Lessons.AsNoTracking().Where(lesson => lesson.Status == LessonStatus.Published)
+        var lessons = (await LessonAccess.Public(db.Lessons.AsNoTracking()).Where(lesson => lesson.Status == LessonStatus.Published)
             .Select(lesson => new
             {
                 lesson.Id, lesson.Title, Subject = lesson.Subject.Name, lesson.GradeLevel.Level,
@@ -57,13 +58,13 @@ public class StatsController(IServiceProvider services) : Controller
             .Select(subject => new
             {
                 subject.Name,
-                Lessons = subject.Lessons.Count(lesson => lesson.Status == LessonStatus.Published),
-                Learners = subject.Lessons.SelectMany(lesson => lesson.LessonActivities).Where(item => item.UpdatedAt >= since).Select(item => item.ChildProfileId).Distinct().Count(),
-                Completed = subject.Lessons.SelectMany(lesson => lesson.LessonActivities).Count(item => item.Status == "Completed" && item.CompletedAt >= since),
-                Seconds = subject.Lessons.SelectMany(lesson => lesson.LessonActivities).Where(item => item.UpdatedAt >= since).Sum(item => (int?)item.WatchSeconds) ?? 0
+                Lessons = subject.Lessons.Count(lesson => lesson.Status == LessonStatus.Published && (lesson.OwnerParentId == null || lesson.ShareStatus == LessonAccess.Approved)),
+                Learners = subject.Lessons.Where(lesson => lesson.OwnerParentId == null || lesson.ShareStatus == LessonAccess.Approved).SelectMany(lesson => lesson.LessonActivities).Where(item => item.UpdatedAt >= since).Select(item => item.ChildProfileId).Distinct().Count(),
+                Completed = subject.Lessons.Where(lesson => lesson.OwnerParentId == null || lesson.ShareStatus == LessonAccess.Approved).SelectMany(lesson => lesson.LessonActivities).Count(item => item.Status == "Completed" && item.CompletedAt >= since),
+                Seconds = subject.Lessons.Where(lesson => lesson.OwnerParentId == null || lesson.ShareStatus == LessonAccess.Approved).SelectMany(lesson => lesson.LessonActivities).Where(item => item.UpdatedAt >= since).Sum(item => (int?)item.WatchSeconds) ?? 0
             }).ToListAsync(cancellationToken))
             .Select(row => new SubjectStatRow(row.Name, row.Lessons, row.Learners, row.Completed, row.Seconds / 60)).ToList();
-        var quizzes = (await db.Quizzes.AsNoTracking()
+        var quizzes = (await db.Quizzes.AsNoTracking().Where(quiz => quiz.Lesson.OwnerParentId == null || quiz.Lesson.ShareStatus == LessonAccess.Approved)
             .Select(quiz => new
             {
                 quiz.Id, quiz.Title, Lesson = quiz.Lesson.Title,
@@ -75,7 +76,7 @@ public class StatsController(IServiceProvider services) : Controller
             .Where(row => row.Attempts > 0).OrderByDescending(row => row.Attempts).Take(take).ToListAsync(cancellationToken))
             .Select(row => new QuizStatRow(row.Id, row.Title, row.Lesson, row.Attempts, row.Children, row.Average, row.Passed)).ToList();
         // Questions most often answered wrong (at least 3 answers, so one child does not decide it).
-        var hard = (await db.Questions.AsNoTracking()
+        var hard = (await db.Questions.AsNoTracking().Where(question => question.Lesson.OwnerParentId == null || question.Lesson.ShareStatus == LessonAccess.Approved)
             .Select(question => new
             {
                 question.Id, question.Text,

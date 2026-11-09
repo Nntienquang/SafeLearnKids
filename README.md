@@ -55,7 +55,7 @@ Thao tác quản trị ghi vào `dbo.AuditLogs`, đăng nhập ghi vào `dbo.Log
 
 ## Nguồn nội dung an toàn (Sprint 3)
 
-`/admin-curate` quản lý nguồn: dán liên kết danh sách phát (`list=...`), kênh dạng `youtube.com/channel/UC...` hoặc website (chỉ ghi nhận, không tải). Liên kết dạng `@tên-kênh` chưa hỗ trợ. Nguồn mới ở trạng thái chờ duyệt; Admin duyệt, từ chối (cần lý do) hoặc tạm ngưng (cần lý do). Đồng bộ lấy danh sách video mới vào `dbo.SourceVideos` ở trạng thái chờ duyệt; tiêu đề chứa từ khóa trong `dbo.BlockedKeywords` (từ khóa chung) bị chặn tự động. `/admin-videos` là hàng chờ duyệt/chặn từng video. Một video chỉ phát cho bé khi video đã duyệt và ít nhất một nguồn chứa nó đang được duyệt; tạm ngưng nguồn sẽ gỡ video khỏi thư viện và chặn xuất bản bài dùng video đó.
+`/admin-curate` quản lý nguồn: dán liên kết danh sách phát (`list=...`), kênh dạng `youtube.com/channel/UC...` hoặc website (chỉ ghi nhận, không tải). Liên kết dạng `@tên-kênh` chưa hỗ trợ. Nguồn mới ở trạng thái chờ duyệt; Admin duyệt, từ chối (cần lý do) hoặc tạm ngưng (cần lý do). Đồng bộ lấy danh sách video mới vào `dbo.SourceVideos` ở trạng thái chờ duyệt; tiêu đề chứa từ khóa trong `dbo.BlockedKeywords` (từ khóa chung) bị chặn tự động. `/admin-videos` là hàng chờ duyệt/chặn từng video, và có ô **Thêm video lẻ** để thêm một video mà không cần thêm cả kênh. Ô này nhận link `watch?v=`, `youtu.be/`, `shorts/`, `embed/`, `live/` hoặc mã video. Có key thì lấy tiêu đề, kênh và thời lượng từ Data API; không có key thì lấy tiêu đề và kênh qua oEmbed công khai của YouTube. Video riêng tư, đã xóa hoặc không cho nhúng bị từ chối; tiêu đề chứa từ khóa bị chặn thì tự chặn. Video mới thêm ở trạng thái chờ duyệt, hoặc được duyệt ngay nếu Admin chọn "Duyệt luôn". Video lẻ không thuộc nguồn nào nên chỉ cần chính video được duyệt. Một video chỉ phát cho bé khi video đã duyệt và ít nhất một nguồn chứa nó đang được duyệt; tạm ngưng nguồn sẽ gỡ video khỏi thư viện và chặn xuất bản bài dùng video đó.
 
 "Đánh giá tự động" ghi vào `dbo.CurationSuggestions` với `ModelName = rule-v1`: bộ quy tắc minh bạch dựa trên loại nguồn, từ khóa bị chặn, từ ngữ không phù hợp và tiêu đề video, giải thích từng điểm cộng/trừ. Đây không phải mô hình AI; quản trị viên quyết định, và quyết định đó đóng gợi ý là đồng ý hoặc không.
 
@@ -179,6 +179,41 @@ Kiểm thử: `py scripts\smoke-progress.py` sau khi build.
 Kiểm thử: `py scripts\smoke-reports.py` sau khi build. Test này bật job chạy mỗi phút và chạy khoảng 3–4 phút.
 
 Các test khác tắt job (`Jobs__Enabled=false` trong `smoke-sql-auth.py`). Vì server khóa trang phụ huynh khi đang ở chế độ trẻ, các test dùng `smoke.Devices`: đường dẫn `/kids-…` gửi từ "máy của bé", các trang khác gửi từ "máy của ba mẹ".
+
+## Bài của gia đình, đề xuất bài học và kho cộng đồng (mở rộng)
+
+Nội dung có ba lớp, cùng một quy tắc hiển thị (`Services/LessonAccess.cs`):
+
+| Lớp | Ai tạo | Ai thấy |
+|---|---|---|
+| Thư viện chuẩn | Admin | Mọi gia đình |
+| Bài của gia đình | Phụ huynh | Chỉ gia đình đó |
+| Kho cộng đồng | Bài gia đình được chia sẻ, Admin đã duyệt | Mọi gia đình, ghi tên người đóng góp |
+
+- **A. Bài của gia đình** (`/family-lessons`):
+  - Phụ huynh soạn bài cho con: bài đọc, video (chỉ chọn trong danh sách video Admin đã duyệt, trừ nguồn gia đình đã chặn), ảnh, PDF tối đa 5 MB, câu hỏi trắc nghiệm hoặc Đúng/Sai.
+  - Câu hỏi tự thành bài tập của bài: bé làm, hệ thống chấm điểm như bài tập thường.
+  - Trạng thái: Nháp hoặc "Bé học được". Bài chỉ hiện cho bé khi đúng môn và đúng lớp, hoặc khi được giao.
+  - Từ khóa bị chặn (của hệ thống và của gia đình) được kiểm tra trong tiêu đề, bài đọc và câu hỏi.
+  - Xóa: bài bé đã dùng thì chỉ ẩn, để giữ tiến độ và điểm. Tối đa 100 bài mỗi gia đình, 30 câu hỏi mỗi bài.
+  - Bài riêng không hiện cho gia đình khác, cũng không hiện trong danh mục bài, thống kê hay hàng báo cáo của Admin. Báo cáo của bé về bài riêng chỉ đến phụ huynh.
+- **B. Đề xuất bài học** (`/lesson-requests`):
+  - Phụ huynh gửi chủ đề con cần học (tối đa 10 đề xuất đang chờ); gia đình khác bấm "Tôi cũng cần". Không hiện tên người gửi.
+  - Admin xem ở `/admin-lesson-requests`, xếp theo số gia đình cùng cần. Admin chuyển trạng thái "Đang soạn", "Đã có bài" (gắn mã một bài công khai) hoặc "Chưa thực hiện" (bắt buộc ghi lý do).
+  - Người gửi và mọi gia đình đã bấm "Tôi cũng cần" đều nhận thông báo.
+- **C. Kho cộng đồng:**
+  - Phụ huynh bấm "Gửi chia sẻ" (phải đồng ý hiện tên mình) cho bài đang ở trạng thái "Bé học được".
+  - Admin xem trước và duyệt hoặc từ chối (kèm lý do) ở `/admin-community`; bài đã duyệt có thể bị gỡ (kèm lý do).
+  - Sửa bài đã duyệt thì bài tự quay về chờ duyệt, và gia đình khác không thấy cho tới khi duyệt lại.
+  - Khi Admin gỡ một bài cộng đồng bị báo cáo, bài chỉ rời kho cộng đồng; gia đình tác giả vẫn giữ bài.
+
+**Database:** khi khởi động ở chế độ SQL, `Services/SchemaUpdater.cs` tự thêm những gì còn thiếu, không xóa hay sửa dữ liệu cũ, chạy lại nhiều lần vẫn an toàn:
+- 5 cột vào `dbo.Lessons`: `OwnerParentId`, `ShareStatus`, `ShareNote`, `SharedAt`, `ShareReviewedAt`;
+- 2 bảng: `dbo.LessonRequests`, `dbo.LessonRequestVotes`.
+
+Các thành viên chỉ cần pull code rồi chạy app.
+
+Kiểm thử: `py scripts\smoke-family.py` sau khi build.
 
 ## Email xác minh và khôi phục
 
