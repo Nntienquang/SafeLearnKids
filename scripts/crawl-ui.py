@@ -222,6 +222,7 @@ try:
             login(page, parent_email)
             page.wait_for_url("**/onboarding*")
             page.fill("#ob-n", "Be Do Trang")
+            page.check("#ob-consent")
             page.click("#ob-next")
             page.wait_for_url("**/parent-home*")
             page.goto(url + "/family-lessons/new")

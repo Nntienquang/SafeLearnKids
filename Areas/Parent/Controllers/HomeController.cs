@@ -37,6 +37,8 @@ public class HomeController(KidContext kids, IServiceProvider services) : Contro
         var notices = await db.Notifications.AsNoTracking().Where(item => item.UserId == parentId && !item.IsRead).OrderByDescending(item => item.CreatedAt).Take(3)
             .Select(item => new { item.NotificationType, item.Title, item.Body, item.LinkUrl }).ToListAsync(cancellationToken);
         var attention = new List<HomeAttention>();
+        if (!await ChildConsent.Active(db, parentId).AnyAsync(item => item.ChildProfileId == chosen.Id, cancellationToken))
+            attention.Add(new HomeAttention("shield", "t-r", $"Chưa đồng ý xử lý dữ liệu của {chosen.Name}", "Bé chưa vào học được cho tới khi ba mẹ đồng ý.", "/privacy", "Xem"));
         attention.AddRange(pending.Select(item => new HomeAttention("clock", "t-a", $"{chosen.Name} xin thêm {item.RequestedMinutes} phút", item.Reason ?? "Không ghi lời nhắn", $"/time?child={chosen.Id}", "Trả lời")));
         attention.AddRange(weak.Select(item => new HomeAttention("alert", "t-r", "Bài tập chưa đạt: " + item.Title, $"Điểm cao nhất {item.Best:0.#}% (cần {item.PassPercent}%)", $"/quiz-result/{item.Last}", "Xem bài")));
         attention.AddRange(notices.Select(item => new HomeAttention(NotificationKind.Icon(item.NotificationType), NotificationKind.Tone(item.NotificationType), item.Title, item.Body, item.LinkUrl ?? "/notifications", "Xem")));

@@ -81,3 +81,14 @@ public class KidSearchViewModel
 public record KidChoice(int Id, string Name, int Grade, string Init);
 
 public record LessonAssignmentRow(int? AssignmentId, int ChildId, string ChildName, int Grade, string? Status, DateOnly? DueDate, string? Note);
+
+// US-08 / US-10: the "who is learning" screen.
+public class KidPickerViewModel
+{
+    public IReadOnlyList<KidChoice> Kids { get; init; } = [];
+    public IReadOnlySet<int> WithPin { get; init; } = new HashSet<int>();
+    public IReadOnlySet<int> Consented { get; init; } = new HashSet<int>();
+    // The child whose PIN is being asked for, and the message to show.
+    public int? Ask { get; init; }
+    public string? Error { get; init; }
+}

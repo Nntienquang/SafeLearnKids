@@ -18,11 +18,7 @@ if(P==='admin-questions-sql'){
     if(!$('[data-options="'+on+'"] input[type=radio]:checked')){var first=$('[data-options="'+on+'"] input[type=radio]');if(first)first.checked=true;}});
 }
 
-/* Forms marked data-confirm ask before posting. */
-if(P==='admin-users'||P==='admin-catalog-sql'||P==='admin-lesson-sql'||P==='admin-curate-sql'||P==='admin-reports-sql'||P==='admin-questions-sql'||P==='admin-paths-sql'||P==='admin-data-sql'){
-  document.addEventListener('submit',function(e){var f=e.target,sub=e.submitter;if(!f.dataset.confirm||f.dataset.confirmed)return;e.preventDefault();
-    UI.confirm({title:f.dataset.confirm,text:f.dataset.text,ok:f.dataset.okLabel,danger:f.dataset.danger==='true',icon:'lock'}).then(function(ok){if(!ok)return;f.dataset.confirmed='1';/* requestSubmit keeps the clicked button's name and value (for example decision=approve). */if(sub&&f.requestSubmit)f.requestSubmit(sub);else f.submit();});});
-}
+/* Forms marked data-confirm: handled for every page in ui.js. */
 
 /* Lesson editor: show only the fields of the chosen content kind. */
 if(P==='admin-lesson-sql'){

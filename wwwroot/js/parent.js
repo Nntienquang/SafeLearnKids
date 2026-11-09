@@ -25,6 +25,9 @@ if(P==='onboarding'){
   nx.addEventListener('click',function(e){e.preventDefault();
     if(!UI.field(n,n.value.trim().length<1?'Nhập tên hoặc biệt danh của bé.':n.value.trim().length>30?'Tên tối đa 30 ký tự.':''))return n.focus();
     if(y.value&&!UI.field(y,!/^(19|20)\d\d$/.test(y.value)||+y.value>2026||+y.value<2005?'Năm sinh không hợp lệ.':''))return y.focus();
+    var ok=$('#ob-consent'),okErr=$('#ob-consent-err');
+    if(ok&&!ok.checked){okErr.textContent='Ba mẹ cần đồng ý chính sách dữ liệu trẻ em để tạo hồ sơ.';okErr.classList.remove('hidden');return ok.focus();}
+    if(okErr)okErr.classList.add('hidden');
     if(st.children.length>=4){UI.toast('Tối đa 4 hồ sơ','err');return;}
     if(busy)return;
     var nm=n.value.trim(),subjects=Object.keys(S.SUBJECTS).filter(function(k){return S.SUBJECTS[k].active!==false;});
@@ -33,7 +36,7 @@ if(P==='onboarding'){
       UI.toast('Đã tạo hồ sơ cho '+nm);setTimeout(function(){location.href='/parent-home';},400);};
     if(!S.synced)return add('c'+Date.now(),nm.charAt(0).toUpperCase());
     busy=true;
-    S.api('/children',{name:nm,cls:cls,birthYear:y.value?+y.value:null,subjects:subjects}).then(function(r){add(r.id,r.init);}).catch(function(err){busy=false;UI.toast(err.message,'err');});});
+    S.api('/children',{name:nm,cls:cls,birthYear:y.value?+y.value:null,subjects:subjects,consent:!!(ok&&ok.checked)}).then(function(r){add(r.id,r.init);}).catch(function(err){busy=false;UI.toast(err.message,'err');});});
   if(!st.children.length){$$('a[href="/register"]').forEach(function(a){a.classList.add('hidden');});}
 }
 

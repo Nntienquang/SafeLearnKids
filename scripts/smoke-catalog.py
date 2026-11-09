@@ -235,15 +235,15 @@ def library_checks(admin, parent, sid, edit, lesson, draft):
         sql(f"UPDATE dbo.SourceVideos SET Status=N'Approved' WHERE Id={video};")
 
     check(f'"key":"{KEY}"' in parent.request("/profiles", raw=True)[2], "parent pages receive the subject catalog")
-    check(child_post(parent, "/children", {"name": "Bé thử", "cls": 2, "subjects": [KEY, "toan"]}) == 200, "parents can choose the new subject for a child")
+    check(child_post(parent, "/children", {"name": "Bé thử", "cls": 2, "subjects": [KEY, "toan"], "consent": True}) == 200, "parents can choose the new subject for a child")
     child = sql(f"SELECT c.Id FROM dbo.ChildProfiles c JOIN dbo.Users u ON u.Id=c.ParentId WHERE u.Email=N'{PARENT}';")
     check(sql(f"SELECT COUNT(*) FROM dbo.ChildSubjects WHERE ChildProfileId={child} AND SubjectId={sid};") == "1", "the child's new subject is stored")
-    check(child_post(parent, "/children", {"name": "Bé lạ", "cls": 2, "subjects": ["khongcomon"]}) == 409, "unknown subjects are refused")
+    check(child_post(parent, "/children", {"name": "Bé lạ", "cls": 2, "subjects": ["khongcomon"], "consent": True}) == 409, "unknown subjects are refused")
 
     check(form(admin, edit, edit, subject_fields(name=SUBJECT + " moi", active=False))[0] == 302
           and sql(f"SELECT IsActive FROM dbo.Subjects WHERE Id={sid};") == "0", "Admin hides the subject")
     check(TITLE not in parent.request("/library")[2] and parent.request(f"/lesson-detail/{lesson}")[0] == 404, "lessons of a hidden subject leave the library")
-    check(child_post(parent, "/children", {"name": "Bé ẩn", "cls": 2, "subjects": [KEY]}) == 409, "a hidden subject cannot be added to a child")
+    check(child_post(parent, "/children", {"name": "Bé ẩn", "cls": 2, "subjects": [KEY], "consent": True}) == 409, "a hidden subject cannot be added to a child")
     check(child_post(parent, f"/children/{child}", {"name": "Bé thử", "cls": 2, "subjects": [KEY, "toan"]}) == 200, "a child keeps a subject hidden later")
     check(child_post(parent, f"/children/{child}", {"name": "Bé thử", "cls": 2, "subjects": ["toan"]}) == 200
           and sql(f"SELECT COUNT(*) FROM dbo.ChildSubjects WHERE ChildProfileId={child} AND SubjectId={sid};") == "0", "parents can drop a hidden subject")

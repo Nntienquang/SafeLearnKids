@@ -24,12 +24,49 @@ public class LearnController(KidContext kids, ParentSettings settings, Microsoft
     {
         // Switching child keeps child mode on; only the PIN screen ends it.
         await KidAsync(cancellationToken);
-        return View(await kids.ChoicesAsync(cancellationToken));
+        return View(await PickerModelAsync(null, null, cancellationToken));
     }
 
+    // US-08: a child with a PIN types it before entering; US-10: a child without consent cannot enter.
     [HttpPost("kids-picker/{id:int}")]
-    public async Task<IActionResult> Choose(int id, CancellationToken cancellationToken) =>
-        await kids.ChooseAsync(id, cancellationToken) is null ? NotFound() : RedirectToAction(nameof(Home));
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("account")]
+    public async Task<IActionResult> Choose(int id, [FromForm] string? pin, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return NotFound();
+        var parentId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var child = await db.ChildProfiles.FirstOrDefaultAsync(item => item.Id == id && item.ParentId == parentId && item.IsActive, cancellationToken);
+        if (child is null) return NotFound();
+        if (!await ChildConsent.Active(db, parentId).AnyAsync(item => item.ChildProfileId == id, cancellationToken))
+        {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            return View("Picker", await PickerModelAsync(null, $"Ba mẹ cần đồng ý chính sách dữ liệu cho {child.DisplayName} trước khi bé vào học.", cancellationToken));
+        }
+        if (child.PinHash is not null)
+        {
+            if (string.IsNullOrEmpty(pin) && ChildPins.LockedMinutes(child, DateTime.UtcNow) is null)
+                return View("Picker", await PickerModelAsync(id, null, cancellationToken));
+            var check = ChildPins.Verify(child, pin);
+            await db.SaveChangesAsync(cancellationToken);
+            if (!check.Ok)
+            {
+                Response.StatusCode = StatusCodes.Status400BadRequest;
+                var error = check.LockedMinutes is { } minutes ? $"Sai quá nhiều lần. Con thử lại sau {minutes} phút nhé." : $"Sai mã PIN. Còn {check.Left} lần thử.";
+                return View("Picker", await PickerModelAsync(id, error, cancellationToken));
+            }
+        }
+        return await kids.ChooseAsync(id, cancellationToken) is null ? NotFound() : RedirectToAction(nameof(Home));
+    }
+
+    private async Task<KidPickerViewModel> PickerModelAsync(int? ask, string? error, CancellationToken cancellationToken)
+    {
+        var choices = await kids.ChoicesAsync(cancellationToken);
+        if (Db is not { } db) return new KidPickerViewModel { Kids = choices, Ask = ask, Error = error };
+        var parentId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var withPin = await db.ChildProfiles.AsNoTracking().Where(item => item.ParentId == parentId && item.IsActive && item.PinHash != null)
+            .Select(item => item.Id).ToListAsync(cancellationToken);
+        var consented = await ChildConsent.Active(db, parentId).Select(item => item.ChildProfileId!.Value).ToListAsync(cancellationToken);
+        return new KidPickerViewModel { Kids = choices, WithPin = withPin.ToHashSet(), Consented = consented.ToHashSet(), Ask = ask, Error = error };
+    }
 
     // US-50: leaving child mode needs the parent PIN, or the account password when no PIN is set.
     [HttpGet("kids-exit")]

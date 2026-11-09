@@ -17,6 +17,7 @@ public sealed class ChildProfileService(IServiceProvider services)
     private const string NameTaken = "Đã có bé dùng tên này.";
 
     private SafeLearnDbContext? Db => services.GetService<SafeLearnDbContext>();
+    private string? IpAddress => services.GetService<IHttpContextAccessor>()?.HttpContext?.Connection.RemoteIpAddress?.ToString() is { } ip && ip.Length <= 45 ? ip : null;
 
     // Subject keys, names and colours for the parent and child pages; null without SQL.
     public async Task<IReadOnlyList<SubjectLook>?> SubjectsAsync(CancellationToken cancellationToken) =>
@@ -51,6 +52,7 @@ public sealed class ChildProfileService(IServiceProvider services)
     {
         if (Db is not { } db) return new(null, SaveFailed);
         if (Validate(input) is { } error) return new(null, error);
+        if (!input.Consent) return new(null, "Ba mẹ cần đồng ý chính sách dữ liệu trẻ em để tạo hồ sơ cho bé.");
         var name = input.Name.Trim();
         try
         {
@@ -74,6 +76,7 @@ public sealed class ChildProfileService(IServiceProvider services)
             };
             db.ChildProfiles.Add(child);
             await db.SaveChangesAsync(cancellationToken);
+            await ChildConsent.GrantAsync(db, parentId, child.Id, IpAddress, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return new(ToRow(child.Id, name, input.Cls, input.BirthYear, subjects.Keys), null);
         }
@@ -123,7 +126,8 @@ public sealed class ChildProfileService(IServiceProvider services)
         var children = await db.ChildProfiles.Where(child => child.ParentId == parentId && child.IsActive).ToListAsync(cancellationToken);
         if (children.FirstOrDefault(child => child.Id == id) is not { } target) return new(null, null, NotFound: true);
         if (children.Count < 2) return new(null, "Cần giữ ít nhất 1 hồ sơ.");
-        // SQL cascades the delete to the child's subjects and learning data.
+        // SQL cascades the delete to the child's subjects and learning data; consents only point at the child, so remove them here.
+        db.UserConsents.RemoveRange(db.UserConsents.Where(item => item.ChildProfileId == id && item.UserId == parentId));
         db.ChildProfiles.Remove(target);
         await db.SaveChangesAsync(cancellationToken);
         return new(null, null);

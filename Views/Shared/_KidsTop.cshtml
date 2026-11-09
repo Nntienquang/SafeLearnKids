@@ -1,10 +1,19 @@
-<header class="k-top">
+@inject SafeLearnKids.Web.Services.KidContext KidContext
+@{
+    // The chosen child and today's minutes come from the server, not from the browser's storage.
+    var topKid = await KidContext.CurrentAsync(Context.RequestAborted);
+    var left = ViewData["KidLeft"] as int?;
+}
+<header class="k-top" data-server="1">
     <a class="sl-row" href="~/kids-home" style="gap:10px"><div class="brand-mark" style="width:44px;height:44px;border-radius:15px"><i class="ic ic-grad"></i></div><span class="kf" style="font-size:24px">SafeLearn Kids</span></a>
     <div class="sl-row" style="gap:10px;flex-wrap:wrap">
         <a class="k-pill" href="~/kids-search"><i class="ic ic-search"></i>Tìm bài</a>
         <a class="k-pill" href="~/kids-badges"><i class="ic ic-trophy"></i>Huy hiệu</a>
-        <span class="k-pill y"><i class="ic ic-clock"></i>Còn 28 phút</span>
-        <a class="k-pill p" href="~/kids-picker" title="Đổi bé"><span class="av av-s" style="background:#FF7AB6">M</span>Minh An</a>
+        @if (left is { } minutes)
+        {
+            <span class="k-pill y"><i class="ic ic-clock"></i>Còn @minutes phút</span>
+        }
+        <a class="k-pill p" href="~/kids-picker" title="Đổi bé"><span class="av av-s" style="background:#FF7AB6">@(topKid?.Name is { Length: > 0 } n ? n[..1].ToUpperInvariant() : "?")</span>@(topKid?.Name ?? "Chọn bé")</a>
         <a class="k-pill" href="~/kids-exit"><i class="ic ic-lock"></i>Ba mẹ</a>
     </div>
 </header>

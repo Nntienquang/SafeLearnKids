@@ -12,7 +12,7 @@ public sealed class ChildModeFilter(KidContext kids) : IAsyncActionFilter
         var http = context.HttpContext;
         if (Equals(context.RouteData.Values["area"], "Parent") && http.User.IsInRole("Parent") && http.Request.Cookies.ContainsKey(KidContext.CookieName))
         {
-            if (await kids.CurrentAsync(http.RequestAborted) is not null)
+            if (await kids.InChildModeAsync(http.RequestAborted))
             {
                 context.Result = HttpMethods.IsGet(http.Request.Method) ? new RedirectResult("/kids-home") : new StatusCodeResult(StatusCodes.Status403Forbidden);
                 return;
