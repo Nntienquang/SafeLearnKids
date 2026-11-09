@@ -1,0 +1,90 @@
+# SafeLearn Kids on one server: SQL Server + the web app + Caddy (automatic HTTPS from Let's Encrypt).
+# 1. cp .env.example .env   and fill it in (domain, passwords, SMTP)
+# 2. docker compose up -d --build
+# Only Caddy publishes ports (80/443). The app and the database are reachable from the internal network only.
+name: safelearnkids
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Express
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
+      MSSQL_MEMORY_LIMIT_MB: ${MSSQL_MEMORY_LIMIT_MB:-1536}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -b -Q 'SELECT 1' -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env}
+    volumes:
+      - ./database:/database:ro
+    # tr removes Windows line endings in case the repo was checked out on Windows.
+    entrypoint: ["/bin/bash", "-c", "tr -d '\\r' < /database/init-db.sh > /tmp/init-db.sh && bash /tmp/init-db.sh"]
+    restart: "no"
+
+  app:
+    build: .
+    image: safelearnkids:latest
+    restart: unless-stopped
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=db;Database=hoctapchotre;User Id=safelearn_app;Password=${APP_DB_PASSWORD};Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
+      Email__PublicBaseUrl: https://${DOMAIN:?Set DOMAIN in .env}
+      Email__DeliveryMethod: Smtp
+      Email__Host: ${SMTP_HOST:?Set SMTP_HOST in .env}
+      Email__Port: ${SMTP_PORT:-587}
+      Email__UserName: ${SMTP_USER:-}
+      Email__Password: ${SMTP_PASSWORD:-}
+      Email__FromAddress: ${MAIL_FROM:?Set MAIL_FROM in .env}
+      Bootstrap__AdminEmail: ${ADMIN_EMAIL:-}
+      Bootstrap__AdminPassword: ${ADMIN_PASSWORD:-}
+      YouTube__ApiKey: ${YOUTUBE_API_KEY:-}
+      Ai__ApiKey: ${AI_API_KEY:-}
+      # Caddy terminates HTTPS and forwards X-Forwarded-For/Proto; the app is not reachable any other way.
+      Proxy__Enabled: "true"
+      Jobs__Enabled: "true"
+      DataProtection__KeysPath: /app/App_Data/keys
+    volumes:
+      - uploads:/app/wwwroot/uploads
+      - appdata:/app/App_Data
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  sqldata:
+  uploads:
+  appdata:
+  caddy_data:
+  caddy_config:

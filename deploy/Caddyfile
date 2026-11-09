@@ -1,0 +1,14 @@
+# Caddy gets and renews the HTTPS certificate for $DOMAIN automatically (ports 80 and 443 must be open).
+{$DOMAIN} {
+	encode zstd gzip
+	# Lesson files and avatars are at most 5 MB; leave a margin for the form.
+	request_body {
+		max_size 8MB
+	}
+	reverse_proxy app:8080
+}
+
+# www.example.com -> example.com
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

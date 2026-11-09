@@ -261,6 +261,8 @@ Khi bấm thử nút, kịch bản chặn mọi request ghi dữ liệu nên kh�
 
 ## Triển khai (deploy)
 
+**Cách nhanh nhất:** đóng gói bằng Docker theo [DEPLOY.md](DEPLOY.md). Một lệnh `docker compose up -d --build` dựng SQL Server, app và HTTPS tự động. Database mới được tạo từ `database/01-schema.sql` (toàn bộ 56 bảng) và `database/02-reference-data.sql` (lớp, môn học, huy hiệu).
+
 Cần làm trước khi public:
 1. **HTTPS và domain.** Đặt `Email:PublicBaseUrl` là địa chỉ `https://` thật. Môi trường Production từ chối chạy nếu thiếu.
 2. **SMTP thật.** Cấu hình `Email:Host`, `Port`, `UserName`, `Password` và `FromAddress` thuộc domain của mình (có SPF/DKIM), nếu không mail xác minh dễ vào spam.
