@@ -56,7 +56,7 @@
                             <img src="@part.FileUrl" alt="@(part.Title ?? lesson.Title)" style="max-width:100%;border-radius:20px" loading="lazy" />
                             break;
                         default:
-                            <a class="sl-btn" href="@part.FileUrl" target="_blank" rel="noopener"><i class="ic ic-file"></i>Mở tài liệu</a>
+                            <partial name="_PdfViewer" model="(part.FileUrl!, part.Title ?? part.FileName ?? lesson.Title)" />
                             break;
                     }
                     @if (current)

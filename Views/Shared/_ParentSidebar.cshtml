@@ -1,10 +1,35 @@
+@inject SafeLearnKids.Web.Services.KidContext KidContext
 @{
     var nav = ViewData["Nav"] as string ?? "";
     var fullName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "";
+    // The child being viewed comes from ?child= on pages that show one child; the switcher links keep the current page.
+    var kidChoices = await KidContext.ChoicesAsync(Context.RequestAborted);
+    var path = Context.Request.Path.Value ?? "/parent-home";
+    var perChild = path is "/parent-home" or "/progress" or "/time" or "/history" or "/weekly";
+    var askedKid = int.TryParse(Context.Request.Query["child"], out var askedId) ? askedId : (int?)null;
+    var shownKid = kidChoices.FirstOrDefault(choice => choice.Id == askedKid) ?? kidChoices.FirstOrDefault();
 }
 <aside class="side">
     <div class="brand"><div class="brand-mark"><i class="ic ic-grad"></i></div><div><div class="brand-name">SafeLearn Kids</div><div class="brand-sub">Phụ huynh</div></div></div>
-    <div class="child-sw"><span class="av av-s" style="background:linear-gradient(135deg,#6A4CFF,#FF7AB6)">M</span><div style="flex:1;min-width:0"><div class="b" style="font-size:14px">Minh An</div><div class="muted" style="font-size:12px">Lớp 3</div></div><i class="ic ic-chevd"></i></div>
+    @if (kidChoices.Count > 0)
+    {
+        <details class="child-sw-box">
+            <summary class="child-sw" aria-label="Chọn bé đang xem"><span class="av av-s" style="background:linear-gradient(135deg,#6A4CFF,#FF7AB6)">@shownKid!.Init</span><div style="flex:1;min-width:0"><div class="b" style="font-size:14px">@shownKid.Name</div><div class="muted" style="font-size:12px">Lớp @shownKid.Grade</div></div>@if (kidChoices.Count > 1){<i class="ic ic-chevd"></i>}</summary>
+            @if (kidChoices.Count > 1)
+            {
+                <div class="pop" role="menu" style="left:14px;right:14px">
+                    @foreach (var choice in kidChoices)
+                    {
+                        <a role="menuitem" href="@(perChild ? path : "/parent-home")?child=@choice.Id" aria-current="@(choice.Id == shownKid.Id ? "true" : null)"><span class="av av-s">@choice.Init</span>@choice.Name · Lớp @choice.Grade</a>
+                    }
+                </div>
+            }
+        </details>
+    }
+    else
+    {
+        <a class="child-sw" href="/onboarding"><span class="av av-s"><i class="ic ic-plus"></i></span><div class="b" style="font-size:14px">Thêm hồ sơ bé</div></a>
+    }
     <a class="sl-nav @(nav == "home" ? "on" : "")" href="~/parent-home"><i class="ic ic-home"></i>Tổng quan</a>
     <a class="sl-nav @(nav == "profiles" ? "on" : "")" href="~/profiles"><i class="ic ic-users"></i>Hồ sơ của bé</a>
     <a class="sl-nav @(nav == "pin" ? "on" : "")" href="~/pin"><i class="ic ic-key"></i>Mã PIN và chế độ trẻ</a>

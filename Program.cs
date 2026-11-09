@@ -1,3 +1,6 @@
+using System.Net;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -145,6 +148,31 @@ builder.Services.AddScoped<ChildModeFilter>();
 builder.Services.Configure<JobOptions>(builder.Configuration.GetSection("Jobs"));
 builder.Services.AddSingleton<DailyJobs>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<DailyJobs>());
+// Sign-in cookies, antiforgery and email links are protected with these keys. Persist them so a restart or a
+// second instance does not sign everybody out or break links already sent (DataProtection:KeysPath, default App_Data/keys).
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+if (string.IsNullOrWhiteSpace(keysPath) && !development) keysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys");
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("SafeLearnKids");
+if (!string.IsNullOrWhiteSpace(keysPath)) dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+// Behind a reverse proxy (IIS out-of-process, Nginx, a cloud load balancer) the client IP and HTTPS scheme come from
+// X-Forwarded-* headers. Trust them only when Proxy:Enabled is set, and only from Proxy:KnownProxies when listed.
+var proxy = builder.Configuration.GetSection("Proxy");
+var behindProxy = proxy.GetValue<bool>("Enabled");
+if (behindProxy)
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.ForwardLimit = 1;
+        var known = proxy.GetSection("KnownProxies").Get<string[]>() ?? [];
+        if (known.Length > 0)
+            foreach (var address in known) options.KnownProxies.Add(IPAddress.Parse(address));
+        else
+        {
+            // The app must then be reachable only through the proxy (bound to localhost or a private network).
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+        }
+    });
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
@@ -163,6 +191,7 @@ app.Logger.LogInformation(
     app.Environment.WebRootFileProvider.GetFileInfo("css/auth.css").Exists,
     app.Environment.WebRootFileProvider.GetFileInfo("js/ui.js").Exists);
 
+if (behindProxy) app.UseForwardedHeaders();
 // Keep exception details out of HTTP responses, including local account workflows.
 app.UseExceptionHandler("/error/500");
 if (!development) app.UseHsts();
@@ -173,8 +202,10 @@ app.Use(async (context, next) =>
 {
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
     context.Response.Headers.XContentTypeOptions = "nosniff";
-    context.Response.Headers.XFrameOptions = "DENY";
-    context.Response.Headers.ContentSecurityPolicy = "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
+    // Lesson files may be shown inside our own lesson pages (PDF fallback viewer); every other response refuses framing.
+    var lessonFile = context.Request.Path.StartsWithSegments("/uploads/lessons");
+    context.Response.Headers.XFrameOptions = lessonFile ? "SAMEORIGIN" : "DENY";
+    context.Response.Headers.ContentSecurityPolicy = (lessonFile ? "frame-ancestors 'self'" : "frame-ancestors 'none'") + "; base-uri 'self'; form-action 'self'; object-src 'none'";
     context.Response.OnStarting(() =>
     {
         if (context.User.Identity?.IsAuthenticated == true) context.Response.Headers.CacheControl = "no-store";
@@ -182,12 +213,30 @@ app.Use(async (context, next) =>
     });
     await next();
 });
+// Authentication runs before static files so lesson uploads (including a family's private PDFs) need a signed-in account.
+app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/uploads/lessons") && context.User.Identity?.IsAuthenticated != true)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
 app.UseStaticFiles();
 app.UseRouting();
-app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
+// Liveness and database check for the host or load balancer; it reveals nothing beyond ok / unavailable.
+app.MapGet("/healthz", async (HttpContext context, CancellationToken cancellationToken) =>
+{
+    var db = context.RequestServices.GetRequiredService<ApplicationDbContext>();
+    var ready = useInMemory || await db.Database.CanConnectAsync(cancellationToken);
+    context.Response.Headers.CacheControl = "no-store";
+    return ready ? Results.Text("ok") : Results.Text("unavailable", statusCode: StatusCodes.Status503ServiceUnavailable);
+}).AllowAnonymous();
 
 using (var scope = app.Services.CreateScope())
 {

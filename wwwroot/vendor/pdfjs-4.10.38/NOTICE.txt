@@ -1,0 +1,3 @@
+PDF.js 4.10.38 (Mozilla), Apache License 2.0.
+Source: https://github.com/mozilla/pdf.js  ·  Files from https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/
+Kept in the repository (not wwwroot/lib) so lesson PDFs render without a restore step or a third-party CDN.

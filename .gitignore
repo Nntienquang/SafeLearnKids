@@ -46,3 +46,6 @@ appsettings.*.Local.json
 Thumbs.db
 Desktop.ini
 wwwroot/uploads/
+
+# Data protection keys and other runtime data
+App_Data/

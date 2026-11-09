@@ -215,6 +215,42 @@ Các thành viên chỉ cần pull code rồi chạy app.
 
 Kiểm thử: `py scripts\smoke-family.py` sau khi build.
 
+**Xem PDF ngay trong trang:**
+- PDF của bài học hiển thị ngay trong trang (PDF.js 4.10.38, để sẵn ở `wwwroot/vendor/pdfjs-4.10.38`, giấy phép Apache-2.0). Bé không phải mở tab mới nên thời gian đọc vẫn được tính vào giờ học.
+- Có nút phóng to, thu nhỏ và toàn màn hình. Nếu trình duyệt không chạy được PDF.js, trang hiện PDF bằng khung nhúng.
+- File trong `/uploads/lessons` chỉ tải được khi đã đăng nhập.
+
+## Trang tổng quan phụ huynh
+
+`/parent-home` lấy toàn bộ số liệu thật từ SQL cho bé đang chọn (`?child=`):
+- phút học hôm nay so với giới hạn;
+- số bài xong trong tuần so với mục tiêu;
+- điểm bài tập trung bình và chuỗi ngày học;
+- biểu đồ 7 ngày;
+- mục "Cần ba mẹ xem": xin thêm giờ, bài tập chưa đạt, thông báo chưa đọc;
+- bài đang học dở và tiến độ theo môn.
+
+Bộ chọn bé ở thanh bên được tạo trên server. Ô tìm kiếm trên cùng mở `/library?q=` (phụ huynh) hoặc `/admin-catalog?q=` (admin).
+
+Kiểm thử: `py scripts\smoke-home.py`.
+
+## Triển khai (deploy)
+
+Cần làm trước khi public:
+1. **HTTPS và domain.** Đặt `Email:PublicBaseUrl` là địa chỉ `https://` thật. Môi trường Production từ chối chạy nếu thiếu.
+2. **SMTP thật.** Cấu hình `Email:Host`, `Port`, `UserName`, `Password` và `FromAddress` thuộc domain của mình (có SPF/DKIM), nếu không mail xác minh dễ vào spam.
+3. **Bí mật.** Đặt chuỗi kết nối, mật khẩu SMTP, `YouTube:ApiKey` và `Ai:ApiKey` qua biến môi trường của server, ví dụ `ConnectionStrings__DefaultConnection`. Không commit vào appsettings.
+4. **Tài khoản SQL.** Tài khoản app cần quyền đọc/ghi và quyền `ALTER`/`CREATE TABLE` để `SchemaUpdater` chạy lúc khởi động. Có thể bỏ quyền này sau lần chạy đầu.
+5. **Khóa DataProtection.** Mặc định lưu ở `App_Data/keys`, đổi bằng `DataProtection:KeysPath`. Thư mục này phải được giữ lại khi deploy lại, nếu không mọi người bị đăng xuất và link trong email cũ hỏng.
+6. **File tải lên.** `wwwroot/uploads` chứa ảnh đại diện, ảnh và PDF bài học, nên phải nằm trên ổ được giữ lại và sao lưu.
+7. **Reverse proxy (Nginx/IIS/cloud).** Đặt `Proxy:Enabled=true` và `Proxy:KnownProxies` (IP của proxy) để lấy đúng IP người dùng cho giới hạn số lần thử và đúng HTTPS.
+8. **Giám sát và sao lưu.** `GET /healthz` trả `ok` khi kết nối được database. Sao lưu database `hoctapchotre` hằng ngày.
+
+Ở môi trường Production:
+- `/design-system` và `/states` trả 404;
+- tài khoản demo và InMemory bị chặn;
+- cookie chỉ gửi qua HTTPS và bật HSTS.
+
 ## Email xác minh và khôi phục
 
 Profile Development dùng **Pickup**: email `.eml` được lưu riêng tại `%LOCALAPPDATA%\SafeLearnKids\Mail`. Mở thư mới nhất trên máy để lấy liên kết; đây là thư thử nghiệm, chưa gửi tới Gmail. Không có endpoint xem thư/token trong ứng dụng. Không đặt folder này trong repo hoặc wwwroot; không đưa thư/token lên Git/Trello/chat.
