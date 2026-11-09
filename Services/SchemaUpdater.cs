@@ -60,8 +60,11 @@ public static class SchemaUpdater
 
     public static async Task RunAsync(SafeLearnDbContext db, ILogger logger, CancellationToken cancellationToken = default)
     {
+        // Steps are compile-time constants in this file, never user input, so concatenating them is safe.
+#pragma warning disable EF1003
         foreach (var step in Steps)
             await db.Database.ExecuteSqlRawAsync("SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; " + step, cancellationToken);
+#pragma warning restore EF1003
         logger.LogInformation("Database schema is up to date (family lessons, community library, lesson requests).");
     }
 }

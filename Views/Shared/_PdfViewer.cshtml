@@ -1,0 +1,11 @@
+@model (string Url, string Title)
+@* Lesson PDFs open inside the page (wwwroot/js/pdf-viewer.js) so a child reading stays on the lesson and study time keeps counting. *@
+<div class="pdf-box" data-pdf="@Model.Url" data-title="@Model.Title">
+    <div class="sl-row" style="gap:8px;flex-wrap:wrap;align-items:center" data-pdf-bar>
+        <i class="ic ic-file" aria-hidden="true"></i><span class="b grow" style="min-width:120px">@Model.Title</span>
+        <span class="muted" style="font-size:12.5px" data-pdf-status role="status">Đang mở tài liệu…</span>
+    </div>
+    <div class="pdf-pages" data-pdf-pages tabindex="0" aria-label="Các trang của @Model.Title"></div>
+    <noscript><a class="sl-btn" href="@Model.Url">Mở tài liệu</a></noscript>
+</div>
+<script type="module" src="~/js/pdf-viewer.js" asp-append-version="true"></script>

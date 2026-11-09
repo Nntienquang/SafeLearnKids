@@ -1,31 +1,130 @@
+@model ParentHomeViewModel
 @{
+    var kid = Model.Child;
+    var today = Model.Today;
+    var week = Model.Week;
+    var greeting = string.IsNullOrWhiteSpace(Model.ParentName) ? "Chào ba mẹ" : "Chào " + Model.ParentName;
     ViewData["Title"] = """Tổng quan phụ huynh""";
-    ViewData["Page"] = "parent-home";
+    ViewData["Page"] = "parent-home-sql";
     ViewData["Nav"] = "home";
     ViewData["Crumb"] = Html.Raw("""Trang chủ""");
-    ViewData["Heading"] = """Chào chị Hà, hôm nay Minh An học thế nào?""";
-    ViewData["Sub"] = """Tóm tắt học tập, thời gian và việc cần xử lý.""";
+    ViewData["Heading"] = $"{greeting}, hôm nay {kid.Name} học thế nào?";
+    ViewData["Sub"] = "Tóm tắt học tập, thời gian và việc cần xử lý.";
+    var limit = today.LimitMinutes + today.ExtraMinutes;
+    var usedPercent = limit <= 0 ? 0 : Math.Min(100, today.UsedSeconds * 100 / (limit * 60));
+    var peak = Math.Max(Math.Max(limit, 1), Model.Days.Max(day => day.Minutes));
+    string[] dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+    var tones = new[] { "var(--primary)", "var(--teal)", "var(--sun)", "var(--rose)", "var(--sky, #38BDF8)" };
 }
 @section Actions {
-<a class="sl-btn" href="~/weekly"><i class="ic ic-download"></i>Báo cáo tuần</a><a class="sl-btn sl-btn-p" href="~/library"><i class="ic ic-plus"></i>Giao bài mới</a>
+    <a class="sl-btn" href="/weekly?child=@kid.Id"><i class="ic ic-file"></i>Báo cáo tuần</a><a class="sl-btn sl-btn-p" href="/library"><i class="ic ic-plus"></i>Giao bài mới</a>
+}
+@if (Model.Children.Count > 1)
+{
+    <nav class="sl-row" style="gap:8px;flex-wrap:wrap;margin-bottom:16px" aria-label="Chọn bé">
+        @foreach (var child in Model.Children)
+        {
+            <a class="sl-btn sl-btn-sm @(child.Id == kid.Id ? "sl-btn-p" : "")" href="/parent-home?child=@child.Id" aria-current="@(child.Id == kid.Id ? "page" : null)">@child.Name</a>
+        }
+    </nav>
 }
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px">
-<div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Hôm nay · Minh An</span><span class="ib t-p" style="width:38px;height:38px"><i class="ic ic-clock"></i></span></div><div class="kpi-v">32 phút</div><div class="bar"><i style="width:53%"></i></div><div class="kpi-d up">Còn 28 / 60 phút</div></div>
-<div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Bài đã hoàn thành tuần này</span><span class="ib t-g" style="width:38px;height:38px"><i class="ic ic-book"></i></span></div><div class="kpi-v">7 / 10</div><div class="bar"><i style="width:70%"></i></div><div class="kpi-d up">+2 so với tuần trước</div></div>
-<div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Điểm quiz trung bình</span><span class="ib t-a" style="width:38px;height:38px"><i class="ic ic-target"></i></span></div><div class="kpi-v">8,4</div><div class="kpi-d up">+0,6 so với tuần trước</div></div>
-<div class="sl-card kpi"><div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Báo cáo chờ xử lý</span><span class="ib t-r" style="width:38px;height:38px"><i class="ic ic-flag"></i></span></div><div class="kpi-v">1</div><div class="kpi-d down">Gửi bởi Minh An hôm qua</div></div>
+    <div class="sl-card kpi">
+        <div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Hôm nay · @kid.Name</span><span class="ib t-p" style="width:38px;height:38px"><i class="ic ic-clock"></i></span></div>
+        <div class="kpi-v">@today.UsedMinutes phút</div>
+        <div class="bar"><i style="width:@usedPercent%"></i></div>
+        <div class="kpi-d">@(today.Blocked ?? $"Còn {today.RemainingMinutes} / {limit} phút")</div>
+    </div>
+    <div class="sl-card kpi">
+        <div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Bài hoàn thành tuần này</span><span class="ib t-g" style="width:38px;height:38px"><i class="ic ic-book"></i></span></div>
+        <div class="kpi-v">@week.Lessons@(week.TargetLessons is { } target ? $" / {target}" : "")</div>
+        @if (week.TargetLessons is { } goal && goal > 0)
+        {
+            <div class="bar"><i style="width:@Math.Min(100, week.Lessons * 100 / goal)%"></i></div>
+        }
+        <div class="kpi-d">@(week.HasGoal ? (week.Reached ? "Đã đạt mục tiêu tuần" : "Mục tiêu tuần đang chạy") : "Chưa đặt mục tiêu tuần")</div>
+    </div>
+    <div class="sl-card kpi">
+        <div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Điểm bài tập trung bình</span><span class="ib t-a" style="width:38px;height:38px"><i class="ic ic-target"></i></span></div>
+        <div class="kpi-v">@(Model.AvgQuiz is { } avg ? $"{avg:0.#}%" : "—")</div>
+        <div class="kpi-d">@(Model.AvgQuiz is null ? "Bé chưa làm bài tập nào" : "Trên tất cả bài tập đã nộp")</div>
+    </div>
+    <div class="sl-card kpi">
+        <div class="sl-row" style="justify-content:space-between"><span class="muted b" style="font-size:13px">Chuỗi ngày học</span><span class="ib t-r" style="width:38px;height:38px"><i class="ic ic-flame"></i></span></div>
+        <div class="kpi-v">@Model.Streak.Current ngày</div>
+        <div class="kpi-d">Dài nhất @Model.Streak.Longest ngày · @Model.OpenAssignments bài đang giao</div>
+    </div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px">
-<div class="sl-card" style="flex:2 1 520px;min-width:0"><div class="card-h"><div><div class="card-t">Thời gian học 7 ngày qua</div><div class="card-s">Giới hạn mỗi ngày: 60 phút</div></div><div class="seg"><span class="on">Tuần</span><span>Tháng</span></div></div>
-<div style="display:flex;align-items:flex-end;gap:14px;height:180px;margin-top:18px;border-bottom:1px dashed var(--line);padding-bottom:0">
-<div class="sl-col" style="flex:1;align-items:center;gap:8px;height:100%;justify-content:flex-end"><span class="muted" style="font-size:12px;font-weight:700">35</span><i style="width:100%;max-width:46px;height:91px;border-radius:12px 12px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:8px;height:100%;justify-content:flex-end"><span class="muted" style="font-size:12px;font-weight:700">48</span><i style="width:100%;max-width:46px;height:124px;border-radius:12px 12px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:8px;height:100%;justify-content:flex-end"><span class="muted" style="font-size:12px;font-weight:700">60</span><i style="width:100%;max-width:46px;height:156px;border-radius:12px 12px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:8px;height:100%;justify-content:flex-end"><span class="muted" style="font-size:12px;font-weight:700">42</span><i style="width:100%;max-width:46px;height:109px;border-radius:12px 12px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:8px;height:100%;justify-content:flex-end"><span class="muted" style="font-size:12px;font-weight:700">55</span><i style="width:100%;max-width:46px;height:143px;border-radius:12px 12px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:8px;height:100%;justify-content:flex-end"><span class="muted" style="font-size:12px;font-weight:700">20</span><i style="width:100%;max-width:46px;height:52px;border-radius:12px 12px 4px 4px;background:var(--primary-soft)"></i></div><div class="sl-col" style="flex:1;align-items:center;gap:8px;height:100%;justify-content:flex-end"><span class="muted" style="font-size:12px;font-weight:700">32</span><i style="width:100%;max-width:46px;height:83px;border-radius:12px 12px 4px 4px;background:var(--grad)"></i></div></div>
-<div class="sl-row" style="gap:14px;margin-top:8px;color:var(--text-3);font-size:12.5px;font-weight:700"><span style="flex:1;text-align:center">T2</span><span style="flex:1;text-align:center">T3</span><span style="flex:1;text-align:center">T4</span><span style="flex:1;text-align:center">T5</span><span style="flex:1;text-align:center">T6</span><span style="flex:1;text-align:center">T7</span><span style="flex:1;text-align:center">CN</span></div></div>
-<div class="sl-card" style="flex:1 1 300px;min-width:0"><div class="card-h"><div class="card-t">Cần ba mẹ xem</div><a class="chip t-n" href="~/notifications">Tất cả</a></div>
-<div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)"><span class="ib t-a"><i class="ic ic-clock"></i></span><div class="grow"><div class="b">Xin thêm giờ học</div><div class="muted" style="font-size:13px">Minh An xin thêm 15 phút lúc 19:40</div></div><a class="sl-btn sl-btn-sm sl-btn-p" href="~/time">Duyệt</a></div>
-<div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)"><span class="ib t-r"><i class="ic ic-alert"></i></span><div class="grow"><div class="b">Bài quiz điểm thấp</div><div class="muted" style="font-size:13px">Phân số cơ bản · 5/10 điểm</div></div><a class="sl-btn sl-btn-sm" href="~/progress">Xem</a></div>
-<div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)"><span class="ib t-v"><i class="ic ic-file"></i></span><div class="grow"><div class="b">Báo cáo tuần sẵn sàng</div><div class="muted" style="font-size:13px">Tuần 12–18/10 đã tạo xong</div></div><a class="sl-btn sl-btn-sm" href="~/weekly">Mở</a></div></div></div>
+    <div class="sl-card" style="flex:2 1 520px;min-width:0">
+        <div class="card-h"><div><div class="card-t">Thời gian học 7 ngày qua</div><div class="card-s">Giới hạn mỗi ngày: @today.LimitMinutes phút</div></div><a class="chip t-n" href="/time?child=@kid.Id">Cài đặt giờ học</a></div>
+        <div style="display:flex;align-items:flex-end;gap:14px;height:180px;margin-top:18px;border-bottom:1px dashed var(--line)" role="img" aria-label="Số phút học mỗi ngày trong 7 ngày qua">
+            @foreach (var (day, minutes) in Model.Days)
+            {
+                var last = day == Model.Days[^1].Day;
+                <div class="sl-col" style="flex:1;align-items:center;gap:8px;height:100%;justify-content:flex-end">
+                    <span class="muted" style="font-size:12px;font-weight:700">@minutes</span>
+                    <i style="width:100%;max-width:46px;height:@(Math.Max(4, minutes * 150 / peak))px;border-radius:12px 12px 4px 4px;background:@(last ? "var(--grad)" : "var(--primary-soft)")"></i>
+                </div>
+            }
+        </div>
+        <div class="sl-row" style="gap:14px;margin-top:8px;color:var(--text-3);font-size:12.5px;font-weight:700">
+            @foreach (var (day, _) in Model.Days)
+            {
+                <span style="flex:1;text-align:center" title="@day.ToString("dd/MM")">@dayNames[(int)day.DayOfWeek]</span>
+            }
+        </div>
+    </div>
+    <div class="sl-card" style="flex:1 1 300px;min-width:0">
+        <div class="card-h"><div class="card-t">Cần ba mẹ xem</div><a class="chip t-n" href="/notifications">Tất cả</a></div>
+        @foreach (var item in Model.Attention)
+        {
+            <div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)">
+                <span class="ib @item.Tone"><i class="ic ic-@item.Icon"></i></span>
+                <div class="grow" style="min-width:0"><div class="b">@item.Title</div>@if (item.Detail is not null){<div class="muted" style="font-size:13px">@item.Detail</div>}</div>
+                <a class="sl-btn sl-btn-sm" href="@item.Link">@item.Action</a>
+            </div>
+        }
+        @if (Model.Attention.Count == 0)
+        {
+            <div class="empty" style="margin-top:10px">Không có việc gì cần xử lý. Mọi thứ đang ổn.</div>
+        }
+    </div>
+</div>
 <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px">
-<div class="sl-card" style="flex:1 1 380px;min-width:0"><div class="card-h"><div class="card-t">Đang học dở</div><a class="sl-btn sl-btn-sm sl-btn-g" href="~/progress">Lộ trình<i class="ic ic-arrowr"></i></a></div>
-<div class="sl-row" style="gap:16px;padding-top:6px"><div style="width:120px;height:80px;border-radius:16px;background:linear-gradient(135deg,#6A4CFF,#38BDF8);display:flex;align-items:center;justify-content:center;color:#fff"><i class="ic ic-play ic-lg"></i></div><div class="grow sl-col" style="gap:6px"><span class="chip t-b" style="align-self:flex-start">Toán · Lớp 3</span><div class="b">Bảng nhân 5</div><div class="bar bar-l"><i style="width:62%"></i></div><span class="muted" style="font-size:12.5px">62% · đã xem 6/10 phút</span></div></div></div>
-<div class="sl-card" style="flex:1 1 380px;min-width:0"><div class="card-h"><div class="card-t">Tiến độ theo môn</div></div>
-<div class="sl-row" style="gap:12px;padding:8px 0"><span style="width:96px;font-weight:700;font-size:14px">Toán</span><div class="bar grow"><i style="width:72%;background:var(--primary)"></i></div><span class="b" style="width:40px;text-align:right">72%</span></div><div class="sl-row" style="gap:12px;padding:8px 0"><span style="width:96px;font-weight:700;font-size:14px">Tiếng Việt</span><div class="bar grow"><i style="width:58%;background:var(--teal)"></i></div><span class="b" style="width:40px;text-align:right">58%</span></div><div class="sl-row" style="gap:12px;padding:8px 0"><span style="width:96px;font-weight:700;font-size:14px">Khoa học</span><div class="bar grow"><i style="width:40%;background:var(--sun)"></i></div><span class="b" style="width:40px;text-align:right">40%</span></div><div class="sl-row" style="gap:12px;padding:8px 0"><span style="width:96px;font-weight:700;font-size:14px">Tiếng Anh</span><div class="bar grow"><i style="width:25%;background:var(--rose)"></i></div><span class="b" style="width:40px;text-align:right">25%</span></div></div></div>
+    <div class="sl-card" style="flex:1 1 380px;min-width:0">
+        <div class="card-h"><div class="card-t">Đang học dở</div><a class="sl-btn sl-btn-sm sl-btn-g" href="/progress?child=@kid.Id">Lộ trình<i class="ic ic-arrowr"></i></a></div>
+        @if (Model.Continue is { } doing)
+        {
+            <div class="sl-row" style="gap:16px;padding-top:6px">
+                <div style="width:96px;height:72px;border-radius:16px;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;flex:none"><i class="ic ic-book ic-lg"></i></div>
+                <div class="grow sl-col" style="gap:6px;min-width:0">
+                    <span class="chip t-b" style="align-self:flex-start">@doing.Subject</span>
+                    <a class="b" href="/lesson-detail/@doing.LessonId">@doing.Title</a>
+                    <div class="bar bar-l"><i style="width:@doing.Percent%"></i></div>
+                    <span class="muted" style="font-size:12.5px">@doing.Percent%</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="empty" style="margin-top:10px">@kid.Name chưa có bài nào đang học dở.</div>
+        }
+    </div>
+    <div class="sl-card" style="flex:1 1 380px;min-width:0">
+        <div class="card-h"><div class="card-t">Tiến độ theo môn</div></div>
+        @{ var index = 0; }
+        @foreach (var row in Model.Subjects.Where(row => row.Total > 0))
+        {
+            <div class="sl-row" style="gap:12px;padding:8px 0">
+                <span style="width:110px;font-weight:700;font-size:14px">@row.Name</span>
+                <div class="bar grow"><i style="width:@row.Percent%;background:@tones[index++ % tones.Length]"></i></div>
+                <span class="b" style="width:72px;text-align:right">@row.Completed/@row.Total</span>
+            </div>
+        }
+        @if (!Model.Subjects.Any(row => row.Total > 0))
+        {
+            <div class="empty" style="margin-top:10px">Chưa có bài học nào cho lớp của bé.</div>
+        }
+    </div>
+</div>

@@ -41,7 +41,7 @@
                             <img src="@content.FileUrl" alt="@(content.Title ?? lesson.Title)" style="max-width:100%;border-radius:12px" loading="lazy" />
                             break;
                         default:
-                            <a class="sl-btn sl-btn-sm" href="@content.FileUrl" target="_blank" rel="noopener"><i class="ic ic-file"></i>Mở @(content.FileName ?? "tài liệu")</a>
+                            <partial name="_PdfViewer" model="(content.FileUrl!, content.Title ?? content.FileName ?? lesson.Title)" />
                             break;
                     }
                 </section>

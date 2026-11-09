@@ -79,3 +79,22 @@ a.k-card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
 .theme-opt:has(input:focus-visible){outline:3px solid var(--primary);outline-offset:2px}
 /* Printing a report (weekly report: In / lưu PDF) keeps only the page content. */
 @media print{.side,.sl-side,aside.nav,.top,[data-noprint],.toasts{display:none!important}.app{display:block!important}.main{padding:0!important}.sl-card{break-inside:avoid;box-shadow:none!important}}
+
+/* Lesson PDFs inside the page (Views/Shared/_PdfViewer.cshtml) */
+.pdf-box{display:flex;flex-direction:column;gap:10px;background:var(--surface);border-radius:16px}
+.pdf-pages{max-height:75vh;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px;border-radius:14px;background:var(--surface-2)}
+.pdf-page{min-height:180px;width:100%;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:13px}
+.pdf-page canvas{max-width:100%;height:auto!important;background:#fff;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.pdf-frame{width:100%;height:70vh;border:0;border-radius:12px;background:#fff}
+.pdf-box:fullscreen{padding:12px}
+.pdf-box:fullscreen .pdf-pages{max-height:calc(100vh - 70px)}
+/* parent sidebar child switcher (server-rendered) */
+.child-sw-box{position:relative}
+.child-sw-box>summary{list-style:none;cursor:pointer}
+.child-sw-box>summary::-webkit-details-marker{display:none}
+.child-sw-box .pop{top:100%;margin-top:4px}
+.pop a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-weight:600;color:inherit;text-decoration:none}
+.pop a:hover,.pop a:focus-visible,.pop a[aria-current]{background:var(--surface-2)}
+/* long names, emails and links in page headings wrap instead of widening the page on phones */
+.head>div:first-child{min-width:0;max-width:100%}
+.head .sl-h1,.head .sub{overflow-wrap:anywhere}

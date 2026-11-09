@@ -217,7 +217,7 @@ img.av{object-fit:cover}
 .ud-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:20px 0 0}
 .ud-fact{padding:12px 14px;border-radius:14px;background:var(--surface-2);min-width:0}
 .ud-fact dt{font-size:12.5px;color:var(--text-3);margin-bottom:4px}
-.ud-fact dd{margin:0;font-weight:700;font-size:14.5px}
+.ud-fact dd{margin:0;font-weight:700;font-size:14.5px;overflow-wrap:anywhere}
 .ud-sec{padding:14px 0;border-top:1px solid var(--line)}
 .ud-sec:last-child{padding-bottom:0}
 .ud-sec:first-of-type{margin-top:8px}

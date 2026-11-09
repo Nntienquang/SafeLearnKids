@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace SafeLearnKids.Web.Controllers;
 
-public class HomeController : Controller
+// The design-system and state gallery pages are developer tools; outside Development they answer 404.
+public class HomeController(IWebHostEnvironment environment) : Controller
 {
     [AllowAnonymous]
     [HttpGet("")]
@@ -11,11 +12,11 @@ public class HomeController : Controller
 
     [AllowAnonymous]
     [HttpGet("design-system")]
-    public IActionResult DesignSystem() => View();
+    public IActionResult DesignSystem() => environment.IsDevelopment() ? View() : NotFound();
 
     [AllowAnonymous]
     [HttpGet("states")]
-    public IActionResult States() => View();
+    public IActionResult States() => environment.IsDevelopment() ? View() : NotFound();
 
     [AllowAnonymous]
     [HttpGet("terms")]

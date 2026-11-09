@@ -263,3 +263,25 @@ public class AdminDataRequestsViewModel
     public IReadOnlyList<DataRequestRow> Rows { get; init; } = [];
     public int Open { get; init; }
 }
+
+// ---------- parent home ----------
+
+public record HomeAttention(string Icon, string Tone, string Title, string? Detail, string Link, string Action);
+
+public record HomeContinue(int LessonId, string Title, string Subject, int Percent);
+
+public class ParentHomeViewModel
+{
+    public required KidChoice Child { get; init; }
+    public IReadOnlyList<KidChoice> Children { get; init; } = [];
+    public string? ParentName { get; init; }
+    public required TimeStatus Today { get; init; }
+    public required WeekGoalView Week { get; init; }
+    public required StreakView Streak { get; init; }
+    public decimal? AvgQuiz { get; init; }
+    public int OpenAssignments { get; init; }
+    public IReadOnlyList<(DateOnly Day, int Minutes)> Days { get; init; } = [];
+    public IReadOnlyList<SubjectProgressRow> Subjects { get; init; } = [];
+    public IReadOnlyList<HomeAttention> Attention { get; init; } = [];
+    public HomeContinue? Continue { get; init; }
+}

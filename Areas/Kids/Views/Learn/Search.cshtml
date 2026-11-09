@@ -6,7 +6,7 @@
 <main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px">
 <form method="get" asp-action="Search" class="sl-row" style="gap:14px" role="search">
     <a class="k-pill" href="~/kids-home" aria-label="Quay lại"><i class="ic ic-arrowl"></i></a>
-    <div class="k-card grow sl-row" style="gap:12px;padding:14px 22px"><i class="ic ic-search" aria-hidden="true"></i><input name="q" type="search" value="@Model.Q" maxlength="200" aria-label="Tìm bài học" autocomplete="off" placeholder="Con muốn học gì?" style="all:unset;flex:1;font-size:20px;font-weight:700;color:var(--text)" /></div>
+    <div class="k-card grow sl-row" style="gap:12px;padding:14px 22px;min-width:0"><i class="ic ic-search" aria-hidden="true"></i><input name="q" type="search" value="@Model.Q" maxlength="200" aria-label="Tìm bài học" autocomplete="off" placeholder="Con muốn học gì?" style="all:unset;flex:1;min-width:0;font-size:20px;font-weight:700;color:var(--text)" /></div>
     <button class="k-btn" type="submit">Tìm</button>
 </form>
 @if (Model.Q is null)

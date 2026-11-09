@@ -1,6 +1,6 @@
 @model bool
 <div class="top">
-    <div class="search"><i class="ic ic-search"></i>@(Model ? "Tìm bài học, môn, tài khoản..." : "Tìm bài học, nguồn, lịch sử...")</div>
+    <div class="search"><i class="ic ic-search"></i>@(Model ? "Tìm bài học trong kho nội dung..." : "Tìm bài học trong thư viện...")</div>
     <span class="icbtn" aria-label="Đổi giao diện"><i class="ic ic-moon"></i></span>
     <a class="icbtn" href="@(Model ? "/admin-reports" : "/notifications")" aria-label="@(Model ? "Báo cáo nội dung cần xử lý" : "Thông báo")"><i class="ic ic-bell"></i><i class="dot"></i></a>
     @if (!Model)

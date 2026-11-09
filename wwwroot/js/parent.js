@@ -37,27 +37,7 @@ if(P==='onboarding'){
   if(!st.children.length){$$('a[href="/register"]').forEach(function(a){a.classList.add('hidden');});}
 }
 
-/* ---------------- home ---------------- */
-if(P==='parent-home'){
-  var last=(st.session.name||'').split(' ').pop();
-  setHead('Chào chị '+last+', hôm nay '+c.name+' học thế nào?');
-  var k=$$('.kpi');
-  k[0].querySelector('.kpi-v').innerHTML=c.used+'<small style="font-size:15px;font-weight:700;color:var(--text-3)"> phút</small>';
-  k[0].querySelector('.muted').textContent='Hôm nay · '+c.name;k[0].querySelector('.kpi-d').textContent='Còn '+S.remaining(c)+' / '+(c.limit+c.extra)+' phút';k[0].querySelector('.bar i').style.width=Math.min(100,c.used*100/(c.limit+c.extra))+'%';
-  var d=doneCount(c),asg=(st.assigned[c.id]||[]).length;k[1].querySelector('.kpi-v').textContent=d+' / '+(d+asg);k[1].querySelector('.bar i').style.width=(d+asg?d*100/(d+asg):0)+'%';
-  var open=st.reports.filter(function(r){return r.status==='open';}).length;k[3].querySelector('.kpi-v').textContent=open;k[3].querySelector('.kpi-d').textContent=open?'Đang chờ quản trị xử lý':'Không có báo cáo';
-  // attention list
-  var card=$$('.sl-card').filter(function(x){return /Cần ba mẹ xem/.test(x.textContent);})[0];
-  if(card){var items=[];S.pendingReqs().forEach(function(r){items.push(['Xin thêm '+r.mins+' phút',S.child(r.cid).name+' · '+(r.note||'không ghi chú'),'a','clock','/time','Duyệt',1]);});
-    st.notifs.filter(function(x){return x.unread;}).slice(0,3-items.length).forEach(function(x){items.push([x.t,x.s,x.tone,x.ic,'/notifications','Xem',0]);});
-    card.querySelectorAll('.sl-row[style*="border-top"]').forEach(function(r){r.remove();});
-    card.insertAdjacentHTML('beforeend',items.length?items.map(function(i){return '<div class="sl-row" style="gap:14px;padding:14px 0;border-top:1px solid var(--line)"><span class="ib t-'+i[2]+'"><i class="ic ic-'+i[3]+'"></i></span><div class="grow"><div class="b">'+esc(i[0])+'</div><div class="muted" style="font-size:13px">'+esc(i[1])+'</div></div><a class="sl-btn sl-btn-sm '+(i[6]?'sl-btn-p':'')+'" href="'+i[4]+'">'+i[5]+'</a></div>';}).join(''):'<div class="empty" style="margin-top:10px"><div class="b">Không có gì cần xử lý</div></div>');}
-  // subject progress
-  var sp=$$('.sl-card').filter(function(x){return /Tiến độ theo môn/.test(x.textContent);})[0];
-  if(sp){$$('.sl-row',sp).forEach(function(r,i){var sj=['toan','tiengviet','khoahoc','tienganh'][i];if(!sj)return;var v=subjDone(c,sj);r.querySelector('.bar i').style.width=v.p+'%';r.querySelector('.b:last-child').textContent=v.p+'%';});}
-  var cur=$$('.sl-card').filter(function(x){return /Đang học dở/.test(x.textContent);})[0];
-  if(cur){var l=S.lesson('nhan5');}
-}
+/* home: rendered on the server (Areas/Parent/Views/Home/Index.cshtml) */
 
 /* ---------------- profiles ---------------- */
 if(P==='profiles'){

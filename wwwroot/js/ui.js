@@ -108,17 +108,12 @@ function enhance(){
   // search box -> input
   var sb=$('.top .search');
   if(sb){var ic=sb.querySelector('.ic').outerHTML,ph=sb.textContent.trim();sb.innerHTML=ic+'<input type="search" aria-label="Tìm kiếm" placeholder="'+S.esc(ph)+'">';
-    var inp=sb.querySelector('input');var q=new URLSearchParams(location.search).get('q');if(q&&PAGE==='library')inp.value=q;
-    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){var v=inp.value.trim();if(AREA==='parent'){if(PAGE==='library'){document.dispatchEvent(new CustomEvent('kl:q',{detail:v}));}else location.href='/library?q='+encodeURIComponent(v);}else UI.toast('Tìm "'+v+'" trong quản trị');}});
-    inp.addEventListener('input',function(){if(PAGE==='library')document.dispatchEvent(new CustomEvent('kl:q',{detail:inp.value.trim()}));});}
-  // child switcher
-  var cs=$('.child-sw');
-  if(cs){cs.tabIndex=0;cs.setAttribute('role','button');cs.setAttribute('aria-haspopup','menu');
-    var paint=function(){var c=S.child(S.get().parentChild);cs.querySelector('.av').textContent=c.init;cs.querySelector('.av').style.background='linear-gradient(135deg,'+c.c[0]+','+c.c[1]+')';cs.querySelector('.b').textContent=c.name;cs.querySelector('.muted').textContent='Lớp '+c.cls+' · '+S.remaining(c)+' phút còn lại';};paint();document.addEventListener('kl:change',paint);
-    var pop=null;var open=function(){if(pop){pop.remove();pop=null;return;}pop=document.createElement('div');pop.className='pop';pop.setAttribute('role','menu');pop.style.cssText='left:14px;top:'+(cs.offsetTop+cs.offsetHeight+4)+'px';
-      pop.innerHTML=S.get().children.map(function(c){return '<button type="button" role="menuitem" data-c="'+c.id+'"><span class="av av-s" style="background:linear-gradient(135deg,'+c.c[0]+','+c.c[1]+')">'+c.init+'</span>'+S.esc(c.name)+' · Lớp '+c.cls+'</button>';}).join('');
-      cs.parentNode.style.position='relative';cs.parentNode.appendChild(pop);pop.addEventListener('click',function(e){var b=e.target.closest('[data-c]');if(!b)return;S.set(function(s){s.parentChild=b.dataset.c;});pop.remove();pop=null;UI.toast('Đang xem '+S.child(b.dataset.c).name);document.dispatchEvent(new CustomEvent('kl:child'));});};
-    cs.addEventListener('click',open);cs.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});}
+    var inp=sb.querySelector('input');var q=new URLSearchParams(location.search).get('q');if(q)inp.value=q;
+    inp.addEventListener('keydown',function(e){if(e.key!=='Enter')return;var v=inp.value.trim();
+      /* Real searches: parents search the lesson library, admins the content catalog. */
+      if(AREA==='parent')location.href='/library?q='+encodeURIComponent(v);
+      else if(AREA==='admin')location.href='/admin-catalog?q='+encodeURIComponent(v);});}
+  // child switcher: rendered on the server (_ParentSidebar.cshtml) as a <details> menu of ?child= links
   // bell dot + nav badge from store
   /* Counts come from the server when signed in; the demo store is only a fallback. */
   var unread=window.SL_UNREAD!=null?window.SL_UNREAD:S.get().notifs.filter(function(n){return n.unread;}).length;
@@ -130,18 +125,6 @@ function enhance(){
   // images/icons decorative
   $$('i.ic').forEach(function(i){i.setAttribute('aria-hidden','true');});
 }
-/* generic fallback for demo-only buttons */
-document.addEventListener('click',function(e){
-  if(e.__h||e.defaultPrevented)return;
-  var b=e.target.closest('button[type=button],a.sl-btn[href="#"],button.sl-btn:not([type])');if(!b||b.closest('.sl-modal')||b.closest('.pop'))return;
-  var t=b.textContent.replace(/\s+/g,' ').trim();if(!t)return;
-  if(/^(Tải|Xuất)/.test(t)){UI.download('safelearn-'+PAGE+'.csv',UI.csv([['Trang',PAGE],['Xuất lúc',new Date().toLocaleString('vi-VN')],['Nội dung','Dữ liệu mẫu của bản demo']]),'text/csv;charset=utf-8');UI.toast('Đã tạo tệp '+t.toLowerCase());}
-  else if(/^Lưu|Cập nhật/.test(t))UI.toast('Đã lưu thay đổi');
-  else if(/^Gửi/.test(t))UI.toast('Đã gửi');
-  else if(/^Thêm|mới$/.test(t))UI.toast('Tính năng sẽ có trong sprint tiếp theo','err');
-  else if(/^Hủy|^Quay/.test(t))history.back();
-  else UI.toast(t);
-});
 document.addEventListener('DOMContentLoaded',function(){});
 UI.ready=function(fn){if(document.readyState!=='loading')fn();else document.addEventListener('DOMContentLoaded',fn);};
 UI.ready(function(){enhance();UI.theme();document.dispatchEvent(new CustomEvent('kl:ui'));});
