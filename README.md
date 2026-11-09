@@ -234,6 +234,13 @@ Bộ chọn bé ở thanh bên được tạo trên server. Ô tìm kiếm trên
 
 Kiểm thử: `py scripts\smoke-home.py`.
 
+**Quét toàn bộ giao diện:** `py scripts\crawl-ui.py . crawl-report.json` mở trình duyệt thật với 4 vai (khách, phụ huynh, bé, admin), đi qua mọi trang tìm được và báo:
+- lỗi 500, link hỏng, lỗi script;
+- trang tràn ngang trên điện thoại;
+- nút bấm không phản hồi.
+
+Khi bấm thử nút, kịch bản chặn mọi request ghi dữ liệu nên không sửa gì trong DB.
+
 ## Triển khai (deploy)
 
 Cần làm trước khi public:

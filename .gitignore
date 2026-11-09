@@ -49,3 +49,4 @@ wwwroot/uploads/
 
 # Data protection keys and other runtime data
 App_Data/
+crawl-report.json

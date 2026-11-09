@@ -10,9 +10,14 @@
     ViewData["Sub"] = editing ? $"{FamilyRules.Label(form.Status)} · {LessonAccess.ShareLabel(Model.ShareStatus)}" + (Model.Learners > 0 ? $" · {Model.Learners} lượt bé đã học" : "") : "Bước 1: thông tin bài. Sau khi lưu, thêm nội dung và câu hỏi.";
 }
 @section Actions {
-@if (editing)
+@if (editing && form.Status == LessonStatus.Published)
 {
     <a class="sl-btn" href="/lesson-detail/@Model.Id"><i class="ic ic-eye"></i>Xem như phụ huynh</a>
+}
+else if (editing)
+{
+    @* The library only lists lessons a child can learn, so a draft has no library page yet. *@
+    <span class="chip t-n" title="Chuyển bài sang &quot;Bé học được&quot; để xem trong thư viện">Chưa hiện trong thư viện</span>
 }
 }
 @if (TempData["Info"] is string info)
@@ -198,7 +203,7 @@
     <div class="sl-col" style="flex:1 1 300px;min-width:0;gap:16px">
         <div class="sl-card">
             <div class="card-t" style="margin-bottom:8px">Cho bé học</div>
-            <p class="muted" style="margin:0;font-size:13px">Khi bài ở trạng thái "Bé học được", bé thấy bài trong môn và lớp đã chọn. Muốn giao riêng kèm hạn, mở <a href="/lesson-detail/@Model.Id">trang chi tiết bài</a>.</p>
+            <p class="muted" style="margin:0;font-size:13px">Khi bài ở trạng thái "Bé học được", bé thấy bài trong môn và lớp đã chọn. Muốn giao riêng kèm hạn, @if (form.Status == LessonStatus.Published){<text>mở <a href="/lesson-detail/@Model.Id">trang chi tiết bài</a>.</text>}else{<text>chuyển bài sang "Bé học được" rồi mở trang chi tiết bài.</text>}</p>
         </div>
         <div class="sl-card" id="share">
             <div class="card-t" style="margin-bottom:8px">Chia sẻ lên kho cộng đồng</div>
