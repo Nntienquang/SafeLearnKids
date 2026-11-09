@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using SafeLearnKids.Web.Data;
 using SafeLearnKids.Web.Models;
 using SafeLearnKids.Web.Models.Entities;
+using SafeLearnKids.Web.Services;
 
 namespace SafeLearnKids.Web.Areas.Admin.Controllers;
 
@@ -273,7 +274,7 @@ public class AchievementsController(UserManager<ApplicationUser> users, Services
         else if (chosen.Count > MaxSteps) ModelState.AddModelError(nameof(model.Steps), "Mỗi lộ trình tối đa 40 bài.");
         else if (!chosen.Any(step => step.Required)) ModelState.AddModelError(nameof(model.Steps), "Cần ít nhất 1 bài bắt buộc.");
         var ids = chosen.Select(step => step.LessonId).ToList();
-        var valid = await db.Lessons.CountAsync(lesson => ids.Contains(lesson.Id) && lesson.SubjectId == model.SubjectId && lesson.GradeLevel.Level == model.Grade
+        var valid = await LessonAccess.Standard(db).CountAsync(lesson => ids.Contains(lesson.Id) && lesson.SubjectId == model.SubjectId && lesson.GradeLevel.Level == model.Grade
             && lesson.Status == LessonStatus.Published, cancellationToken);
         if (valid != ids.Count) ModelState.AddModelError(nameof(model.Steps), "Chỉ chọn bài đã xuất bản đúng môn và lớp của lộ trình.");
         return chosen;
@@ -290,7 +291,7 @@ public class AchievementsController(UserManager<ApplicationUser> users, Services
     // Published lessons of the subject and grade: those on the path first, in path order, then the rest.
     private static async Task<List<PathStepInput>> StepsAsync(SafeLearnDbContext db, int subjectId, int grade, IReadOnlyList<(int LessonId, bool Required)> picked, CancellationToken cancellationToken)
     {
-        var lessons = await db.Lessons.AsNoTracking().Where(lesson => lesson.SubjectId == subjectId && lesson.GradeLevel.Level == grade && lesson.Status == LessonStatus.Published)
+        var lessons = await LessonAccess.Standard(db).AsNoTracking().Where(lesson => lesson.SubjectId == subjectId && lesson.GradeLevel.Level == grade && lesson.Status == LessonStatus.Published)
             .OrderBy(lesson => lesson.SortOrder).ThenBy(lesson => lesson.Id).Select(lesson => new { lesson.Id, lesson.Title }).ToListAsync(cancellationToken);
         var order = picked.Select(item => item.LessonId).ToList();
         return lessons.OrderBy(lesson => order.Contains(lesson.Id) ? order.IndexOf(lesson.Id) : int.MaxValue)

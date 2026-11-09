@@ -224,7 +224,7 @@ public class CatalogController(
     public async Task<IActionResult> EditLesson(int id, LessonFormViewModel model, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var lesson = await db.Lessons.Include(item => item.LessonTags).ThenInclude(item => item.Tag).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var lesson = await LessonAccess.Standard(db).Include(item => item.LessonTags).ThenInclude(item => item.Tag).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (lesson is null) return NotFound();
         model.Id = id;
         var tags = ParseTags(model.Tags);
@@ -249,7 +249,7 @@ public class CatalogController(
     public async Task<IActionResult> SetStatus(int id, [FromForm] string? to, [FromForm] string? rowVersion, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var lesson = await db.Lessons.Include(item => item.Subject).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var lesson = await LessonAccess.Standard(db).Include(item => item.Subject).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (lesson is null) return NotFound();
         if (!Expect(db, lesson, rowVersion)) return Conflict(id);
         var allowed = lesson.Status switch
@@ -288,7 +288,7 @@ public class CatalogController(
     public async Task<IActionResult> DeleteLesson(int id, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var lesson = await db.Lessons.Include(item => item.LessonContents).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var lesson = await LessonAccess.Standard(db).Include(item => item.LessonContents).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (lesson is null) return NotFound();
         if (lesson.Status is LessonStatus.Published or LessonStatus.InReview)
             return Refuse(id, "Chỉ xóa được bài nháp hoặc đã lưu trữ. Hãy lưu trữ bài trước.");
@@ -308,7 +308,7 @@ public class CatalogController(
     public async Task<IActionResult> AddContent(int id, LessonContentInput input, IFormFile? file, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var lesson = await db.Lessons.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var lesson = await LessonAccess.Standard(db).FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (lesson is null) return NotFound();
         if (!ModelState.IsValid) return Refuse(id, ModelState.Values.SelectMany(entry => entry.Errors).First().ErrorMessage);
         var title = string.IsNullOrWhiteSpace(input.Title) ? null : input.Title.Trim();
@@ -373,7 +373,7 @@ public class CatalogController(
         if (Db is not { } db) return View("SqlOnly");
         var content = await db.LessonContents.FirstOrDefaultAsync(item => item.Id == contentId && item.LessonId == id, cancellationToken);
         if (content is null) return NotFound();
-        var status = await db.Lessons.Where(item => item.Id == id).Select(item => item.Status).FirstAsync(cancellationToken);
+        var status = await LessonAccess.Standard(db).Where(item => item.Id == id).Select(item => item.Status).FirstAsync(cancellationToken);
         if (status == LessonStatus.Published && await db.LessonContents.CountAsync(item => item.LessonId == id, cancellationToken) == 1)
             return Refuse(id, "Bài đang xuất bản cần ít nhất 1 nội dung. Hãy thêm nội dung khác hoặc đưa bài về nháp trước.");
         db.LessonContents.Remove(content);
@@ -387,7 +387,7 @@ public class CatalogController(
 
     private static IQueryable<Lesson> LessonQuery(SafeLearnDbContext db, int? subject, int? grade, string? status, string? type, int? tag, string? q)
     {
-        var query = db.Lessons.AsNoTracking();
+        var query = LessonAccess.Standard(db).AsNoTracking();
         if (subject is not null) query = query.Where(lesson => lesson.SubjectId == subject);
         if (grade is not null) query = query.Where(lesson => lesson.GradeLevel.Level == grade);
         if (!string.IsNullOrEmpty(status)) query = query.Where(lesson => lesson.Status == status);
@@ -404,7 +404,7 @@ public class CatalogController(
     private static async Task<IReadOnlyList<CatalogSubjectRow>> SubjectRowsAsync(SafeLearnDbContext db, CancellationToken cancellationToken) =>
         await db.Subjects.AsNoTracking().OrderBy(subject => subject.SortOrder).ThenBy(subject => subject.Name)
             .Select(subject => new CatalogSubjectRow(subject.Id, subject.Code, subject.Name, subject.IconKey, subject.ColorKey, subject.IsActive,
-                subject.Lessons.Count, subject.SubjectGrades.Select(item => item.GradeLevel.Level).OrderBy(level => level).ToList()))
+                subject.Lessons.Count(lesson => lesson.OwnerParentId == null), subject.SubjectGrades.Select(item => item.GradeLevel.Level).OrderBy(level => level).ToList()))
             .ToListAsync(cancellationToken);
 
     private static async Task<IReadOnlyList<TagOption>> TagsAsync(SafeLearnDbContext db, CancellationToken cancellationToken) =>
@@ -518,7 +518,7 @@ public class CatalogController(
 
     private static async Task TouchAsync(SafeLearnDbContext db, int id, CancellationToken cancellationToken)
     {
-        var lesson = await db.Lessons.FirstAsync(item => item.Id == id, cancellationToken);
+        var lesson = await LessonAccess.Standard(db).FirstAsync(item => item.Id == id, cancellationToken);
         lesson.UpdatedAt = DateTime.UtcNow;
     }
 
@@ -557,7 +557,7 @@ public class CatalogController(
 
     private async Task<LessonFormViewModel?> LoadLessonAsync(SafeLearnDbContext db, int id, CancellationToken cancellationToken)
     {
-        var lesson = await db.Lessons.AsNoTracking().Where(item => item.Id == id).Select(item => new
+        var lesson = await LessonAccess.Standard(db).AsNoTracking().Where(item => item.Id == id).Select(item => new
         {
             item.Id,
             item.Title,

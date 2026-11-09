@@ -21,18 +21,25 @@ public class LibraryController(IServiceProvider services) : Controller
     private SafeLearnDbContext? Db => services.GetService<SafeLearnDbContext>();
 
     [HttpGet("library")]
-    public async Task<IActionResult> Index(string? subject, int? grade, string? type, int? tag, string? q, int page = 1, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Index(string? subject, int? grade, string? type, int? tag, string? q, string? source = null, int page = 1, CancellationToken cancellationToken = default)
     {
         if (Db is not { } db) return View("SqlOnly");
         var parentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var looks = (await SubjectCatalog.LooksAsync(db, cancellationToken)).Where(look => look.Active).ToList();
-        var lessons = Visible(db);
+        var lessons = Visible(db, parentId!);
         var codes = await db.Subjects.Where(item => item.IsActive).Select(item => item.Code).ToListAsync(cancellationToken);
         var code = codes.FirstOrDefault(item => SubjectCatalog.Key(item) == subject);
         if (code is not null) lessons = lessons.Where(lesson => lesson.Subject.Code == code);
         if (grade is not null) lessons = lessons.Where(lesson => lesson.GradeLevel.Level == grade);
         if (!string.IsNullOrEmpty(type)) lessons = lessons.Where(lesson => lesson.LessonType == type);
         if (tag is not null) lessons = lessons.Where(lesson => lesson.LessonTags.Any(item => item.TagId == tag));
+        lessons = source switch
+        {
+            "standard" => lessons.Where(lesson => lesson.OwnerParentId == null),
+            "family" => lessons.Where(lesson => lesson.OwnerParentId == parentId),
+            "community" => lessons.Where(lesson => lesson.OwnerParentId != null && lesson.OwnerParentId != parentId),
+            _ => lessons
+        };
         if (!string.IsNullOrWhiteSpace(q))
         {
             var term = q.Trim();
@@ -50,11 +57,13 @@ public class LibraryController(IServiceProvider services) : Controller
                 lesson.Id, lesson.Title, lesson.Subject.Code, Subject = lesson.Subject.Name, lesson.GradeLevel.Level, lesson.LessonType, lesson.DurationMin,
                 Tags = lesson.LessonTags.OrderBy(item => item.Tag.Name).Select(item => item.Tag.Name).ToList(),
                 AssignedTo = lesson.Assignments.Count(item => item.ChildProfile.ParentId == parentId && item.ChildProfile.IsActive
-                    && (item.Status == AssignmentStatus.Assigned || item.Status == AssignmentStatus.InProgress))
+                    && (item.Status == AssignmentStatus.Assigned || item.Status == AssignmentStatus.InProgress)),
+                lesson.OwnerParentId, Author = lesson.OwnerParent != null ? lesson.OwnerParent.FullName : null
             })
             .ToListAsync(cancellationToken);
         var tags = await db.Tags.AsNoTracking()
-            .Where(item => item.LessonTags.Any(link => link.Lesson.Status == LessonStatus.Published && link.Lesson.Subject.IsActive))
+            .Where(item => item.LessonTags.Any(link => link.Lesson.Status == LessonStatus.Published && link.Lesson.Subject.IsActive
+                && (link.Lesson.OwnerParentId == null || link.Lesson.ShareStatus == LessonAccess.Approved || link.Lesson.OwnerParentId == parentId)))
             .OrderBy(item => item.Name).Select(item => new TagOption(item.Id, item.Name)).ToListAsync(cancellationToken);
         return View(new LibraryViewModel
         {
@@ -62,13 +71,15 @@ public class LibraryController(IServiceProvider services) : Controller
             Grade = grade,
             Type = type,
             Tag = tag,
+            Source = source is "standard" or "family" or "community" ? source : null,
             Q = q,
             Page = page,
             TotalPages = totalPages,
             Matching = matching,
             Subjects = looks,
             Tags = tags,
-            Cards = rows.Select(row => new LibraryCard(row.Id, row.Title, SubjectCatalog.Key(row.Code), row.Subject, row.Level, row.LessonType, row.DurationMin, row.Tags, row.AssignedTo)).ToList()
+            Cards = rows.Select(row => new LibraryCard(row.Id, row.Title, SubjectCatalog.Key(row.Code), row.Subject, row.Level, row.LessonType, row.DurationMin, row.Tags, row.AssignedTo,
+                SourceOf(row.OwnerParentId, parentId), row.Author)).ToList()
         });
     }
 
@@ -80,9 +91,10 @@ public class LibraryController(IServiceProvider services) : Controller
     {
         if (Db is not { } db) return View("SqlOnly");
         var parentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var lesson = await Visible(db).Where(item => item.Id == id).Select(item => new
+        var lesson = await Visible(db, parentId!).Where(item => item.Id == id).Select(item => new
         {
             item.Id, item.Title, item.Summary, item.Subject.Code, Subject = item.Subject.Name, item.Subject.ColorKey, item.Subject.IconKey,
+            item.OwnerParentId, Author = item.OwnerParent != null ? item.OwnerParent.FullName : null,
             item.GradeLevel.Level, item.LessonType, item.DurationMin,
             Tags = item.LessonTags.OrderBy(link => link.Tag.Name).Select(link => link.Tag.Name).ToList(),
             Contents = item.LessonContents.OrderBy(content => content.SortOrder).ThenBy(content => content.Id).Select(content => new
@@ -98,7 +110,8 @@ public class LibraryController(IServiceProvider services) : Controller
         if (lesson is null) return NotFound();
         return View(new LibraryDetailViewModel
         {
-            Lesson = new LibraryCard(lesson.Id, lesson.Title, SubjectCatalog.Key(lesson.Code), lesson.Subject, lesson.Level, lesson.LessonType, lesson.DurationMin, lesson.Tags),
+            Lesson = new LibraryCard(lesson.Id, lesson.Title, SubjectCatalog.Key(lesson.Code), lesson.Subject, lesson.Level, lesson.LessonType, lesson.DurationMin, lesson.Tags,
+                Source: SourceOf(lesson.OwnerParentId, parentId), Author: lesson.Author),
             Summary = lesson.Summary,
             Look = SubjectCatalog.Look(lesson.Code, lesson.Subject, lesson.ColorKey, lesson.IconKey, true),
             // A video that is no longer approved, or an id that is not a plain YouTube id, is never embedded.
@@ -122,7 +135,7 @@ public class LibraryController(IServiceProvider services) : Controller
     {
         if (Db is not { } db) return View("SqlOnly");
         var parentId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await Visible(db).AnyAsync(lesson => lesson.Id == id, cancellationToken)) return NotFound();
+        if (!await Visible(db, parentId!).AnyAsync(lesson => lesson.Id == id, cancellationToken)) return NotFound();
         var today = DateOnly.FromDateTime(DateTime.Now);
         note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         string? problem = childIds.Count == 0 ? "Chọn ít nhất 1 bé để giao bài."
@@ -165,7 +178,7 @@ public class LibraryController(IServiceProvider services) : Controller
     {
         if (Db is not { } db) return View("SqlOnly");
         var parentId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await Visible(db).AnyAsync(lesson => lesson.Id == id, cancellationToken)) return NotFound();
+        if (!await Visible(db, parentId!).AnyAsync(lesson => lesson.Id == id, cancellationToken)) return NotFound();
         var quiz = await db.Quizzes.AsNoTracking().Where(item => item.Id == quizId && item.LessonId == id && item.Status == QuestionStatus.Published
                 && item.QuizQuestions.Any(link => link.Question.Status == QuestionStatus.Published))
             .Select(item => new { item.Id, item.Title }).FirstOrDefaultAsync(cancellationToken);
@@ -217,7 +230,7 @@ public class LibraryController(IServiceProvider services) : Controller
     {
         if (Db is not { } db) return View("SqlOnly");
         var parentId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        if (!await Visible(db).AnyAsync(lesson => lesson.Id == id, cancellationToken)) return NotFound();
+        if (!await Visible(db, parentId!).AnyAsync(lesson => lesson.Id == id, cancellationToken)) return NotFound();
         comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
         if (reason is null || !ReportStatus.Reasons.Contains(reason) || comment is { Length: > 500 })
         {
@@ -283,7 +296,10 @@ public class LibraryController(IServiceProvider services) : Controller
             row.Attempt?.ScorePercent, row.Attempt?.Id, QuizService.Late(row.DueDate, row.Attempt?.SubmittedAt))).ToList();
     }
 
-    private static IQueryable<Lesson> Visible(SafeLearnDbContext db) =>
-        db.Lessons.AsNoTracking().Where(lesson => lesson.Status == LessonStatus.Published && lesson.Subject.IsActive);
+    // Published lessons of active subjects that this family may see: standard, approved community and its own.
+    private static string? SourceOf(string? owner, string? parentId) => owner is null ? null : owner == parentId ? "family" : "community";
+
+    private static IQueryable<Lesson> Visible(SafeLearnDbContext db, string parentId) =>
+        LessonAccess.ForFamily(db.Lessons.AsNoTracking(), parentId).Where(lesson => lesson.Status == LessonStatus.Published && lesson.Subject.IsActive);
 
 }

@@ -185,7 +185,13 @@ public class LessonContentInput
     public int? VideoId { get; set; }
 }
 
-public record LibraryCard(int Id, string Title, string SubjectKey, string Subject, int Grade, string LessonType, int DurationMin, IReadOnlyList<string> Tags, int AssignedTo = 0);
+// Source: null for the standard library, "family" for the family's own lesson, "community" for an approved shared one.
+public record LibraryCard(int Id, string Title, string SubjectKey, string Subject, int Grade, string LessonType, int DurationMin, IReadOnlyList<string> Tags, int AssignedTo = 0,
+    string? Source = null, string? Author = null)
+{
+    public string SourceLabel => Source switch { "family" => "Bài của gia đình", "community" => "Cộng đồng", _ => "Thư viện chuẩn" };
+    public string SourceTone => Source switch { "family" => "t-a", "community" => "t-v", _ => "t-g" };
+}
 
 public class LibraryViewModel
 {
@@ -199,6 +205,7 @@ public class LibraryViewModel
     public int Matching { get; init; }
     public IReadOnlyList<SubjectLook> Subjects { get; init; } = [];
     public IReadOnlyList<TagOption> Tags { get; init; } = [];
+    public string? Source { get; init; }
     public IReadOnlyList<LibraryCard> Cards { get; init; } = [];
 }
 

@@ -180,6 +180,41 @@ Kiểm thử: `py scripts\smoke-reports.py` sau khi build. Test này bật job c
 
 Các test khác tắt job (`Jobs__Enabled=false` trong `smoke-sql-auth.py`). Vì server khóa trang phụ huynh khi đang ở chế độ trẻ, các test dùng `smoke.Devices`: đường dẫn `/kids-…` gửi từ "máy của bé", các trang khác gửi từ "máy của ba mẹ".
 
+## Bài của gia đình, đề xuất bài học và kho cộng đồng (mở rộng)
+
+Nội dung có ba lớp, cùng một quy tắc hiển thị (`Services/LessonAccess.cs`):
+
+| Lớp | Ai tạo | Ai thấy |
+|---|---|---|
+| Thư viện chuẩn | Admin | Mọi gia đình |
+| Bài của gia đình | Phụ huynh | Chỉ gia đình đó |
+| Kho cộng đồng | Bài gia đình được chia sẻ, Admin đã duyệt | Mọi gia đình, ghi tên người đóng góp |
+
+- **A. Bài của gia đình** (`/family-lessons`):
+  - Phụ huynh soạn bài cho con: bài đọc, video (chỉ chọn trong danh sách video Admin đã duyệt, trừ nguồn gia đình đã chặn), ảnh, PDF tối đa 5 MB, câu hỏi trắc nghiệm hoặc Đúng/Sai.
+  - Câu hỏi tự thành bài tập của bài: bé làm, hệ thống chấm điểm như bài tập thường.
+  - Trạng thái: Nháp hoặc "Bé học được". Bài chỉ hiện cho bé khi đúng môn và đúng lớp, hoặc khi được giao.
+  - Từ khóa bị chặn (của hệ thống và của gia đình) được kiểm tra trong tiêu đề, bài đọc và câu hỏi.
+  - Xóa: bài bé đã dùng thì chỉ ẩn, để giữ tiến độ và điểm. Tối đa 100 bài mỗi gia đình, 30 câu hỏi mỗi bài.
+  - Bài riêng không hiện cho gia đình khác, cũng không hiện trong danh mục bài, thống kê hay hàng báo cáo của Admin. Báo cáo của bé về bài riêng chỉ đến phụ huynh.
+- **B. Đề xuất bài học** (`/lesson-requests`):
+  - Phụ huynh gửi chủ đề con cần học (tối đa 10 đề xuất đang chờ); gia đình khác bấm "Tôi cũng cần". Không hiện tên người gửi.
+  - Admin xem ở `/admin-lesson-requests`, xếp theo số gia đình cùng cần. Admin chuyển trạng thái "Đang soạn", "Đã có bài" (gắn mã một bài công khai) hoặc "Chưa thực hiện" (bắt buộc ghi lý do).
+  - Người gửi và mọi gia đình đã bấm "Tôi cũng cần" đều nhận thông báo.
+- **C. Kho cộng đồng:**
+  - Phụ huynh bấm "Gửi chia sẻ" (phải đồng ý hiện tên mình) cho bài đang ở trạng thái "Bé học được".
+  - Admin xem trước và duyệt hoặc từ chối (kèm lý do) ở `/admin-community`; bài đã duyệt có thể bị gỡ (kèm lý do).
+  - Sửa bài đã duyệt thì bài tự quay về chờ duyệt, và gia đình khác không thấy cho tới khi duyệt lại.
+  - Khi Admin gỡ một bài cộng đồng bị báo cáo, bài chỉ rời kho cộng đồng; gia đình tác giả vẫn giữ bài.
+
+**Database:** khi khởi động ở chế độ SQL, `Services/SchemaUpdater.cs` tự thêm những gì còn thiếu, không xóa hay sửa dữ liệu cũ, chạy lại nhiều lần vẫn an toàn:
+- 5 cột vào `dbo.Lessons`: `OwnerParentId`, `ShareStatus`, `ShareNote`, `SharedAt`, `ShareReviewedAt`;
+- 2 bảng: `dbo.LessonRequests`, `dbo.LessonRequestVotes`.
+
+Các thành viên chỉ cần pull code rồi chạy app.
+
+Kiểm thử: `py scripts\smoke-family.py` sau khi build.
+
 ## Email xác minh và khôi phục
 
 Profile Development dùng **Pickup**: email `.eml` được lưu riêng tại `%LOCALAPPDATA%\SafeLearnKids\Mail`. Mở thư mới nhất trên máy để lấy liên kết; đây là thư thử nghiệm, chưa gửi tới Gmail. Không có endpoint xem thư/token trong ứng dụng. Không đặt folder này trong repo hoặc wwwroot; không đưa thư/token lên Git/Trello/chat.

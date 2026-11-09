@@ -17,7 +17,7 @@
     {
         // Sidebar badges: the parent's unread notifications, the admins' open content reports.
         if (children is not null) unread = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.Notifications.Where(item => item.UserId == userId && !item.IsRead), Context.RequestAborted);
-        if (User.IsInRole("Admin")) openReports = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.ContentReports.Where(item => item.Status == "Open" || item.Status == "InReview"), Context.RequestAborted);
+        if (User.IsInRole("Admin")) openReports = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.ContentReports.Where(item => (item.Status == "Open" || item.Status == "InReview") && (item.Lesson == null || item.Lesson.OwnerParentId == null || item.Lesson.ShareStatus == "Approved")), Context.RequestAborted);
     }
 }
 <!DOCTYPE html>

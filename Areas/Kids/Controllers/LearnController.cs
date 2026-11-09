@@ -553,8 +553,10 @@ public class LearnController(KidContext kids, ParentSettings settings, Microsoft
             .Select(subject => new
             {
                 subject.Code, subject.Name, subject.ColorKey, subject.IconKey,
-                Total = subject.Lessons.Count(lesson => lesson.Status == LessonStatus.Published && lesson.GradeLevelId == kid.GradeLevelId),
+                Total = subject.Lessons.Count(lesson => lesson.Status == LessonStatus.Published && lesson.GradeLevelId == kid.GradeLevelId
+                    && (lesson.OwnerParentId == null || lesson.ShareStatus == LessonAccess.Approved || lesson.OwnerParentId == kid.ParentId)),
                 Done = subject.Lessons.Count(lesson => lesson.Status == LessonStatus.Published && lesson.GradeLevelId == kid.GradeLevelId
+                    && (lesson.OwnerParentId == null || lesson.ShareStatus == LessonAccess.Approved || lesson.OwnerParentId == kid.ParentId)
                     && lesson.LessonActivities.Any(item => item.ChildProfileId == kid.Id && item.Status == "Completed"))
             }).ToListAsync(cancellationToken);
         return rows.Select(row =>

@@ -1,0 +1,49 @@
+@model CommunityQueueViewModel
+@{
+    ViewData["Title"] = """Bài cộng đồng""";
+    ViewData["Page"] = "admin-community-sql";
+    ViewData["Nav"] = "community";
+    ViewData["Crumb"] = Html.Raw("""Quản trị · Nội dung""");
+    ViewData["Heading"] = """Bài cộng đồng""";
+    ViewData["Sub"] = """Bài phụ huynh tự soạn và gửi chia sẻ. Duyệt xong, bài hiện trong Thư viện của mọi gia đình với tên người đóng góp.""";
+    int Count(string status) => Model.Counts.TryGetValue(status, out var count) ? count : 0;
+}
+@section Actions {
+<div class="sl-row" style="gap:8px;flex-wrap:wrap">
+    @foreach (var (status, label) in new[] { (LessonAccess.Pending, "Chờ duyệt"), (LessonAccess.Approved, "Đã duyệt"), (LessonAccess.Rejected, "Từ chối / đã gỡ") })
+    {
+        <a class="sl-btn sl-btn-sm @(Model.Status == status ? "sl-btn-p" : "")" asp-action="Index" asp-route-status="@status">@label (@Count(status))</a>
+    }
+</div>
+}
+@if (TempData["Info"] is string info)
+{
+    <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@error</div>
+}
+<div class="sl-card" style="padding:6px 0;overflow-x:auto">
+    <table class="tbl">
+        <thead><tr><th>Bài</th><th>Người đóng góp</th><th>Nội dung</th><th>Câu hỏi</th><th>Gia đình khác đã học</th><th>Gửi lúc</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td><span class="b">@row.Title</span><div class="muted" style="font-size:12px">@row.Subject · Lớp @row.Grade@(row.ShareNote is null ? "" : " · " + row.ShareNote)</div></td>
+                    <td>@row.Author</td>
+                    <td>@row.Contents</td>
+                    <td>@row.Questions</td>
+                    <td>@row.Users</td>
+                    <td class="muted">@row.SharedAt?.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                    <td><a class="sl-btn sl-btn-sm @(row.ShareStatus == LessonAccess.Pending ? "sl-btn-p" : "")" asp-action="Preview" asp-route-id="@row.Id">@(row.ShareStatus == LessonAccess.Pending ? "Xem và duyệt" : "Xem")</a></td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">Không có bài nào.</div></td></tr>
+            }
+        </tbody>
+    </table>
+</div>

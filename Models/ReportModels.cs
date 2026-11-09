@@ -48,6 +48,8 @@ public class AdminDashboardViewModel
     public int PendingVideos { get; init; }
     public int PendingQuestions { get; init; }
     public int PendingDataRequests { get; init; }
+    public int PendingCommunity { get; init; }
+    public int OpenLessonRequests { get; init; }
     public int FailedLogins24h { get; init; }
 }
 
