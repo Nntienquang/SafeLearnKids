@@ -173,7 +173,11 @@ public class PinViewModel
     public DateTime? UpdatedAt { get; init; }
     public bool ChildMode { get; init; }
     public string? ChildName { get; init; }
+    // US-08: each child's own PIN for the "who is learning" screen.
+    public IReadOnlyList<ChildPinRow> Children { get; init; } = [];
 }
+
+public record ChildPinRow(int Id, string Name, bool HasPin, DateTime? ChangedAt, int? LockedMinutes);
 
 public class PinForm
 {
@@ -255,6 +259,8 @@ public class PrivacyViewModel
     public IReadOnlyList<KidChoice> Children { get; init; } = [];
     public IReadOnlyList<DataRequestRow> Requests { get; init; } = [];
     public IReadOnlyList<ConsentRow> Consents { get; init; } = [];
+    // US-10: when each child's data-processing consent was given (missing = not given or withdrawn).
+    public IReadOnlyDictionary<int, DateTime> ChildConsents { get; init; } = new Dictionary<int, DateTime>();
 }
 
 public class AdminDataRequestsViewModel

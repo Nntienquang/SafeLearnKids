@@ -16,6 +16,9 @@ public class ChildProfileInput
     public int? BirthYear { get; set; }
 
     public List<string> Subjects { get; set; } = [];
+
+    // US-10: required when a profile is created; ignored on later edits (consent is managed on the privacy page).
+    public bool Consent { get; set; }
 }
 
 // Matches the child shape store.js keeps, so demo pages read SQL profiles unchanged.

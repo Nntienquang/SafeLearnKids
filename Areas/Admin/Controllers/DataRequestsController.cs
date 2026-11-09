@@ -59,7 +59,11 @@ public class DataRequestsController(UserManager<ApplicationUser> users, AccountA
             var child = request.ChildProfileId is { } childId
                 ? await db.ChildProfiles.FirstOrDefaultAsync(item => item.Id == childId && item.ParentId == request.ParentId, cancellationToken)
                 : null;
-            if (child is not null) db.ChildProfiles.Remove(child);
+            if (child is not null)
+            {
+                db.UserConsents.RemoveRange(db.UserConsents.Where(item => item.ChildProfileId == child.Id && item.UserId == request.ParentId));
+                db.ChildProfiles.Remove(child);
+            }
             request.Status = DataRequestStatus.Done;
             request.DecisionNote = note ?? "Đã xóa hồ sơ và toàn bộ dữ liệu học của bé.";
         }

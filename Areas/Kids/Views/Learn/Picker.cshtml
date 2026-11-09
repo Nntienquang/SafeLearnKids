@@ -1,28 +1,56 @@
-@model IReadOnlyList<KidChoice>
+@model KidPickerViewModel
 @{
     ViewData["Title"] = """Ai đang học?""";
     ViewData["Page"] = "kids-picker";
     ViewData["NoTop"] = true;
     string[][] palette = [["#6A4CFF", "#FF7AB6"], ["#22C55E", "#38BDF8"], ["#F59E0B", "#FB7185"], ["#14B8A6", "#6A4CFF"]];
 }
-<main style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;padding:40px;background:radial-gradient(circle at 20% 10%,var(--primary-soft),transparent 55%)">
+<main style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;padding:40px 16px;background:radial-gradient(circle at 20% 10%,var(--primary-soft),transparent 55%)">
 <div class="brand-mark" style="width:64px;height:64px;border-radius:22px"><i class="ic ic-grad ic-lg"></i></div>
-<h1 class="kf" style="font-size:48px;text-align:center">Hôm nay ai học nào?</h1>
+<h1 class="kf" style="font-size:clamp(32px,7vw,48px);text-align:center">Hôm nay ai học nào?</h1>
+@if (Model.Error is not null)
+{
+    <div class="banner t-r" role="alert" style="font-weight:700;max-width:560px">@Model.Error</div>
+}
 <div style="display:flex;flex-wrap:wrap;gap:24px;justify-content:center">
-    @for (var i = 0; i < Model.Count; i++)
+    @for (var i = 0; i < Model.Kids.Count; i++)
     {
-        var kid = Model[i];
+        var kid = Model.Kids[i];
         var c = palette[i % palette.Length];
-        <form asp-action="Choose" asp-route-id="@kid.Id" method="post">
-            <button type="submit" class="k-card" data-c="@kid.Id" style="width:230px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;font:inherit;color:inherit">
+        var hasPin = Model.WithPin.Contains(kid.Id);
+        var consented = Model.Consented.Contains(kid.Id);
+        if (!consented)
+        {
+            <div class="k-card" data-locked="@kid.Id" style="width:230px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;opacity:.6" aria-disabled="true">
                 <span class="av" style="width:112px;height:112px;font-size:44px;background:linear-gradient(135deg,@c[0],@c[1])">@kid.Init</span>
                 <span class="kf" style="font-size:28px">@kid.Name</span>
-                <span class="k-note">Lớp @kid.Grade</span>
-            </button>
-        </form>
+                <span class="k-note"><i class="ic ic-lock"></i> Ba mẹ cần đồng ý chính sách dữ liệu trước</span>
+            </div>
+        }
+        else if (hasPin && Model.Ask == kid.Id)
+        {
+            <form asp-action="Choose" asp-route-id="@kid.Id" method="post" class="k-card" data-pin-for="@kid.Id" style="width:260px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px">
+                <span class="av" style="width:88px;height:88px;font-size:36px;background:linear-gradient(135deg,@c[0],@c[1])">@kid.Init</span>
+                <label class="kf" style="font-size:24px" for="kid-pin">@kid.Name, nhập mã PIN của con</label>
+                <input class="inp" id="kid-pin" name="pin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" autocomplete="off" required autofocus
+                       style="width:150px;text-align:center;font-size:26px;letter-spacing:.4em" />
+                <button class="k-btn" type="submit" style="justify-content:center;width:100%"><i class="ic ic-arrowr"></i>Vào học</button>
+                <a class="k-note" href="/kids-picker">Chọn bạn khác</a>
+            </form>
+        }
+        else
+        {
+            <form asp-action="Choose" asp-route-id="@kid.Id" method="post">
+                <button type="submit" class="k-card" data-c="@kid.Id" style="width:230px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;font:inherit;color:inherit">
+                    <span class="av" style="width:112px;height:112px;font-size:44px;background:linear-gradient(135deg,@c[0],@c[1])">@kid.Init</span>
+                    <span class="kf" style="font-size:28px">@kid.Name</span>
+                    <span class="k-note">Lớp @kid.Grade@(hasPin ? " · có mã PIN" : "")</span>
+                </button>
+            </form>
+        }
     }
 </div>
-@if (Model.Count == 0)
+@if (Model.Kids.Count == 0)
 {
     <div class="empty">Chưa có hồ sơ bé. Ba mẹ hãy tạo hồ sơ trước nhé.</div>
 }

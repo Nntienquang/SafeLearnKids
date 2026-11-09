@@ -5,11 +5,15 @@
     ViewData["Nav"] = "pin";
     ViewData["Crumb"] = Html.Raw("""Phụ huynh · Bảo vệ""");
     ViewData["Heading"] = """Mã PIN và chế độ trẻ""";
-    ViewData["Sub"] = """PIN giúp bé không tự thoát chế độ học hoặc vào trang của ba mẹ (US-50).""";
+    ViewData["Sub"] = """PIN của ba mẹ giữ bé trong chế độ học (US-50). PIN riêng của từng bé giữ hồ sơ của bé cho riêng bé (US-08).""";
 }
 @if (TempData["Info"] is string info)
 {
     <div class="banner t-g" role="status" style="margin-bottom:16px">@info</div>
+}
+@if (TempData["ChildPinError"] is string childPinError)
+{
+    <div class="banner t-r" role="alert" style="margin-bottom:16px">@childPinError</div>
 }
 <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
     <form method="post" asp-action="Save" class="sl-card acc-form" style="flex:1 1 420px;min-width:0">
@@ -47,3 +51,31 @@
         </ul>
     </div>
 </div>
+
+@if (Model.Children.Count > 0)
+{
+    <div class="sl-card" id="child-pins" style="margin-top:16px">
+        <div class="card-t">PIN riêng của từng bé</div>
+        <p class="muted" style="margin:4px 0 0;font-size:13px">Không bắt buộc. Bé có PIN phải nhập đúng PIN khi chọn hồ sơ ở màn hình "Hôm nay ai học nào?", nên anh chị em không vào nhầm hồ sơ của nhau. Sai 5 lần thì hồ sơ của bé khóa 5 phút.</p>
+        @foreach (var child in Model.Children)
+        {
+            <div class="sl-row" style="gap:12px;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--line);margin-top:12px;align-items:flex-end">
+                <div style="flex:1 1 180px;min-width:0">
+                    <div class="b">@child.Name</div>
+                    <div class="muted" style="font-size:12.5px">@(child.HasPin ? $"Có PIN · đặt lúc {child.ChangedAt?.ToLocalTime():dd/MM/yyyy HH:mm}" : "Chưa có PIN: bé vào học không cần PIN")@(child.LockedMinutes is { } minutes ? $" · đang khóa {minutes} phút vì nhập sai nhiều lần" : "")</div>
+                </div>
+                <form method="post" asp-action="SaveChild" asp-route-id="@child.Id" class="sl-row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+                    <div class="field" style="width:110px"><label class="lab" for="cp-@child.Id">PIN mới</label><input class="inp" id="cp-@child.Id" name="pin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" autocomplete="new-password" required /></div>
+                    <div class="field" style="width:110px"><label class="lab" for="cpc-@child.Id">Nhập lại</label><input class="inp" id="cpc-@child.Id" name="confirmPin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" autocomplete="new-password" required /></div>
+                    <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-key"></i>@(child.HasPin ? "Đổi PIN" : "Đặt PIN")</button>
+                </form>
+                @if (child.HasPin)
+                {
+                    <form method="post" asp-action="RemoveChild" asp-route-id="@child.Id" data-confirm="Bỏ mã PIN của @child.Name?" data-text="Bé sẽ vào học không cần nhập PIN." data-ok-label="Bỏ PIN">
+                        <button class="sl-btn" type="submit">Bỏ PIN</button>
+                    </form>
+                }
+            </div>
+        }
+    </div>
+}

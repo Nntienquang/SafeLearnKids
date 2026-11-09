@@ -31,9 +31,45 @@ public class PrivacyController(KidContext kids, AccountActivityLog activity, ISe
                 .ToListAsync(cancellationToken),
             Consents = await db.UserConsents.AsNoTracking().Where(item => item.UserId == ParentId).OrderByDescending(item => item.DecidedAt)
                 .Select(item => new ConsentRow(item.ConsentType, item.Version, item.Decision, item.DecidedAt, db.ChildProfiles.Where(child => child.Id == item.ChildProfileId).Select(child => child.DisplayName).FirstOrDefault()))
-                .ToListAsync(cancellationToken)
+                .ToListAsync(cancellationToken),
+            ChildConsents = await ChildConsent.GivenAsync(db, ParentId, cancellationToken)
         });
     }
+
+    // US-10: agree (again) to processing one child's learning data.
+    [HttpPost("privacy/{child:int}/consent")]
+    [EnableRateLimiting("account")]
+    public async Task<IActionResult> Consent(int child, [FromForm] bool agree, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        var name = await db.ChildProfiles.Where(item => item.Id == child && item.ParentId == ParentId && item.IsActive).Select(item => item.DisplayName).FirstOrDefaultAsync(cancellationToken);
+        if (name is null) return NotFound();
+        if (!agree)
+        {
+            TempData["Error"] = "Đánh dấu ô đồng ý để xác nhận.";
+            return RedirectToAction(nameof(Index));
+        }
+        await ChildConsent.GrantAsync(db, ParentId, child, IpAddress, cancellationToken);
+        await activity.ContentActionAsync(ParentId, "ChildProfile", child, "ChildConsentAccepted", $"{ChildConsent.Type} {ChildConsent.Version}");
+        TempData["Info"] = $"Đã ghi nhận sự đồng ý cho {name}. Bé có thể vào học.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // US-10: withdraw consent. The child is locked out of child mode at once; the data stays until the parent asks to delete it.
+    [HttpPost("privacy/{child:int}/consent/revoke")]
+    [EnableRateLimiting("account")]
+    public async Task<IActionResult> RevokeConsent(int child, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        var name = await db.ChildProfiles.Where(item => item.Id == child && item.ParentId == ParentId && item.IsActive).Select(item => item.DisplayName).FirstOrDefaultAsync(cancellationToken);
+        if (name is null) return NotFound();
+        if (await ChildConsent.RevokeAsync(db, ParentId, child, IpAddress, cancellationToken))
+            await activity.ContentActionAsync(ParentId, "ChildProfile", child, "ChildConsentRevoked", $"{ChildConsent.Type} {ChildConsent.Version}");
+        TempData["Info"] = $"Đã rút sự đồng ý cho {name}. Bé không vào học được cho tới khi ba mẹ đồng ý lại. Muốn xóa hẳn dữ liệu, hãy gửi yêu cầu xóa bên dưới.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    private string? IpAddress => HttpContext.Connection.RemoteIpAddress?.ToString() is { Length: <= 45 } ip ? ip : null;
 
     [HttpPost("privacy/{child:int}/export")]
     [EnableRateLimiting("account")]

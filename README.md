@@ -220,6 +220,24 @@ Kiểm thử: `py scripts\smoke-family.py` sau khi build.
 - Có nút phóng to, thu nhỏ và toàn màn hình. Nếu trình duyệt không chạy được PDF.js, trang hiện PDF bằng khung nhúng.
 - File trong `/uploads/lessons` chỉ tải được khi đã đăng nhập.
 
+## PIN riêng của bé và đồng ý xử lý dữ liệu (US-08, US-10)
+
+- **US-08, PIN của từng bé** (không bắt buộc):
+  - Ba mẹ đặt, đổi hoặc bỏ PIN 4 số cho từng bé ở `/pin`, mục "PIN riêng của từng bé".
+  - Ở màn hình "Hôm nay ai học nào?", bé có PIN phải nhập đúng PIN mới vào được, nên anh chị em không vào nhầm hồ sơ của nhau.
+  - Nhập sai 5 lần thì hồ sơ của bé đó khóa 5 phút; các bé khác không bị ảnh hưởng.
+  - PIN được băm, lưu ở `dbo.ChildProfiles` (`PinHash`, `PinFailedAttempts`, `PinLockedUntil`).
+  - Bé không có email hay mật khẩu riêng: "tài khoản của trẻ" là hồ sơ bé có PIN riêng, học trên phiên đăng nhập của ba mẹ.
+- **US-10, đồng ý xử lý dữ liệu theo từng bé:**
+  - Khi tạo hồ sơ, ba mẹ phải tự tick ô đồng ý Chính sách dữ liệu trẻ em (ô không tick sẵn). Sự đồng ý lưu ở `dbo.UserConsents`, loại `ChildDataPolicy`, bản `v1.0`, kèm thời điểm và IP.
+  - Ở `/privacy`, ba mẹ xem trạng thái của từng bé, **rút đồng ý** hoặc đồng ý lại. Mỗi lần thay đổi được ghi vào nhật ký thao tác.
+  - Bé chưa có hoặc đã bị rút đồng ý thì không vào học được: màn hình chọn bé khóa hồ sơ đó, và nếu bé đang học thì bị đưa về màn hình chọn bé. Trang của ba mẹ vẫn khóa cho tới khi nhập PIN hoặc mật khẩu.
+  - Xóa hồ sơ bé thì xóa luôn bản ghi đồng ý của bé.
+- **Lưu ý khi cập nhật:** các hồ sơ bé tạo trước bản này chưa có bản ghi đồng ý. Ba mẹ vào `/privacy` bấm "Đồng ý" một lần cho từng bé; trang Tổng quan có nhắc việc này.
+- Form có `data-confirm` giờ hỏi xác nhận trên mọi trang. Trước đây chỉ trang admin có hộp xác nhận.
+
+Kiểm thử: `py scripts\smoke-child-access.py`.
+
 ## Trang tổng quan phụ huynh
 
 `/parent-home` lấy toàn bộ số liệu thật từ SQL cho bé đang chọn (`?child=`):

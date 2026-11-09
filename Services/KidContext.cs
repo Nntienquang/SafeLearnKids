@@ -23,6 +23,15 @@ public sealed class KidContext(IHttpContextAccessor accessor, IServiceProvider s
         return await FindAsync(db, parentId, id, cancellationToken);
     }
 
+    // True while the browser is in child mode for one of this parent's children, even when that child's consent was
+    // withdrawn meanwhile: the parent pages must stay locked until the parent PIN is typed (ChildModeFilter).
+    public async Task<bool> InChildModeAsync(CancellationToken cancellationToken)
+    {
+        if (Db is not { } db || ParentId is not { } parentId) return false;
+        if (!int.TryParse(Http.Request.Cookies[CookieName], NumberStyles.None, CultureInfo.InvariantCulture, out var id)) return false;
+        return await db.ChildProfiles.AnyAsync(child => child.Id == id && child.ParentId == parentId && child.IsActive, cancellationToken);
+    }
+
     public async Task<KidInfo?> ChooseAsync(int id, CancellationToken cancellationToken)
     {
         if (Db is not { } db || ParentId is not { } parentId) return null;
@@ -58,7 +67,9 @@ public sealed class KidContext(IHttpContextAccessor accessor, IServiceProvider s
 
     private static async Task<KidInfo?> FindAsync(SafeLearnDbContext db, string parentId, int id, CancellationToken cancellationToken)
     {
-        var row = await db.ChildProfiles.AsNoTracking().Where(child => child.Id == id && child.ParentId == parentId && child.IsActive)
+        // US-10: a child whose data-processing consent is missing or withdrawn cannot be in child mode.
+        var row = await db.ChildProfiles.AsNoTracking().Where(child => child.Id == id && child.ParentId == parentId && child.IsActive
+                && ChildConsent.Active(db, parentId).Any(item => item.ChildProfileId == child.Id))
             .Select(child => new
             {
                 child.Id, child.DisplayName, child.GradeLevel.Level, child.GradeLevelId,

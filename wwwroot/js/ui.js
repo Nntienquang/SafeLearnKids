@@ -126,6 +126,9 @@ function enhance(){
   $$('i.ic').forEach(function(i){i.setAttribute('aria-hidden','true');});
 }
 document.addEventListener('DOMContentLoaded',function(){});
+/* Forms marked data-confirm ask before posting, on every page (admin, parent and child). */
+document.addEventListener('submit',function(e){var f=e.target,sub=e.submitter;if(!f.dataset||!f.dataset.confirm||f.dataset.confirmed)return;e.preventDefault();
+  UI.confirm({title:f.dataset.confirm,text:f.dataset.text,ok:f.dataset.okLabel,danger:f.dataset.danger==='true',icon:'lock'}).then(function(ok){if(!ok)return;f.dataset.confirmed='1';/* requestSubmit keeps the clicked button's name and value (for example decision=approve). */if(sub&&f.requestSubmit)f.requestSubmit(sub);else f.submit();});});
 UI.ready=function(fn){if(document.readyState!=='loading')fn();else document.addEventListener('DOMContentLoaded',fn);};
 UI.ready(function(){enhance();UI.theme();document.dispatchEvent(new CustomEvent('kl:ui'));});
 matchMedia('(prefers-color-scheme:dark)').addEventListener&&matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(){UI.theme();});

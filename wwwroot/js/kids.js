@@ -10,7 +10,7 @@ function thumb(c,ic,w,h){return '<div style="width:'+w+'px;height:'+h+'px;flex:0
 function subjStat(c,sj){var ls=S.LESSONS.filter(function(l){return l.subj===sj;});return {d:ls.filter(function(l){return S.prog(c.id,l.id).done;}).length,t:ls.length};}
 /* Minutes left come from the server; the local store is only a fallback for the demo pages. */
 function left(){var c=kc();return window.SL_KID_LEFT!=null?window.SL_KID_LEFT:c?S.remaining(c):0;}
-function paintTop(){var c=kc();if(!c)return;var y=$('.k-top .k-pill.y');if(y)y.innerHTML='<i class="ic ic-clock"></i>Còn '+left()+' phút';
+function paintTop(){if($('.k-top[data-server]')){/* name is server-rendered; keep the live minutes from the heartbeat */var t=$('.k-top .k-pill.y');if(t&&window.SL_KID_LEFT!=null)t.innerHTML='<i class="ic ic-clock"></i>Còn '+window.SL_KID_LEFT+' phút';return;}var c=kc();if(!c)return;var y=$('.k-top .k-pill.y');if(y)y.innerHTML='<i class="ic ic-clock"></i>Còn '+left()+' phút';
   var p=$('.k-top .k-pill.p');if(p)p.innerHTML='<span class="av av-s" style="background:linear-gradient(135deg,'+c.c[0]+','+c.c[1]+')">'+esc(c.init)+'</span>'+esc(c.name);}
 document.addEventListener('kl:ui',function(){
 var P=UI.PAGE,q=new URLSearchParams(location.search);

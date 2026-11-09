@@ -5,7 +5,7 @@
     ViewData["Nav"] = "privacy";
     ViewData["Crumb"] = Html.Raw("""Phụ huynh · Tài khoản""");
     ViewData["Heading"] = """Dữ liệu và quyền riêng tư""";
-    ViewData["Sub"] = """Ba mẹ kiểm soát dữ liệu của bé: tải về hoặc yêu cầu xóa (US-52).""";
+    ViewData["Sub"] = """Ba mẹ kiểm soát dữ liệu của bé: đồng ý hoặc rút đồng ý xử lý dữ liệu (US-10), tải về hoặc yêu cầu xóa (US-52).""";
     var pending = Model.Requests.Where(item => item.Type == "Delete" && item.Status is DataRequestStatus.Pending or DataRequestStatus.Processing).Select(item => item.ChildId).ToHashSet();
 }
 @if (TempData["Info"] is string info)
@@ -26,6 +26,24 @@
                     <div class="grow"><div class="card-t">@child.Name</div><div class="muted" style="font-size:12.5px">Lớp @child.Grade</div></div>
                     <form asp-action="Export" asp-route-child="@child.Id" method="post"><button class="sl-btn" type="submit"><i class="ic ic-download"></i>Tải dữ liệu (JSON)</button></form>
                 </div>
+                @if (Model.ChildConsents.TryGetValue(child.Id, out var consentedAt))
+                {
+                    <div class="sl-row" style="gap:10px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border-radius:14px;background:var(--surface-2)" data-consent="given">
+                        <span class="chip t-g"><i class="ic ic-check"></i>Đã đồng ý xử lý dữ liệu</span>
+                        <span class="muted grow" style="font-size:12.5px">Từ @consentedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · Chính sách bản @ChildConsent.Version</span>
+                        <form asp-action="RevokeConsent" asp-route-child="@child.Id" method="post" data-confirm="Rút sự đồng ý cho @child.Name?" data-text="Bé sẽ không vào học được cho tới khi ba mẹ đồng ý lại. Dữ liệu đã có vẫn được giữ cho tới khi ba mẹ yêu cầu xóa." data-ok-label="Rút đồng ý">
+                            <button class="sl-btn sl-btn-sm" type="submit">Rút đồng ý</button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <form asp-action="Consent" asp-route-child="@child.Id" method="post" class="banner t-a" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-start" data-consent="missing">
+                        <div class="b"><i class="ic ic-alert"></i> Chưa có sự đồng ý xử lý dữ liệu: @child.Name chưa vào học được.</div>
+                        <label class="sl-row" style="gap:8px;align-items:flex-start;font-size:13.5px"><input type="checkbox" name="agree" value="true" class="chk" required style="margin-top:3px" /><span>Tôi đồng ý cho SafeLearn Kids xử lý dữ liệu học tập của @child.Name theo <a href="/child-data-policy" target="_blank" rel="noopener">Chính sách dữ liệu trẻ em</a>.</span></label>
+                        <button class="sl-btn sl-btn-sm sl-btn-p" type="submit">Đồng ý</button>
+                    </form>
+                }
                 @if (pending.Contains(child.Id))
                 {
                     <div class="banner t-a" style="margin-top:12px"><i class="ic ic-clock"></i>Đang chờ quản trị viên xóa dữ liệu của bé.</div>

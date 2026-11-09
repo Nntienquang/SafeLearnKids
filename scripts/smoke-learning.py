@@ -54,7 +54,7 @@ def form(client, page, path, pairs=()):
 def add_child(client, name, grade):
     body = client.request("/profiles", raw=True)[2]
     token = json.loads(re.search(r'window\.SL_CSRF = ("[^"]+")', body).group(1))
-    request = urllib.request.Request(client.url + "/children", data=json.dumps({"name": name, "cls": grade, "subjects": [KEY]}).encode(),
+    request = urllib.request.Request(client.url + "/children", data=json.dumps({"name": name, "cls": grade, "subjects": [KEY], "consent": True}).encode(),
                                      headers={"Content-Type": "application/json", "RequestVerificationToken": token})
     with client.opener.open(request, timeout=10) as response:
         return json.loads(response.read())["id"]

@@ -114,7 +114,7 @@ def child_post(client, path, values=None, csrf=True):
 
 
 def child_values(name, **extra):
-    return {"name": name, "cls": 2, "subjects": ["toan", "tiengviet"], **extra}
+    return {"name": name, "cls": 2, "subjects": ["toan", "tiengviet"], "consent": True, **extra}
 
 
 def child_id(parent, name):
@@ -163,7 +163,7 @@ def children_checks(admin, url, directory, parent_id, other_id):
     check(child_post(other, f"{path}/delete")[0] == 404 and child_id(parent_id, CHILD) == created, "another parent cannot delete the child")
     check(child_post(parent, f"{path}/delete")[0] == 409 and child_id(parent_id, CHILD) == created, "the last profile is kept")
     sql(f"INSERT dbo.ChildSubjects(ChildProfileId, SubjectId) SELECT {created}, Id FROM dbo.Subjects WHERE Code=N'LIFESKILL';")
-    status, _ = child_post(parent, path, {"name": "Ban moi", "cls": 4, "birthYear": 2019, "subjects": ["tienganh"]})
+    status, _ = child_post(parent, path, {"name": "Ban moi", "cls": 4, "birthYear": 2019, "subjects": ["tienganh"], "consent": True})
     check(status == 200 and child_id(parent_id, "Ban moi") == created
           and sql(f"SELECT g.Level FROM dbo.ChildProfiles c JOIN dbo.GradeLevels g ON g.Id=c.GradeLevelId WHERE c.Id={created};") == "4", "Parent edits the child")
     codes = sql(f"SELECT s.Code FROM dbo.ChildSubjects cs JOIN dbo.Subjects s ON s.Id=cs.SubjectId WHERE cs.ChildProfileId={created} ORDER BY s.Code;").split()
