@@ -34,5 +34,12 @@
                 <button class="sl-btn sl-btn-sm sl-btn-d" type="submit">Chặn</button>
             </form>
         }
+        @if (Model.PublishedLessons == 0)
+        {
+            <form asp-action="DeleteVideo" asp-route-id="@Model.Id" method="post" data-confirm="Xóa video này?" data-text="Nếu video còn trên kênh, lần đồng bộ sau sẽ thêm lại ở trạng thái chờ duyệt. Muốn loại hẳn thì hãy chặn." data-ok-label="Xóa" data-danger="true">
+                <input type="hidden" name="back" value="@back" />
+                <button class="sl-btn sl-btn-sm" type="submit" aria-label="Xóa video @Model.Title" title="Xóa video"><i class="ic ic-trash"></i></button>
+            </form>
+        }
     </div>
 </div>

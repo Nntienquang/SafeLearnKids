@@ -218,19 +218,71 @@ public class CurationController(
     }
 
     [HttpPost("admin-sources/{id:int}/delete")]
-    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(int id, [FromForm] bool videos, CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
         var source = await db.ContentSources.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (source is null) return NotFound();
         if (source.Status == SourceStatus.Approved) return Refuse(id, "Không xóa nguồn đang được duyệt. Hãy tạm ngưng nguồn.");
-        // Family choices and other sources keep the videos; only the links of this source go.
+        // Chosen before the links go: once the source is gone, nothing tells which videos came from it.
+        var removable = videos ? await OnlyFrom(db, id, VideoStatus.Pending).ToListAsync(cancellationToken) : [];
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // Family choices go with the source. Videos stay unless the admin asked to remove the unused pending ones.
         await db.ParentSources.Where(link => link.SourceId == id).ExecuteDeleteAsync(cancellationToken);
+        var deleted = await DeleteVideosAsync(db, removable, cancellationToken);
         db.ContentSources.Remove(source);
         if (!await SaveAsync(db, cancellationToken)) return Refuse(id, SaveFailed);
-        await activity.ContentActionAsync(ActorId, "ContentSource", id, "DeleteSource", source.Name);
-        TempData["Info"] = "Đã xóa nguồn.";
+        await transaction.CommitAsync(cancellationToken);
+        await activity.ContentActionAsync(ActorId, "ContentSource", id, "DeleteSource", source.Name + (deleted > 0 ? $" · xóa {deleted} video" : ""));
+        TempData["Info"] = deleted > 0 ? $"Đã xóa nguồn và {deleted} video chờ duyệt của nguồn." : "Đã xóa nguồn.";
         return RedirectToAction(nameof(Index));
+    }
+
+    // Clears a source's review queue: pending videos that came only from this source and are not used anywhere.
+    // A later sync finds them again as pending; blocking is what keeps a video out for good.
+    [HttpPost("admin-sources/{id:int}/delete-videos")]
+    public async Task<IActionResult> DeleteSourceVideos(int id, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        var source = await db.ContentSources.AsNoTracking().FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (source is null) return NotFound();
+        var removable = await OnlyFrom(db, id, VideoStatus.Pending).ToListAsync(cancellationToken);
+        if (removable.Count == 0) return Refuse(id, "Không có video chờ duyệt nào xóa được (video thuộc nguồn khác hoặc đã dùng trong bài học được giữ lại).");
+        int deleted;
+        try
+        {
+            deleted = await DeleteVideosAsync(db, removable, cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Refuse(id, SaveFailed);
+        }
+        await activity.ContentActionAsync(ActorId, "ContentSource", id, "DeleteSourceVideos", $"{deleted} video chờ duyệt");
+        TempData["Info"] = $"Đã xóa {deleted} video chờ duyệt. Lần đồng bộ sau sẽ thêm lại video còn trên kênh; muốn loại hẳn thì hãy chặn.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost("admin-videos/{id:int}/delete")]
+    public async Task<IActionResult> DeleteVideo(int id, [FromForm] string? back, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        var target = Url.IsLocalUrl(back) ? back! : Url.Action(nameof(Videos))!;
+        var video = await db.SourceVideos.AsNoTracking().Where(item => item.Id == id)
+            .Select(item => new { item.Title, Used = item.LessonContents.Any() || item.Questions.Any() || item.ContentReports.Any() })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (video is null) return NotFound();
+        if (video.Used) return RefuseVideo(target, "Video đang dùng trong bài học, câu hỏi hoặc báo cáo nên không xóa được. Hãy chặn video.");
+        try
+        {
+            await DeleteVideosAsync(db, [id], cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return RefuseVideo(target, SaveFailed);
+        }
+        await activity.ContentActionAsync(ActorId, "SourceVideo", id, "DeleteVideo", video.Title);
+        TempData["Info"] = "Đã xóa video.";
+        return Redirect(target);
     }
 
     [HttpGet("admin-videos")]
@@ -363,6 +415,27 @@ public class CurationController(
         query.Select(video => new VideoRow(video.Id, video.VideoId, video.Title, video.Status, video.ThumbnailUrl, video.PublishedAt, video.ReviewNote,
             video.SourceVideoSources.Select(link => link.Source.Name).ToList(),
             video.LessonContents.Count(content => content.Lesson.Status == LessonStatus.Published)));
+
+    // Videos of one status that came only from this source and that no lesson, question or report points at.
+    private static IQueryable<int> OnlyFrom(SafeLearnDbContext db, int sourceId, string status) =>
+        db.SourceVideos.Where(video => video.Status == status
+                && video.SourceVideoSources.Any(link => link.SourceId == sourceId)
+                && video.SourceVideoSources.All(link => link.SourceId == sourceId)
+                && !video.LessonContents.Any() && !video.Questions.Any() && !video.ContentReports.Any())
+            .Select(video => video.Id);
+
+    // Links first, then the videos, in batches so a big channel stays under SQL Server's parameter limit.
+    private static async Task<int> DeleteVideosAsync(SafeLearnDbContext db, List<int> ids, CancellationToken cancellationToken)
+    {
+        var deleted = 0;
+        foreach (var chunk in ids.Chunk(1000))
+        {
+            await db.SourceVideoSources.Where(link => chunk.Contains(link.SourceVideoId)).ExecuteDeleteAsync(cancellationToken);
+            deleted += await db.SourceVideos.Where(video => chunk.Contains(video.Id)
+                && !video.LessonContents.Any() && !video.Questions.Any() && !video.ContentReports.Any()).ExecuteDeleteAsync(cancellationToken);
+        }
+        return deleted;
+    }
 
     private static async Task<bool> SaveAsync(SafeLearnDbContext db, CancellationToken cancellationToken)
     {

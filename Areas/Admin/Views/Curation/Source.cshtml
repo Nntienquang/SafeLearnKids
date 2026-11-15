@@ -97,7 +97,18 @@
                 <div class="card-t">Xóa nguồn</div>
                 <p class="muted" style="margin:6px 0 12px;font-size:13px">Video đã đồng bộ được giữ lại nếu còn dùng trong bài học hoặc thuộc nguồn khác.</p>
                 <form asp-action="Delete" asp-route-id="@source.Id" method="post" data-confirm="Xóa nguồn @source.Name?" data-text="Lựa chọn chặn/cho phép của các gia đình với nguồn này cũng bị xóa." data-ok-label="Xóa nguồn" data-danger="true">
+                    <label class="sl-row" style="gap:8px;font-size:13px;margin-bottom:10px"><input type="checkbox" name="videos" value="true" checked />Xóa luôn video chờ duyệt chỉ thuộc nguồn này</label>
                     <button class="sl-btn sl-btn-d sl-btn-block" type="submit"><i class="ic ic-trash"></i>Xóa nguồn</button>
+                </form>
+            </div>
+        }
+        @if (source.PendingVideos > 0)
+        {
+            <div class="sl-card">
+                <div class="card-t">Xóa video chờ duyệt</div>
+                <p class="muted" style="margin:6px 0 12px;font-size:13px">Xóa @source.PendingVideos video chờ duyệt của nguồn, trừ video thuộc nguồn khác hoặc đã dùng trong bài học. Lần đồng bộ sau sẽ thêm lại video còn trên kênh; muốn loại hẳn thì hãy chặn.</p>
+                <form asp-action="DeleteSourceVideos" asp-route-id="@source.Id" method="post" data-confirm="Xóa video chờ duyệt của @source.Name?" data-text="Không hoàn tác được." data-ok-label="Xóa video" data-danger="true">
+                    <button class="sl-btn sl-btn-d sl-btn-block" type="submit"><i class="ic ic-trash"></i>Xóa video chờ duyệt</button>
                 </form>
             </div>
         }
