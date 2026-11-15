@@ -1,0 +1,4 @@
+# Shell scripts and the Caddyfile run inside Linux containers.
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+Dockerfile text eol=lf
