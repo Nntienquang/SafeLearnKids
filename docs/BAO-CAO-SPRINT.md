@@ -12,7 +12,7 @@ Mẹo đọc code nhanh:
 - `Program.cs`: đăng ký service, middleware bảo mật, giới hạn số lần thử, thứ tự xác thực.
 - `Data/SafeLearnDbContext.cs`: ánh xạ 56 bảng SQL (database có trước, code sinh từ DB).
 - `Models/Entities/*`: mỗi bảng một class.
-- `database/01-schema.sql`: toàn bộ schema.
+- `database/01-schema.sql`: toàn bộ schema. Giải thích từng bảng và trường: `docs/HOC-DATABASE.md`.
 - `Services/SchemaUpdater.cs`: tự thêm cột hoặc bảng mới khi app khởi động.
 - Layout: `Views/Shared/_ParentLayout.cshtml`, `_AdminLayout.cshtml`, `_KidsLayout.cshtml`.
 
