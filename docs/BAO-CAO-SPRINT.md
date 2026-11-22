@@ -2,6 +2,8 @@
 
 Mỗi sprint liệt kê: user story → file cần đọc (theo thứ tự **Controller → Service → View → Test**) → ý chính phải giải thích được → đường dẫn để demo.
 
+Cách dùng hệ thống, bấm nút nào và kịch bản test từng sprint: xem `docs/HUONG-DAN-TEST-CHUC-NANG.md`.
+
 Mẹo đọc code nhanh:
 - Mở controller, tìm `[HttpGet("...")]` để biết trang nằm ở địa chỉ nào.
 - Đi theo lời gọi sang Service để hiểu nghiệp vụ.
