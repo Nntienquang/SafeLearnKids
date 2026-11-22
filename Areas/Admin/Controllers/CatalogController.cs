@@ -116,6 +116,8 @@ public class CatalogController(
         model.Id = id;
         // The code is the key children's profiles and pages use, so it never changes.
         model.Code = subject.Code;
+        // The read-only code box is not posted, so drop the "required" error binding recorded for it.
+        ModelState.Remove(nameof(model.Code));
         model.Lessons = await db.Lessons.CountAsync(lesson => lesson.SubjectId == id, cancellationToken);
         await ValidateSubjectAsync(db, model, subject.Code, id, cancellationToken);
         var dropped = subject.SubjectGrades.Where(item => !model.Grades.Contains(item.GradeLevel.Level)).ToList();
