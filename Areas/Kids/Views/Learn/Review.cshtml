@@ -11,19 +11,49 @@
     <h1 class="kf grow" style="font-size:36px;margin:0">Ôn lại câu chưa đúng</h1>
 </div>
 <p class="k-note" style="margin:0">Đây là những câu lần gần nhất con chưa làm đúng. Con chọn lại đáp án để kiểm tra, rồi làm lại bài tập để xóa câu khỏi danh sách nhé.</p>
+@if (Model.Lessons.Count > 0)
+{
+    // Adaptive review: the lessons behind the wrong answers, most wrong first.
+    <section class="sl-col" style="gap:12px;max-width:960px;width:100%;align-self:center" data-review-lessons>
+        <h2 class="kf" style="font-size:24px;margin:0">Con nên học lại bài nào?</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+            @foreach (var lesson in Model.Lessons)
+            {
+                <a class="k-card sl-col" href="/kids-lesson?id=@lesson.LessonId" data-review-lesson="@lesson.LessonId" style="gap:6px;text-decoration:none;color:inherit">
+                    <span class="k-note">@lesson.Subject</span>
+                    <span class="kf" style="font-size:20px">@lesson.Title</span>
+                    <span class="k-note">@lesson.Wrong câu chưa đúng · bấm để học lại</span>
+                </a>
+            }
+        </div>
+    </section>
+}
 <div class="sl-col" style="gap:16px;max-width:960px;width:100%;align-self:center">
     @foreach (var question in Model.Questions)
     {
         var mine = checkedId == question.QuestionId;
         <article class="k-card" id="r@(question.QuestionId)" style="display:flex;flex-direction:column;gap:14px">
-            <span class="k-note">@question.Quiz · @question.Lesson</span>
+            <div class="sl-row" style="gap:10px;flex-wrap:wrap">
+                <span class="k-note grow">@question.Quiz · @question.Lesson</span>
+                <button type="button" class="k-tts" data-tts="#rq-@question.QuestionId, #ro-@question.QuestionId" hidden aria-pressed="false"><i class="ic ic-volume"></i>Đọc to</button>
+            </div>
             <div class="kf" style="font-size:24px" id="rq-@question.QuestionId">@question.Text</div>
             @if (mine)
             {
                 <div class="banner @(right ? "t-g" : "t-r")" role="status" style="font-weight:700"><i class="ic ic-@(right ? "checkc" : "x")"></i>@(right ? "Đúng rồi! " : "Chưa đúng, con thử lại nhé. ")@(right ? question.Explanation : "")</div>
             }
+            @if (question.KidExplanation is { Length: > 0 } another)
+            {
+                <details class="k-explain" data-kid-explanation open="@(mine && !right)">
+                    <summary class="b" style="cursor:pointer;font-size:18px">💡 Giải thích cách khác</summary>
+                    <div class="sl-row" style="gap:10px;align-items:flex-start;margin-top:10px">
+                        <p id="rk-@question.QuestionId" style="margin:0;font-size:18px;line-height:1.6;flex:1">@another</p>
+                        <button type="button" class="k-tts" data-tts="#rk-@question.QuestionId" hidden aria-pressed="false" aria-label="Đọc to lời giải thích"><i class="ic ic-volume"></i></button>
+                    </div>
+                </details>
+            }
             <form asp-action="CheckReview" asp-route-questionId="@question.QuestionId" method="post" class="sl-col" style="gap:12px">
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px" role="radiogroup" aria-labelledby="rq-@question.QuestionId">
+                <div id="ro-@question.QuestionId" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px" role="radiogroup" aria-labelledby="rq-@question.QuestionId">
                     @foreach (var option in question.Options)
                     {
                         <label class="k-opt" style="font-size:20px;min-height:60px">

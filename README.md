@@ -55,9 +55,13 @@ Thao tác quản trị ghi vào `dbo.AuditLogs`, đăng nhập ghi vào `dbo.Log
 
 ## Nguồn nội dung an toàn (Sprint 3)
 
-`/admin-curate` quản lý nguồn: dán liên kết danh sách phát (`list=...`), kênh dạng `youtube.com/channel/UC...` hoặc website (chỉ ghi nhận, không tải). Liên kết dạng `@tên-kênh` chưa hỗ trợ. Nguồn mới ở trạng thái chờ duyệt; Admin duyệt, từ chối (cần lý do) hoặc tạm ngưng (cần lý do). Đồng bộ lấy danh sách video mới vào `dbo.SourceVideos` ở trạng thái chờ duyệt; tiêu đề chứa từ khóa trong `dbo.BlockedKeywords` (từ khóa chung) bị chặn tự động. `/admin-videos` là hàng chờ duyệt/chặn từng video, và có ô **Thêm video lẻ** để thêm một video mà không cần thêm cả kênh. Ô này nhận link `watch?v=`, `youtu.be/`, `shorts/`, `embed/`, `live/` hoặc mã video. Có key thì lấy tiêu đề, kênh và thời lượng từ Data API; không có key thì lấy tiêu đề và kênh qua oEmbed công khai của YouTube. Video riêng tư, đã xóa hoặc không cho nhúng bị từ chối; tiêu đề chứa từ khóa bị chặn thì tự chặn. Video mới thêm ở trạng thái chờ duyệt, hoặc được duyệt ngay nếu Admin chọn "Duyệt luôn". Video lẻ không thuộc nguồn nào nên chỉ cần chính video được duyệt. Một video chỉ phát cho bé khi video đã duyệt và ít nhất một nguồn chứa nó đang được duyệt; tạm ngưng nguồn sẽ gỡ video khỏi thư viện và chặn xuất bản bài dùng video đó.
+`/admin-curate` quản lý nguồn: dán liên kết danh sách phát (`list=...`), kênh dạng `youtube.com/channel/UC...` hoặc website (chỉ ghi nhận, không tải). Liên kết dạng `@tên-kênh` chưa hỗ trợ. Nguồn mới ở trạng thái chờ duyệt; Admin duyệt, từ chối (cần lý do) hoặc tạm ngưng (cần lý do). Đồng bộ lấy danh sách video mới vào `dbo.SourceVideos` ở trạng thái chờ duyệt; tiêu đề chứa từ khóa trong `dbo.BlockedKeywords` (từ khóa chung) bị chặn tự động. Đồng bộ **chạy nền** (`Services/SourceSyncQueue.cs`): nút chỉ đánh dấu `ContentSources.SyncRequestedAt` và xếp vào hàng đợi, một tiến trình nền đồng bộ lần lượt từng nguồn rồi ghi `LastSyncedAt`, `LastSyncError`, `LastSyncResult`; trang nguồn hiện "Đang đồng bộ…" và tự tải lại; lệnh còn dở khi app dừng được chạy tiếp lúc khởi động. `/admin-videos` là hàng chờ duyệt/chặn từng video hoặc **hàng loạt** (tick nhiều video hoặc "Chọn cả trang", tối đa 200 video/lần, chặn phải có lý do), và có ô **Thêm video lẻ** để thêm một video mà không cần thêm cả kênh. Ô này nhận link `watch?v=`, `youtu.be/`, `shorts/`, `embed/`, `live/` hoặc mã video. Có key thì lấy tiêu đề, kênh và thời lượng từ Data API; không có key thì lấy tiêu đề và kênh qua oEmbed công khai của YouTube. Video riêng tư, đã xóa hoặc không cho nhúng bị từ chối; tiêu đề chứa từ khóa bị chặn thì tự chặn. Video mới thêm ở trạng thái chờ duyệt, hoặc được duyệt ngay nếu Admin chọn "Duyệt luôn". Video lẻ không thuộc nguồn nào nên chỉ cần chính video được duyệt. Một video chỉ phát cho bé khi video đã duyệt và ít nhất một nguồn chứa nó đang được duyệt; tạm ngưng nguồn sẽ gỡ video khỏi thư viện và chặn xuất bản bài dùng video đó.
 
-"Đánh giá tự động" ghi vào `dbo.CurationSuggestions` với `ModelName = rule-v1`: bộ quy tắc minh bạch dựa trên loại nguồn, từ khóa bị chặn, từ ngữ không phù hợp và tiêu đề video, giải thích từng điểm cộng/trừ. Đây không phải mô hình AI; quản trị viên quyết định, và quyết định đó đóng gợi ý là đồng ý hoặc không.
+"Đánh giá tự động" (US-22, `Services/SourceAssessor.cs`) ghi vào `dbo.CurationSuggestions`:
+- Bộ quy tắc minh bạch `rule-v1` luôn chạy: loại nguồn, từ khóa bị chặn, từ ngữ không phù hợp, tiêu đề video, giải thích từng điểm cộng/trừ.
+- Có `Ai:ApiKey` và nguồn đã có video: Claude (`Ai:Model`, mặc định `claude-opus-5-5`) đọc tên, mô tả, 50 tiêu đề gần nhất cùng kết quả bộ quy tắc, trả JSON theo schema (điểm 0–100, kết luận, các vấn đề như bạo lực/đáng sợ/quảng cáo, lý do kèm dẫn chứng). Server kiểm tra lại: kẹp điểm, chỉ giữ cờ hợp lệ, cắt độ dài; từ khóa bị chặn mà bộ quy tắc thấy thì điểm AI không được cao hơn điểm quy tắc. Tiêu đề được coi là dữ liệu, không phải chỉ dẫn. `ModelName` là model đã trả lời.
+- Không key, nguồn chưa có video, hoặc gọi AI lỗi: lưu kết quả bộ quy tắc và ghi rõ lý do.
+- Quản trị viên luôn là người quyết định; quyết định đó đóng gợi ý là đồng ý hoặc không.
 
 Phụ huynh ở `/sources` chặn hoặc cho phép lại từng nguồn đã duyệt cho riêng gia đình mình (`dbo.ParentSources`) và đề xuất nguồn mới (tối đa 5 đề xuất chờ duyệt mỗi gia đình), xem lý do nếu bị từ chối.
 
@@ -78,7 +82,7 @@ Bé không có tài khoản riêng: phụ huynh đăng nhập, bấm **Chế đ�
 - `/kids-lesson?id=` chia bài thành từng phần nội dung theo thứ tự; "Con xong phần này rồi" lưu tiến độ vào `dbo.LessonActivities`, lần sau học tiếp từ phần đang dở. Server tự đếm số phần, chỉ cho hoàn thành khi đã học hết; hoàn thành cũng đóng bài được giao. Thời gian học cộng mỗi 30 giây khi trang đang mở (mỗi lần tối đa 60 giây).
 - Yêu thích lưu ở `dbo.Favorites`. `/kids-search` chỉ tìm trong bài bé được mở, ghi `dbo.SearchLogs`; từ khóa bị chặn (chung hoặc của gia đình) không trả kết quả.
 
-Công tắc "Cho phép tìm kiếm" vẫn lưu ở trình duyệt (chưa có cột trong SQL). Giờ học ở Sprint 5, bài tập ở Sprint 6, huy hiệu ở Sprint 7. Kiểm thử: `py scripts\smoke-learning.py` sau khi build.
+Công tắc "Cho phép tìm kiếm" (sửa hồ sơ bé ở `/profiles`) lưu ở `dbo.ChildProfiles.AllowSearch`; khi tắt, server trả "Ba mẹ đã tắt tìm kiếm", không tìm và không ghi lịch sử. Giờ học ở Sprint 5, bài tập ở Sprint 6, huy hiệu ở Sprint 7. Kiểm thử: `py scripts\smoke-learning.py` sau khi build.
 
 ## Thời gian học và giám sát (Sprint 5)
 
@@ -102,10 +106,12 @@ Bé xin thêm 5/10/15/30 phút ở trang hết giờ (một yêu cầu chờ t�
   - Server chấm theo điểm từng câu trong `dbo.QuizQuestions`. Đáp án không thuộc câu hỏi bị coi là chưa trả lời. Kết quả lưu trong `dbo.QuizAttempts` và `dbo.QuizAttemptAnswers`.
   - Lần nộp đầu tiên của bài tập được giao sẽ hoàn thành bài giao và báo cho phụ huynh. Các lần làm lại sau đó là luyện tập.
   - Thời gian trên trang làm bài cũng được tính vào giờ học. Hết giờ học thì bài làm vẫn được nộp, không bị mất.
+- **Làm bài (cập nhật):** chọn đáp án **không tự chuyển câu** (trước đây bấm thêm "Câu tiếp theo" làm nhảy mất một câu); hàng chấm tròn cho biết câu nào đã làm và cho nhảy tới câu bất kỳ. Mỗi câu có nút **Đọc to** (Web Speech API, giọng tiếng Việt của máy, không gửi dữ liệu ra ngoài; nút ẩn khi máy không có giọng Việt). Bài đọc trong trang học cũng có nút này.
 - **Kết quả và giải thích (US-39)**:
   - Bé xem điểm, số sao, đáp án đã chọn, đáp án đúng và giải thích ở `/kids-result?id=`.
   - Phụ huynh xem danh sách lượt làm ở `/history` (mục "Bài tập đã làm") và chi tiết từng câu ở `/quiz-result/{id}`.
   - Bài nộp sau hạn được đánh dấu "nộp muộn".
+  - **Giải thích cách khác** (`Questions.KidExplanation`): admin viết ở form câu hỏi, hoặc bấm "AI soạn gợi ý" (`Services/KidExplainer.cs`; có key thì Claude viết cho đúng lớp, không key thì dùng mẫu). AI chỉ điền nháp, admin lưu thì bé mới thấy; `KidExplanationBy` ghi "admin" hay model đã soạn. Bé thấy ở câu làm sai trên trang kết quả và trang ôn tập.
 - **Gợi ý câu hỏi (US-40)**: nút "Gợi ý câu hỏi" (1–5 câu) lưu câu gợi ý ở trạng thái **Chờ duyệt** với `Origin = AiSuggested` và `AiModelName`. Câu gợi ý không dùng được trong bài tập cho tới khi Admin duyệt; Admin có thể sửa, duyệt hoặc từ chối. Danh sách chờ duyệt của mọi bài ở nút "Chờ duyệt".
   - **Không có key**: dùng bộ gợi ý cục bộ `offline-rule-v1`. Bộ này tạo câu điền từ/điền số và câu Đúng/Sai từ nội dung chữ của bài, không phải AI.
   - **Có key**: gọi Claude (`claude-opus-5-5`) qua SDK `Anthropic`, nhận JSON theo schema rồi kiểm tra lại từng câu như câu soạn tay. Đặt key riêng trên máy, không ghi vào `appsettings.json` hay Git:
@@ -114,7 +120,7 @@ Bé xin thêm 5/10/15/30 phút ở trang hết giờ (một yêu cầu chờ t�
 dotnet user-secrets set "Ai:ApiKey" "<anthropic-api-key>"
 ```
 
-Môi trường khác dùng biến `Ai__ApiKey`; đổi model bằng `Ai:Model`. Kiểm thử: `py scripts\smoke-quiz.py` sau khi build (chạy không cần key).
+Môi trường khác dùng biến `Ai__ApiKey`; đổi model bằng `Ai:Model`; `Ai:BaseUrl` chỉ dùng cho proxy hoặc server giả trong test (C# SDK gửi key dưới dạng `Authorization: Bearer`). Key dùng chung cho US-22, US-40 và "giải thích cách khác". Kiểm thử phần AI mà không cần key thật: `py scripts\smoke-ai.py` (dựng server Claude giả trên máy). Kiểm thử: `py scripts\smoke-quiz.py` sau khi build (chạy không cần key).
 
 ## Tiến độ, lộ trình và thành tích (Sprint 7)
 
@@ -136,6 +142,7 @@ Mọi số liệu được tính lại trên server mỗi khi bé học: mỗi 3
   - Liệt kê các câu mà lần trả lời gần nhất của bé sai hoặc bỏ trống. Bé chọn lại đáp án để kiểm tra; trả lời đúng thì thấy giải thích.
   - Phần luyện này không lưu điểm. Câu chỉ rời danh sách khi bé làm lại bài tập và trả lời đúng.
   - Phụ huynh thấy số câu cần ôn, cùng các bài tập chưa đạt, ở mục "Cần chú ý".
+  - **Học thích ứng:** trang ôn tập có mục "Con nên học lại bài nào?" (các bài có câu sai, nhiều câu sai xếp trước, chỉ bài bé còn được mở); trang chủ của bé có thẻ "Nên học lại: …".
 
 Kiểm thử: `py scripts\smoke-progress.py` sau khi build.
 
@@ -166,7 +173,7 @@ Kiểm thử: `py scripts\smoke-progress.py` sau khi build.
   - **PIN và khóa chế độ trẻ**:
     - `/pin` đặt hoặc đổi PIN 4 số, cần mật khẩu tài khoản. PIN lưu dạng băm trong `UserSettings.ParentPinHash` (PasswordHasher của Identity), không còn lưu trong trình duyệt.
     - Khi đang ở chế độ trẻ, server chặn mọi trang của khu phụ huynh: GET quay về `/kids-home`, POST bị từ chối 403. Gõ địa chỉ trực tiếp cũng không vào được.
-    - Thoát ở `/kids-exit` bằng PIN, hoặc bằng mật khẩu tài khoản khi chưa đặt PIN hay quên PIN. Sai 5 lần thì khóa 5 phút.
+    - Thoát ở `/kids-exit` bằng PIN, hoặc bằng mật khẩu tài khoản khi chưa đặt PIN hay quên PIN. Sai 5 lần thì khóa 5 phút. Bộ đếm và thời điểm hết khóa lưu ở `UserSettings.PinFailedAttempts`/`PinLockedUntil` (tăng nguyên tử trong SQL), nên khởi động lại app hay chạy nhiều server vẫn giữ khóa; đặt PIN mới thì xóa khóa.
 - **Nhật ký (US-51)**, `/admin-audit`:
   - Tab Thao tác (`dbo.AuditLogs`): lọc theo người thực hiện, loại thao tác, khoảng ngày.
   - Tab Đăng nhập (`dbo.LoginHistories`): lọc theo email/IP, thành công/thất bại.

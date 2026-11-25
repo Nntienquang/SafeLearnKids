@@ -53,10 +53,23 @@
     <button class="sl-btn sl-btn-p" type="submit"><i class="ic ic-search"></i>Lọc</button>
 </form>
 <div class="sl-card">
+    @if (Model.Rows.Count > 0)
+    {
+        // Bulk review (US-19): the row checkboxes join this form through form="video-bulk"; forms cannot be nested.
+        <form method="post" asp-action="BulkVideoStatus" id="video-bulk" class="sl-row" style="gap:10px;flex-wrap:wrap;padding-bottom:12px" data-bulk>
+            <input type="hidden" name="back" value="@(Context.Request.Path + Context.Request.QueryString)" />
+            <label class="sl-row" style="gap:8px;font-size:13.5px"><input type="checkbox" data-bulk-all aria-label="Chọn mọi video trên trang này" />Chọn cả trang</label>
+            <span class="muted" style="font-size:13px" data-bulk-count>0 video đã chọn</span>
+            <span class="grow"></span>
+            <button class="sl-btn sl-btn-sm sl-btn-p" type="submit" name="to" value="@VideoStatus.Approved">Duyệt đã chọn</button>
+            <input class="inp inp-sm" name="note" maxlength="500" placeholder="Lý do chặn" aria-label="Lý do chặn các video đã chọn" style="width:170px" />
+            <button class="sl-btn sl-btn-sm sl-btn-d" type="submit" name="to" value="@VideoStatus.Blocked">Chặn đã chọn</button>
+        </form>
+    }
     <div class="muted">@Model.Matching video</div>
     @foreach (var video in Model.Rows)
     {
-        <partial name="_VideoRow" model="video" />
+        <partial name="_VideoRow" model="video" view-data='new ViewDataDictionary(ViewData) { ["Bulk"] = true }' />
     }
     @if (Model.Rows.Count == 0)
     {

@@ -106,6 +106,13 @@ public class QuestionFormViewModel
 
     // Once children have answered it, the answers stay as they were so old results remain correct.
     public bool Locked { get; set; }
+
+    [Display(Name = "Giải thích cách khác cho bé")]
+    [StringLength(1000, ErrorMessage = "Giải thích cho bé tối đa 1000 ký tự.")]
+    public string? KidExplanation { get; set; }
+
+    // Filled by the page when the text was drafted by AI; anything else is recorded as written by the admin.
+    public string? KidExplanationBy { get; set; }
 }
 
 public record QuestionRow(int Id, string Text, string Type, int Difficulty, string Origin, string Status, int Options, int Quizzes, string? AiModel,
@@ -198,7 +205,7 @@ public class KidQuizViewModel
 
 public record ResultOption(string Text, bool IsCorrect, bool Chosen);
 
-public record ResultQuestion(int Number, string Text, string? Explanation, IReadOnlyList<ResultOption> Options, bool Correct, bool Answered);
+public record ResultQuestion(int Number, string Text, string? Explanation, IReadOnlyList<ResultOption> Options, bool Correct, bool Answered, string? KidExplanation = null);
 
 public class QuizResultViewModel
 {

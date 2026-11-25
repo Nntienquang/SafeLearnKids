@@ -51,7 +51,11 @@
                         <span class="chip t-a" style="margin-left:6px">@row.PendingVideos chờ</span>
                     }</td>
                     <td>@(row.Score is { } score ? $"{score:0}/100" : "—")</td>
-                    <td class="muted" style="font-size:12.5px">@(row.LastSyncedAt?.ToLocalTime().ToString("dd/MM HH:mm") ?? "Chưa")@if (row.LastSyncError is not null)
+                    <td class="muted" style="font-size:12.5px">@(row.LastSyncedAt?.ToLocalTime().ToString("dd/MM HH:mm") ?? "Chưa")@if (row.SyncRequestedAt is { } asked && DateTime.UtcNow - asked < SourceSyncQueue.Stale)
+                    {
+                        <span class="chip t-b" style="margin-left:6px" data-syncing data-auto-refresh="6000">Đang đồng bộ</span>
+                    }
+                    else if (row.LastSyncError is not null)
                     {
                         <span class="chip t-r" style="margin-left:6px" title="@row.LastSyncError">Lỗi</span>
                     }</td>

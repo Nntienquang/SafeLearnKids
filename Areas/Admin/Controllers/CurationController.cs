@@ -16,6 +16,8 @@ public class CurationController(
     UserManager<ApplicationUser> users,
     AccountActivityLog activity,
     SourceSyncService sync,
+    SourceSyncQueue syncQueue,
+    SourceAssessor assessor,
     IServiceProvider services) : Controller
 {
     private const int PageSize = 24;
@@ -179,10 +181,17 @@ public class CurationController(
         if (source is null) return NotFound();
         // Suggested sources may be synced so admins can look at the videos before deciding.
         if (source.Status is SourceStatus.Rejected or SourceStatus.Suspended) return Refuse(id, "Chỉ đồng bộ nguồn đang chờ duyệt hoặc đã duyệt.");
-        var result = await sync.SyncAsync(db, source, cancellationToken);
-        await activity.ContentActionAsync(ActorId, "ContentSource", id, "SyncSource", result.Error ?? $"{result.Found} video, {result.Added} mới");
-        if (result.Error is not null) return Refuse(id, "Đồng bộ chưa thành công: " + result.Error);
-        TempData["Info"] = $"Đã đồng bộ {result.Found} video, {result.Added} video mới chờ duyệt" + (result.Blocked > 0 ? $", {result.Blocked} video tự chặn do từ khóa." : ".");
+        // A second click while the worker is busy does not queue the source twice.
+        if (source.SyncRequestedAt is { } asked && DateTime.UtcNow - asked < SourceSyncQueue.Stale)
+        {
+            TempData["Info"] = "Nguồn này đang được đồng bộ. Trang sẽ tự cập nhật khi xong.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        source.SyncRequestedAt = DateTime.UtcNow;
+        if (!await SaveAsync(db, cancellationToken)) return Refuse(id, SaveFailed);
+        syncQueue.Enqueue(id);
+        await activity.ContentActionAsync(ActorId, "ContentSource", id, "SyncSource", "Đã xếp lịch đồng bộ");
+        TempData["Info"] = "Đã bắt đầu đồng bộ. Việc lấy danh sách video chạy nền, trang sẽ tự cập nhật khi xong.";
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -190,16 +199,21 @@ public class CurationController(
     public async Task<IActionResult> SyncApproved(CancellationToken cancellationToken)
     {
         if (Db is not { } db) return View("SqlOnly");
-        var sources = await db.ContentSources.Where(source => source.Status == SourceStatus.Approved && source.Platform != "Website").ToListAsync(cancellationToken);
-        int added = 0, failed = 0;
-        foreach (var source in sources)
+        var now = DateTime.UtcNow;
+        var cutoff = now - SourceSyncQueue.Stale;
+        var sources = await db.ContentSources.Where(source => source.Status == SourceStatus.Approved && source.Platform != "Website"
+            && (source.SyncRequestedAt == null || source.SyncRequestedAt < cutoff)).ToListAsync(cancellationToken);
+        foreach (var source in sources) source.SyncRequestedAt = now;
+        if (sources.Count > 0 && !await SaveAsync(db, cancellationToken))
         {
-            var result = await sync.SyncAsync(db, source, cancellationToken);
-            added += result.Added;
-            if (result.Error is not null) failed++;
+            TempData["Error"] = SaveFailed;
+            return RedirectToAction(nameof(Index));
         }
-        await activity.ContentActionAsync(ActorId, "ContentSource", 0, "SyncApprovedSources", $"{sources.Count} nguồn, {added} video mới, {failed} lỗi");
-        TempData[failed > 0 ? "Error" : "Info"] = $"Đã đồng bộ {sources.Count} nguồn đã duyệt: {added} video mới" + (failed > 0 ? $", {failed} nguồn lỗi (xem từng nguồn)." : ".");
+        foreach (var source in sources) syncQueue.Enqueue(source.Id);
+        await activity.ContentActionAsync(ActorId, "ContentSource", 0, "SyncApprovedSources", $"Đã xếp lịch {sources.Count} nguồn");
+        TempData["Info"] = sources.Count == 0
+            ? "Không có nguồn đã duyệt nào cần đồng bộ (hoặc mọi nguồn đang được đồng bộ)."
+            : $"Đã xếp lịch đồng bộ {sources.Count} nguồn đã duyệt. Việc này chạy nền, lần lượt từng nguồn; cột Đồng bộ sẽ cập nhật khi xong.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -209,11 +223,12 @@ public class CurationController(
         if (Db is not { } db) return View("SqlOnly");
         var source = await db.ContentSources.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (source is null) return NotFound();
-        var suggestion = await SourceAssessor.AssessAsync(db, source, cancellationToken);
+        var suggestion = await assessor.AssessAsync(db, source, cancellationToken);
         db.CurationSuggestions.Add(suggestion);
         if (!await SaveAsync(db, cancellationToken)) return Refuse(id, SaveFailed);
-        await activity.ContentActionAsync(ActorId, "ContentSource", id, "AssessSource", $"{suggestion.Score:0}/100");
-        TempData["Info"] = $"Đánh giá tự động: {suggestion.Score:0}/100. Quyết định vẫn thuộc về bạn.";
+        await activity.ContentActionAsync(ActorId, "ContentSource", id, "AssessSource", $"{suggestion.Score:0}/100 · {suggestion.ModelName}");
+        TempData["Info"] = (suggestion.ModelName == SourceAssessor.ModelName ? "Đánh giá bằng bộ quy tắc: " : "Đánh giá bằng AI: ")
+            + $"{suggestion.Score:0}/100. Quyết định vẫn thuộc về bạn.";
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -346,6 +361,44 @@ public class CurationController(
         return Redirect(target);
     }
 
+    // US-19 in bulk: approve or block the ticked videos of one page at once (a long queue after a sync). Same rules as one video:
+    // blocking needs a reason. One audit entry lists how many changed.
+    public const int MaxBulk = 200;
+
+    [HttpPost("admin-videos/bulk")]
+    public async Task<IActionResult> BulkVideoStatus([FromForm] int[]? ids, [FromForm] string? to, [FromForm] string? note, [FromForm] string? back, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return View("SqlOnly");
+        var target = Url.IsLocalUrl(back) ? back! : Url.Action(nameof(Videos))!;
+        note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        var chosen = (ids ?? []).Distinct().ToList();
+        if (to is not (VideoStatus.Approved or VideoStatus.Blocked)) return RefuseVideo(target, "Trạng thái không hợp lệ.");
+        if (chosen.Count == 0) return RefuseVideo(target, "Hãy tick chọn ít nhất một video.");
+        if (chosen.Count > MaxBulk) return RefuseVideo(target, $"Mỗi lần xử lý tối đa {MaxBulk} video.");
+        if (to == VideoStatus.Blocked && note is null) return RefuseVideo(target, "Hãy ghi lý do chặn các video đã chọn.");
+        if (note is { Length: > 500 }) return RefuseVideo(target, "Lý do tối đa 500 ký tự.");
+        var videos = await db.SourceVideos.Where(item => chosen.Contains(item.Id) && item.Status != to).ToListAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+        foreach (var video in videos)
+        {
+            video.Status = to;
+            video.ReviewNote = to == VideoStatus.Blocked ? note : null;
+            video.ReviewedById = ActorId;
+            video.ReviewedAt = now;
+        }
+        if (videos.Count > 0 && !await SaveAsync(db, cancellationToken)) return RefuseVideo(target, SaveFailed);
+        var changed = videos.Select(item => item.Id).ToList();
+        var inLessons = to == VideoStatus.Blocked
+            ? await db.LessonContents.Where(content => content.SourceVideoId != null && changed.Contains(content.SourceVideoId.Value) && content.Lesson.Status == LessonStatus.Published)
+                .Select(content => content.LessonId).Distinct().CountAsync(cancellationToken)
+            : 0;
+        await activity.ContentActionAsync(ActorId, "SourceVideo", 0, "BulkVideoStatus", $"{to}: {videos.Count} video" + (note is null ? "" : ": " + note));
+        TempData["Info"] = (to == VideoStatus.Approved ? $"Đã duyệt {videos.Count} video." : $"Đã chặn {videos.Count} video.")
+            + (videos.Count < chosen.Count ? $" {chosen.Count - videos.Count} video đã ở trạng thái này sẵn." : "")
+            + (inLessons > 0 ? $" Video bị chặn được gỡ khỏi {inLessons} bài đã xuất bản cho tới khi duyệt lại." : "");
+        return Redirect(target);
+    }
+
     // A single video added by link, without adding its whole channel. It waits for review like synced videos,
     // unless the admin ticks "approve now"; titles with a blocked keyword and videos YouTube will not embed never pass.
     [HttpPost("admin-videos/add")]
@@ -409,7 +462,7 @@ public class CurationController(
         query.Select(source => new SourceRow(source.Id, source.Name, source.Platform, source.Url, source.Status,
             source.SourceVideoSources.Count, source.SourceVideoSources.Count(link => link.SourceVideo.Status == VideoStatus.Pending),
             source.CurationSuggestions.OrderByDescending(item => item.CreatedAt).Select(item => (decimal?)item.Score).FirstOrDefault(),
-            source.LastSyncedAt, source.LastSyncError, source.SuggestedBy == null ? null : source.SuggestedBy.Email));
+            source.LastSyncedAt, source.LastSyncError, source.SuggestedBy == null ? null : source.SuggestedBy.Email, source.SyncRequestedAt, source.LastSyncResult));
 
     private static IQueryable<VideoRow> VideoRows(IQueryable<SourceVideo> query) =>
         query.Select(video => new VideoRow(video.Id, video.VideoId, video.Title, video.Status, video.ThumbnailUrl, video.PublishedAt, video.ReviewNote,

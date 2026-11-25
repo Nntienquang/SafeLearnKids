@@ -42,7 +42,8 @@
                     @switch (part.Kind)
                     {
                         case "Reading":
-                            <div style="white-space:pre-line;font-size:19px;line-height:1.85;font-weight:600">@part.Body</div>
+                            <button type="button" class="k-tts" data-tts="#read-@i" hidden aria-pressed="false" style="align-self:flex-start"><i class="ic ic-volume"></i>Đọc to cho con nghe</button>
+                            <div id="read-@i" style="white-space:pre-line;font-size:19px;line-height:1.85;font-weight:600">@part.Body</div>
                             break;
                         case "Video":
                             <div style="position:relative;padding-top:56.25%;border-radius:24px;overflow:hidden;background:#000">

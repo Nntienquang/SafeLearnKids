@@ -78,7 +78,7 @@ public class SourceFormViewModel
     public string? Description { get; set; }
 }
 
-public record SourceRow(int Id, string Name, string Platform, string Url, string Status, int Videos, int PendingVideos, decimal? Score, DateTime? LastSyncedAt, string? LastSyncError, string? SuggestedBy);
+public record SourceRow(int Id, string Name, string Platform, string Url, string Status, int Videos, int PendingVideos, decimal? Score, DateTime? LastSyncedAt, string? LastSyncError, string? SuggestedBy, DateTime? SyncRequestedAt = null, string? LastSyncResult = null);
 
 public class SourcesViewModel
 {

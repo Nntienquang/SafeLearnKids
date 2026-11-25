@@ -33,9 +33,20 @@
             <div class="ud-fact"><dt>Đồng bộ gần nhất</dt><dd>@(source.LastSyncedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa")</dd></div>
             <div class="ud-fact"><dt>Thêm lúc</dt><dd>@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")@(source.SuggestedBy is null ? "" : " · " + source.SuggestedBy)</dd></div>
         </dl>
-        @if (source.LastSyncError is not null)
+        @if (source.SyncRequestedAt is { } asked && DateTime.UtcNow - asked < SourceSyncQueue.Stale)
         {
-            <div class="banner t-r" style="margin-top:12px;font-size:13px">Lần đồng bộ gần nhất lỗi: @source.LastSyncError</div>
+            // The worker runs in the background; the page reloads itself until the mark is cleared.
+            <div class="banner t-b" role="status" style="margin-top:12px;font-size:13px" data-auto-refresh="4000" data-syncing>
+                <i class="ic ic-refresh"></i>Đang đồng bộ video (bắt đầu lúc @asked.ToLocalTime().ToString("HH:mm:ss")). Trang sẽ tự cập nhật khi xong.
+            </div>
+        }
+        else if (source.LastSyncError is not null)
+        {
+            <div class="banner t-r" style="margin-top:12px;font-size:13px">Đồng bộ chưa thành công: @source.LastSyncError</div>
+        }
+        else if (source.LastSyncResult is not null)
+        {
+            <div class="banner t-g" style="margin-top:12px;font-size:13px" data-sync-result>Lần đồng bộ gần nhất: @source.LastSyncResult.</div>
         }
         @if (Model.ReviewNote is not null)
         {
@@ -77,7 +88,7 @@
             }
         </div>
         <div class="sl-card">
-            <div class="card-h" style="margin-bottom:6px"><div class="card-t">Đánh giá tự động</div><span class="chip t-v"><i class="ic ic-sparkles"></i>Theo quy tắc</span></div>
+            <div class="card-h" style="margin-bottom:6px"><div class="card-t">Đánh giá tự động</div><span class="chip t-v"><i class="ic ic-sparkles"></i>@(latest is not null && latest.ModelName != SourceAssessor.ModelName ? "AI + quy tắc" : "Theo quy tắc")</span></div>
             @if (latest is not null)
             {
                 <div class="sl-row" style="gap:10px;margin:6px 0"><div class="bar grow"><i style="width:@(latest.Score)%;background:@(latest.Score >= SourceAssessor.ApproveAt ? "var(--green)" : latest.Score < SourceAssessor.RejectBelow ? "var(--rose)" : "var(--sun)")"></i></div><span class="b">@latest.Score.ToString("0")/100</span></div>

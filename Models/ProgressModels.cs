@@ -93,7 +93,11 @@ public record WeekGoalView(DateOnly WeekStart, int? TargetLessons, int? TargetMi
     public bool Reached => HasGoal && (TargetLessons is null || Lessons >= TargetLessons) && (TargetMinutes is null || Minutes >= TargetMinutes);
 }
 
-public record ReviewQuestion(int QuestionId, string Text, string? Explanation, string Quiz, int QuizId, string Lesson, IReadOnlyList<QuizOptionView> Options, int? LastChosen, DateTime AnsweredAt);
+public record ReviewQuestion(int QuestionId, string Text, string? Explanation, string Quiz, int QuizId, string Lesson, IReadOnlyList<QuizOptionView> Options, int? LastChosen, DateTime AnsweredAt,
+    int LessonId = 0, string? KidExplanation = null);
+
+// A lesson worth going back to: how many of its questions the child last got wrong.
+public record ReviewLesson(int LessonId, string Title, string Subject, int Wrong);
 
 public class ProgressViewModel
 {
@@ -123,6 +127,7 @@ public class KidReviewViewModel
 {
     public required KidInfo Kid { get; init; }
     public IReadOnlyList<ReviewQuestion> Questions { get; init; } = [];
+    public IReadOnlyList<ReviewLesson> Lessons { get; init; } = [];
 }
 
 public class BadgeFormViewModel

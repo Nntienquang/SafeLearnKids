@@ -18,6 +18,26 @@ if(P!=='kids-picker')paintTop();
 document.addEventListener('kl:change',function(){if(P!=='kids-picker')paintTop();});
 var exitLink=$$('a[href="/kids-picker"]');
 
+/* ---------- read aloud: the device's own Vietnamese voice (Web Speech API); nothing is sent to a server ----------
+   Buttons stay hidden unless a Vietnamese voice exists, so an English voice never mangles the text. A second press stops. */
+var ttsButtons=$$('[data-tts]');
+if(ttsButtons.length&&'speechSynthesis' in window&&'SpeechSynthesisUtterance' in window){
+  var synth=window.speechSynthesis,viVoice=null,speaking=null;
+  var pickVoice=function(){var vs=synth.getVoices();viVoice=vs.filter(function(v){return /^vi(-|_|$)/i.test(v.lang);})[0]||null;
+    ttsButtons.forEach(function(b){b.hidden=!viVoice;});};
+  var reset=function(){if(speaking){speaking.setAttribute('aria-pressed','false');speaking=null;}};
+  pickVoice();
+  if(synth.addEventListener)synth.addEventListener('voiceschanged',pickVoice);else synth.onvoiceschanged=pickVoice;
+  ttsButtons.forEach(function(b){b.addEventListener('click',function(){
+    var again=speaking===b;synth.cancel();reset();if(again||!viVoice)return;
+    var text=b.dataset.tts.split(',').map(function(sel){var el=$(sel.trim());return el?el.innerText.replace(/\s+/g,' ').trim():'';}).filter(Boolean).join('. ');
+    if(!text)return;
+    var u=new SpeechSynthesisUtterance(text);u.lang=viVoice.lang;u.voice=viVoice;u.rate=0.9;
+    u.onend=u.onerror=function(){if(speaking===b)reset();};
+    speaking=b;b.setAttribute('aria-pressed','true');synth.speak(u);});});
+  window.addEventListener('pagehide',function(){synth.cancel();});
+}
+
 /* ---------- picker ---------- */
 if(P==='kids-picker'){
   var cs=S.get().children;
@@ -59,27 +79,31 @@ if(P==='kids-lesson-sql'){
         if(s.left===5)UI.toast('Còn 5 phút nữa là hết giờ học nhé!');
         if(!s.allowed)location.href='/kids-time-up';}).catch(function(){});},30000);
 }
-if(P==='kids-search-sql'){
-  var c=kc();
-  if(c&&c.search===false){var m=$('main');m.innerHTML='<div class="empty"><div class="b" style="font-size:16px;color:var(--text-2)">Ba mẹ đã tắt tìm kiếm.</div><div style="font-size:14px;margin-top:4px">Con học bài ba mẹ giao ở trang học nhé.</div></div>';}
-}
 
 /* ---------- quiz (SQL): one question at a time, countdown, study-time heartbeat; the server scores ---------- */
 if(P==='kids-quiz-sql'){
   var m=$('main'),form=$('#quiz-form'),qs=$$('[data-q]',form),cur=0,sent=false,attempt=m.dataset.attempt;
   var prev=$('[data-prev]'),next=$('[data-next]'),send=$('[data-submit]'),step=$('[data-step]'),bar=$('[data-progress]'),note=$('[data-unanswered]');
+  var dots=$$('[data-goto]');
   function answered(f){return !!f.querySelector('input:checked');}
+  /* No automatic jump after an answer: a child who also pressed "next" used to skip a question. The dots show which
+     questions are answered, and "next" lights up once this one is. */
+  function paintState(){var done=qs.filter(answered).length;
+    bar.querySelector('i').style.width=Math.round(done*100/qs.length)+'%';
+    dots.forEach(function(d,k){var a=answered(qs[k]);d.classList.toggle('done',a);d.classList.toggle('on',k===cur);
+      d.setAttribute('aria-label','Câu '+(k+1)+(a?', đã trả lời':', chưa trả lời'));if(k===cur)d.setAttribute('aria-current','step');else d.removeAttribute('aria-current');});
+    next.classList.toggle('ready',answered(qs[cur]));}
   function show(i){cur=i;qs.forEach(function(f,k){f.hidden=k!==i;});
     prev.hidden=i===0;next.hidden=i>=qs.length-1;send.hidden=i<qs.length-1;
     if(step)step.textContent='Câu '+(i+1)+' / '+qs.length;
-    bar.querySelector('i').style.width=Math.round(qs.filter(answered).length*100/qs.length)+'%';
-    var first=qs[i].querySelector('input');if(first&&document.activeElement!==document.body)first.focus();}
+    paintState();
+    var first=qs[i].querySelector('input:checked')||qs[i].querySelector('input');if(first&&document.activeElement!==document.body)first.focus();}
   function submitNow(){if(sent)return;sent=true;form.submit();}
   if(qs.length>1){bar.hidden=false;show(0);
     prev.addEventListener('click',function(){show(Math.max(0,cur-1));});
     next.addEventListener('click',function(){show(Math.min(qs.length-1,cur+1));});
-    form.addEventListener('change',function(){bar.querySelector('i').style.width=Math.round(qs.filter(answered).length*100/qs.length)+'%';
-      if(cur<qs.length-1)setTimeout(function(){show(cur+1);},350);});}
+    dots.forEach(function(d){d.addEventListener('click',function(){show(+d.dataset.goto);});});
+    form.addEventListener('change',paintState);}
   form.addEventListener('submit',function(e){if(sent)return;var left=qs.filter(function(f){return !answered(f);}).length;
     if(!left){sent=true;return;}
     e.preventDefault();UI.confirm({title:'Còn '+left+' câu chưa trả lời',text:'Con có muốn nộp bài luôn không?',ok:'Nộp bài',icon:'info'}).then(function(ok){if(ok)submitNow();else{var k=qs.findIndex(function(f){return !answered(f);});if(k>-1&&qs.length>1)show(k);}});});

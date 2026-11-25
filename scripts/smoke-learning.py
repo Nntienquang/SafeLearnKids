@@ -205,6 +205,32 @@ def checks(url, directory):
         check(status == 302 and headers.get("Location", "").endswith("/parent-home") and "/kids-picker" in parent.request("/kids-home")[1].get("Location", ""),
               "the account password ends child mode when no PIN is set")
 
+        # The parent's "allow search" switch is stored in SQL and enforced on the server (was kept in the browser only).
+        def save_profile(search):
+            body = parent.request("/profiles", raw=True)[2]
+            token = json.loads(re.search(r'window\.SL_CSRF = ("[^"]+")', body).group(1))
+            payload = {"name": "Be Hoc", "cls": 2, "subjects": [KEY]} | ({} if search is None else {"search": search})
+            request = urllib.request.Request(parent.url + "/children/" + str(kid), data=json.dumps(payload).encode(),
+                                             headers={"Content-Type": "application/json", "RequestVerificationToken": token})
+            with parent.opener.open(request, timeout=10) as response:
+                return response.status, json.loads(response.read())
+        allow = lambda: sql(f"SELECT CAST(AllowSearch AS int) FROM dbo.ChildProfiles WHERE Id={kid};")
+        check(allow() == "1" and '"search":true' in parent.request("/profiles", raw=True)[2], "search is allowed by default and the page knows it")
+        status, saved = save_profile(False)
+        check(status == 200 and saved.get("search") is False and allow() == "0", "the parent turns search off and it is saved in SQL")
+        check(save_profile(None)[0] == 200 and allow() == "0", "an edit that does not send the switch leaves it as it was")
+        check('"search":false' in parent.request("/profiles", raw=True)[2], "the profiles page reads the switch from the server")
+        form(parent, "/kids-picker", f"/kids-picker/{kid}")
+        logged = sql(f"SELECT COUNT(*) FROM dbo.SearchLogs WHERE ChildProfileId={kid};")
+        body = parent.request(f"/kids-search?q={RUN[:8]}")[2]
+        check("Ba mẹ đã tắt tìm kiếm" in body and TITLES["Alpha"] not in body and sql(f"SELECT COUNT(*) FROM dbo.SearchLogs WHERE ChildProfileId={kid};") == logged,
+              "with search off the server returns nothing and logs nothing")
+        token = smoke.token_from(parent.request("/kids-exit")[2])
+        parent.request("/kids-exit", [("password", PASSWORD), ("__RequestVerificationToken", token)])
+        check(save_profile(True)[0] == 200 and allow() == "1", "the parent turns search back on")
+        form(parent, "/kids-picker", f"/kids-picker/{kid}")
+        check(TITLES["Alpha"] in parent.request(f"/kids-search?q={RUN[:8]}")[2], "search works again")
+
 
 def main():
     try:

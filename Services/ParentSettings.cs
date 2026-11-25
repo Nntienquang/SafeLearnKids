@@ -54,28 +54,66 @@ public sealed class ParentSettings(IServiceProvider services, IPasswordHasher<Ap
         }
     }
 
+    // A new PIN also clears the exit lock and the failure count.
     public Task<bool> SetPinAsync(ApplicationUser user, string pin, CancellationToken cancellationToken)
     {
         var hash = hasher.HashPassword(user, pin);
         cache.Remove(Key(user.Id));
-        return SaveAsync(user.Id, row => row.ParentPinHash = hash, cancellationToken);
+        return SaveAsync(user.Id, row =>
+        {
+            row.ParentPinHash = hash;
+            row.PinFailedAttempts = 0;
+            row.PinLockedUntil = null;
+        }, cancellationToken);
     }
 
-    // Minutes left on the lock, or null when the keypad is open.
-    public int? LockedMinutes(string userId) =>
-        cache.TryGetValue(Key(userId), out Attempts? attempts) && attempts!.Until is { } until && until > DateTime.UtcNow
-            ? (int)Math.Ceiling((until - DateTime.UtcNow).TotalMinutes) : null;
+    // Minutes left on the exit lock, or null when it is open. Kept in dbo.UserSettings, so a restart or a second
+    // server does not reset it; the in-memory count is only the fallback when the app runs without SQL (demo mode).
+    public async Task<int?> LockedMinutesAsync(string userId, CancellationToken cancellationToken)
+    {
+        DateTime? until;
+        if (Db is { } db)
+            until = await db.UserSettings.AsNoTracking().Where(item => item.UserId == userId).Select(item => item.PinLockedUntil).FirstOrDefaultAsync(cancellationToken);
+        else
+            until = cache.TryGetValue(Key(userId), out Attempts? attempts) ? attempts!.Until : null;
+        var now = DateTime.UtcNow;
+        return until is { } end && end > now ? (int)Math.Ceiling((end - now).TotalMinutes) : null;
+    }
 
     public async Task<PinCheck> CheckPinAsync(ApplicationUser user, string? pin, CancellationToken cancellationToken)
     {
-        if (LockedMinutes(user.Id) is { } minutes) return new(false, 0, minutes);
+        if (await LockedMinutesAsync(user.Id, cancellationToken) is { } minutes) return new(false, 0, minutes);
         var hash = (await FindAsync(user.Id, cancellationToken))?.ParentPinHash;
         var right = hash is not null && pin is { Length: 4 } && hasher.VerifyHashedPassword(user, hash, pin) != PasswordVerificationResult.Failed;
-        return right ? Succeeded(user.Id) : Failed(user.Id);
+        return await RecordAsync(user.Id, right, cancellationToken);
     }
 
     // A parent without a PIN (or who forgot it) leaves child mode with the account password; failures count the same way.
-    public PinCheck Record(string userId, bool right) => right ? Succeeded(userId) : Failed(userId);
+    public Task<PinCheck> RecordAsync(string userId, bool right, CancellationToken cancellationToken) =>
+        Db is { } db ? (right ? SucceededAsync(db, userId, cancellationToken) : FailedAsync(db, userId, cancellationToken))
+            : Task.FromResult(right ? Succeeded(userId) : Failed(userId));
+
+    private static async Task<PinCheck> SucceededAsync(SafeLearnDbContext db, string userId, CancellationToken cancellationToken)
+    {
+        await db.UserSettings.Where(item => item.UserId == userId && (item.PinFailedAttempts != 0 || item.PinLockedUntil != null))
+            .ExecuteUpdateAsync(set => set.SetProperty(item => item.PinFailedAttempts, 0).SetProperty(item => item.PinLockedUntil, (DateTime?)null), cancellationToken);
+        return new(true, MaxFailures, null);
+    }
+
+    // Atomic in SQL: concurrent wrong tries from two tabs cannot both slip under the limit.
+    private async Task<PinCheck> FailedAsync(SafeLearnDbContext db, string userId, CancellationToken cancellationToken)
+    {
+        if (!await db.UserSettings.AnyAsync(item => item.UserId == userId, cancellationToken))
+            await SaveAsync(userId, _ => { }, cancellationToken);
+        await db.UserSettings.Where(item => item.UserId == userId)
+            .ExecuteUpdateAsync(set => set.SetProperty(item => item.PinFailedAttempts, item => item.PinFailedAttempts + 1), cancellationToken);
+        var until = DateTime.UtcNow + LockFor;
+        var locked = await db.UserSettings.Where(item => item.UserId == userId && item.PinFailedAttempts >= MaxFailures)
+            .ExecuteUpdateAsync(set => set.SetProperty(item => item.PinFailedAttempts, 0).SetProperty(item => item.PinLockedUntil, until), cancellationToken);
+        if (locked > 0) return new(false, 0, (int)LockFor.TotalMinutes);
+        var failures = await db.UserSettings.AsNoTracking().Where(item => item.UserId == userId).Select(item => item.PinFailedAttempts).FirstAsync(cancellationToken);
+        return new(false, Math.Max(1, MaxFailures - failures), null);
+    }
 
     private PinCheck Succeeded(string userId)
     {

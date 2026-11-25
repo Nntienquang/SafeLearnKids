@@ -19,15 +19,28 @@
     <p class="k-note" style="margin:0">Bài ba mẹ giao · Hạn nộp @due.ToString("dd/MM/yyyy")</p>
 }
 <div class="k-card" style="padding:12px 18px" hidden data-progress><div class="bar bar-l" style="height:14px"><i style="width:0%;background:#22C55E"></i></div></div>
+@if (total > 1)
+{
+    // One dot per question: filled when answered; a skipped question stays visible and can be opened directly.
+    <nav class="sl-row" style="gap:8px;flex-wrap:wrap;justify-content:center" aria-label="Các câu hỏi" data-dots>
+        @for (var i = 0; i < total; i++)
+        {
+            <button type="button" class="k-dot" data-goto="@i" aria-label="Câu @(i + 1), chưa trả lời">@(i + 1)</button>
+        }
+    </nav>
+}
 <form asp-action="Submit" asp-route-attemptId="@Model.AttemptId" method="post" id="quiz-form" class="sl-col" style="gap:18px;max-width:960px;align-self:center;width:100%">
     @for (var i = 0; i < total; i++)
     {
         var question = Model.Questions[i];
         <fieldset class="k-card" data-q="@i" style="padding:28px;display:flex;flex-direction:column;gap:20px;margin:0">
             <legend class="sr-only">Câu @(i + 1) / @total</legend>
-            <div class="k-note">Câu @(i + 1) / @total</div>
+            <div class="sl-row" style="gap:10px;justify-content:space-between;flex-wrap:wrap">
+                <span class="k-note">Câu @(i + 1) / @total</span>
+                <button type="button" class="k-tts" data-tts="#q-@question.Id, #o-@question.Id" hidden aria-pressed="false"><i class="ic ic-volume"></i>Đọc to</button>
+            </div>
             <div class="kf" style="font-size:30px;text-align:center" id="q-@question.Id">@question.Text</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px" role="radiogroup" aria-labelledby="q-@question.Id">
+            <div id="o-@question.Id" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px" role="radiogroup" aria-labelledby="q-@question.Id">
                 @foreach (var option in question.Options)
                 {
                     <label class="k-opt">

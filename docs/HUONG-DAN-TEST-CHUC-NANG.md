@@ -28,6 +28,8 @@ dotnet run --project SafeLearnKids.Web.csproj --launch-profile http
 
 Mở http://localhost:5000. Chi tiết cấu hình SQL xem `README.md` mục "Chạy với SQL Server".
 
+**Thử trên iPhone, iPad, Android mà không cần deploy:** xem `DEPLOY.md` mục A (điện thoại cùng Wi-Fi mở `http://<IP-máy-tính>:5000`) hoặc mục B (link HTTPS tạm qua Cloudflare Tunnel). Deploy thật lên máy chủ: `DEPLOY.md` mục C.
+
 ### 0.2 Tài khoản cần có
 
 | Vai trò | Cách tạo | Ghi chú |
@@ -79,7 +81,7 @@ py scripts\smoke-<ten>.py
 | 3 | `smoke-sources.py` |
 | 4 | `smoke-learning.py` |
 | 5 | `smoke-time.py` |
-| 6 | `smoke-quiz.py` |
+| 6 | `smoke-quiz.py`, `smoke-ai.py` (AI qua server Claude giả: đánh giá nguồn, gợi ý câu hỏi, giải thích cách khác, bài nên ôn lại, nút đọc to) |
 | 7 | `smoke-progress.py` |
 | 8 | `smoke-reports.py` (chạy khoảng 3–4 phút), `smoke-home.py` |
 
@@ -269,15 +271,19 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 
 **A. Thêm và duyệt nguồn (US-17, 18, 22)**
 1. Admin `/admin-curate` → **"Thêm nguồn"** → dán link dạng `https://www.youtube.com/playlist?list=...` hoặc `https://www.youtube.com/channel/UC...`, mô tả → **"Thêm nguồn"**. Nguồn mới ở trạng thái chờ duyệt.
-2. Trang chi tiết nguồn: **"Đánh giá"** → hiện điểm (bắt đầu 60, cộng/trừ theo quy tắc) và lý do từng điểm. Từ 75 điểm trở lên gợi ý duyệt, dưới 50 gợi ý từ chối.
-3. **"Duyệt nguồn"**; hoặc **"Từ chối nguồn"** / **"Tạm ngưng nguồn"** (bắt buộc ghi lý do).
-4. **"Đồng bộ video"** → video mới vào hàng chờ. Video có tiêu đề chứa từ khóa bị chặn tự động bị chặn.
+2. **"Đồng bộ video"** → trang hiện băng xanh **"Đang đồng bộ video…"** và **tự tải lại** cho tới khi xong. Việc lấy danh sách chạy nền nên không phải chờ trên nút; bấm lại khi đang chạy cũng không xếp lệnh trùng. Xong thì hiện **"Lần đồng bộ gần nhất: N video, M video mới chờ duyệt"**, lỗi thì hiện **"Đồng bộ chưa thành công: …"**. Video có tiêu đề chứa từ khóa bị chặn tự động bị chặn.
+3. **"Đánh giá"** (nên đồng bộ trước để có tiêu đề video):
+   - Không có `Ai:ApiKey`: bộ quy tắc `rule-v1` (bắt đầu 60, cộng/trừ theo quy tắc, ghi lý do từng điểm), nhãn **"Theo quy tắc"**.
+   - Có `Ai:ApiKey`: Claude đọc tên, mô tả, 50 tiêu đề gần nhất và kết quả bộ quy tắc, trả về điểm, các vấn đề cần lưu ý và lý do kèm dẫn chứng, nhãn **"AI + quy tắc"**. Nếu bộ quy tắc thấy từ khóa bị chặn, điểm AI không được cao hơn điểm quy tắc.
+   - Từ 75 điểm gợi ý duyệt, dưới 50 gợi ý từ chối. Gọi AI lỗi thì tự dùng kết quả bộ quy tắc và ghi rõ.
+4. **"Duyệt nguồn"**; hoặc **"Từ chối nguồn"** / **"Tạm ngưng nguồn"** (bắt buộc ghi lý do).
 
-**B. Duyệt từng video (US-19, 20)**
+**B. Duyệt video (US-19, 20)**
 1. **"Video của nguồn"** hoặc menu **Duyệt video** (`/admin-videos`) → lọc trạng thái → **"Lọc"**.
-2. Mỗi video: **"Duyệt"** hoặc **"Chặn"**.
-3. Thêm 1 video lẻ không cần cả kênh: ô **"Thêm video"** nhận link `watch?v=`, `youtu.be/`, `shorts/`, `embed/`, `live/` hoặc mã video; có thể chọn "Duyệt luôn".
-4. Nút **"Đồng bộ nguồn đã duyệt"** ở `/admin-curate` đồng bộ tất cả nguồn đã duyệt một lần.
+2. Từng video: **"Duyệt"** hoặc **"Chặn"** (ghi lý do).
+3. **Hàng loạt:** tick ô đầu mỗi video hoặc **"Chọn cả trang"** (hiện "N video đã chọn") → **"Duyệt đã chọn"**, hoặc ghi **"Lý do chặn"** rồi **"Chặn đã chọn"**. Tối đa 200 video một lần; mỗi lần ghi một dòng nhật ký.
+4. Thêm 1 video lẻ không cần cả kênh: ô **"Thêm video"** nhận link `watch?v=`, `youtu.be/`, `shorts/`, `embed/`, `live/` hoặc mã video; có thể chọn "Duyệt luôn".
+5. Nút **"Đồng bộ nguồn đã duyệt"** ở `/admin-curate` xếp lịch đồng bộ mọi nguồn đã duyệt; chạy nền lần lượt từng nguồn, cột "Đồng bộ" hiện **"Đang đồng bộ"** tới khi xong.
 
 **C. Phụ huynh kiểm soát nguồn (US-21)**
 1. Phụ huynh `/sources`: mỗi nguồn đã duyệt có **"Chặn cho gia đình"** / **"Cho phép lại"**.
@@ -293,11 +299,15 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 | Phụ huynh **"Chặn cho gia đình"** một nguồn | Video của nguồn đó không hiện với gia đình này, gia đình khác vẫn thấy |
 | Thêm video riêng tư, đã xóa hoặc không cho nhúng | Bị từ chối |
 | Gửi đề xuất nguồn thứ 6 khi 5 cái đang chờ | Bị từ chối |
+| **"Chặn đã chọn"** khi chưa ghi lý do / chưa tick video nào | Trình duyệt nhắc ngay; server cũng từ chối |
+| Bấm **"Đồng bộ video"** 2 lần liền | Lần 2 báo "Nguồn này đang được đồng bộ", không chạy trùng |
+| Tắt app giữa lúc đang đồng bộ rồi mở lại | Lệnh còn dở được chạy tiếp khi app khởi động |
 
 ### Giải thích nghiệp vụ
 - **Hai lớp duyệt:** video phát được khi **video đã duyệt** và **ít nhất một nguồn chứa nó đang được duyệt** (video lẻ chỉ cần chính nó được duyệt), và gia đình không chặn nguồn đó.
 - **Vì sao dùng `youtube-nocookie` trong iframe có sandbox?** Không đặt cookie theo dõi, không cho video điều hướng trang hay mở popup.
-- **"Đánh giá tự động" có phải AI không?** Không. Đây là bộ quy tắc minh bạch (`rule-v1`), có hiển thị lý do cộng/trừ; admin là người quyết định.
+- **"Đánh giá tự động" có phải AI không?** Có key thì có: Claude chấm cùng bộ quy tắc, mọi lý do đều hiện ra. Không có key thì chỉ là bộ quy tắc `rule-v1`. Dù là gì, **admin vẫn là người quyết định**; tiêu đề video được coi là dữ liệu, AI không làm theo nội dung trong đó; điểm AI không vượt được danh sách từ khóa bị chặn.
+- **Vì sao đồng bộ chạy nền?** Một kênh có thể tới 200 video, mạng chậm mất 10–20 giây; chạy trong lúc admin bấm nút dễ bị hết thời gian chờ.
 
 ---
 
@@ -313,18 +323,20 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 1. Trình duyệt của bé: **"Chế độ trẻ"** → `/kids-picker` → chọn bé → **"Vào học"**.
 2. `/kids-home` hiện: bài ba mẹ giao kèm lời nhắn, "Học tiếp", các môn của bé, bài yêu thích.
 3. Bấm **"Bắt đầu"** (bài mới) hoặc **"Học tiếp"** (bài đang dở) → `/kids-lesson?id=`.
-4. Bài chia thành từng phần. Học xong một phần → **"Con xong phần này rồi"** → mở phần tiếp theo.
+4. Bài chia thành từng phần. Học xong một phần → **"Con xong phần này rồi"** → mở phần tiếp theo. Phần bài đọc có nút **"🔊 Đọc to cho con nghe"** (xem mục Đọc to ở Sprint 6).
 5. Phần cuối → **"Con học xong rồi"** → bài hoàn thành, bài được giao tự đóng.
 6. Thoát giữa chừng rồi vào lại: tiếp tục đúng phần đang dở.
 
 **C. Tìm kiếm và yêu thích (US-27, 28)**
 - Trang bài học: **"Yêu thích"** → đổi thành **"Đã thích"**; bài hiện ở mục yêu thích trên `/kids-home`.
 - `/kids-search`: gõ từ khóa → **"Tìm"**.
+- Ba mẹ tắt tìm kiếm: `/profiles` → **"Sửa"** → công tắc **"Cho phép tìm kiếm"** → lưu. Công tắc lưu trong SQL và server kiểm tra, đổi máy vẫn giữ.
 
 ### Ca lỗi nên demo
 
 | Thao tác | Kết quả đúng |
 |---|---|
+| Ba mẹ tắt "Cho phép tìm kiếm", bé gõ `/kids-search?q=...` | Trang báo **"Ba mẹ đã tắt tìm kiếm."**, không trả kết quả, không ghi lịch sử tìm |
 | Bé lớp 2 tìm bài của lớp 4 chưa được giao | Không tìm thấy |
 | Ba mẹ giao riêng bài lớp 4 cho bé lớp 2 | Bé thấy và học được bài đó |
 | Gõ `/kids-lesson?id=` của bài không được mở | Không vào được |
@@ -385,9 +397,10 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 ### Luồng chính
 
 **A. Ngân hàng câu hỏi (US-35, 40)**
-1. Admin `/admin-questions` → chọn bài học → **"Câu hỏi mới"** → loại Trắc nghiệm (2–4 đáp án, đúng 1 đáp án đúng) hoặc Đúng/Sai, độ khó 1–3, giải thích đáp án → **"Thêm câu hỏi"**. Câu mới lưu ở trạng thái **Nháp**.
-2. Ở danh sách, **bấm "Duyệt" từng câu** (bắt buộc, câu Nháp không đưa vào bài tập được). Các nút khác: **"Từ chối"**, **"Lưu trữ"**, **"Khôi phục"**, **"Sửa"**.
-3. **"Gợi ý câu hỏi"** (1–5 câu): câu gợi ý vào **"Chờ duyệt"**. Không có `Ai:ApiKey` thì dùng bộ sinh offline; có key thì gọi Claude.
+1. Admin `/admin-questions` → chọn bài học → **"Câu hỏi mới"** → loại Trắc nghiệm (2–4 đáp án, đúng 1 đáp án đúng) hoặc Đúng/Sai, độ khó 1–3, giải thích đáp án, **"Trạng thái"** → **"Thêm câu hỏi"**. Mặc định là **Nháp**; chọn sẵn trạng thái đã duyệt trong ô "Trạng thái" thì dùng được ngay, không cần bấm thêm. Câu Nháp không đưa vào bài tập được.
+2. Ở danh sách: **"Duyệt"**, **"Từ chối"**, **"Lưu trữ"**, **"Khôi phục"**, **"Sửa"**.
+3. **"Gợi ý câu hỏi"** (1–5 câu): câu gợi ý vào **"Chờ duyệt"**. Không có `Ai:ApiKey` thì dùng bộ sinh offline; có key thì gọi Claude, và câu nào sai quy tắc (đáp án đúng không hợp lệ, trùng câu đã có...) bị loại.
+4. **"Giải thích cách khác cho bé"** (mở câu đã lưu bằng **"Sửa"**): tự viết, hoặc bấm **"AI soạn gợi ý"** để điền bản nháp vào ô (có key: Claude viết theo ví dụ đời thường hoặc chia nhỏ từng bước, đúng lớp của bài; không key: mẫu nhắc lại đáp án và giải thích). AI **chỉ điền nháp**; admin đọc, sửa, bấm **"Lưu câu hỏi"** thì bé mới thấy. Dòng ghi chú cho biết bản đang lưu do admin viết hay do AI soạn và admin duyệt.
 
 **B. Tạo bài tập (US-36)**
 - **"Tạo bài tập"** → chọn các câu **đã duyệt**, điểm đạt (%), thời gian làm bài, xáo trộn câu, trạng thái Đang mở → **"Tạo bài tập"**.
@@ -397,8 +410,9 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 
 **D. Bé làm bài và xem kết quả (US-38, 39)**
 1. Bé mở bài học → bấm tên bài tập → `/kids-quiz`.
-2. Làm từng câu, có đồng hồ đếm ngược. **Bấm vào đáp án là tự chuyển sang câu sau** (sau khoảng nửa giây). Đừng bấm thêm **"Câu tiếp theo"** sau khi chọn, vì sẽ nhảy qua mất một câu; nút đó chỉ dùng để bỏ qua câu chưa muốn trả lời, **"Câu trước"** để quay lại. Ở câu cuối → **"Nộp bài"**.
-3. `/kids-result`: điểm, số sao, đáp án đã chọn, đáp án đúng, giải thích. Nút **"Làm lại"**, **"Xem lại bài học"**, **"Về trang học"**.
+2. Làm từng câu, có đồng hồ đếm ngược. Bấm vào đáp án → đáp án được tô, **trang không tự chuyển câu** → bấm **"Câu tiếp theo"** (nút sáng lên khi câu đã có đáp án), **"Câu trước"** để quay lại. Hàng **chấm tròn đánh số** cho biết câu nào đã làm (xanh) và cho bấm nhảy thẳng tới câu bất kỳ. Ở câu cuối → **"Nộp bài"**; còn câu trống thì hỏi lại và đưa về câu trống.
+3. **Đọc to:** mỗi câu có nút **"🔊 Đọc to"** đọc câu hỏi và các đáp án bằng giọng tiếng Việt của máy (chậm hơn bình thường một chút), bấm lần nữa để dừng. Nút chỉ hiện khi máy có giọng tiếng Việt (Windows/Android/iPad thường có sẵn), không gửi dữ liệu ra ngoài.
+4. `/kids-result`: điểm, số sao, đáp án đã chọn, đáp án đúng, giải thích. Câu làm sai có **"💡 Giải thích cách khác"** nếu admin đã soạn. Nút **"Làm lại"**, **"Xem lại bài học"**, **"Về trang học"**.
 4. Phụ huynh: `/history` mục "Bài tập đã làm" → `/quiz-result/{id}` xem từng câu.
 
 ### Ca lỗi nên demo
@@ -416,7 +430,8 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 
 ### Giải thích nghiệp vụ
 - Chấm điểm **trên server** theo điểm từng câu; trình duyệt không biết đáp án đúng trước khi nộp.
-- Câu AI tạo **luôn chờ admin duyệt**, AI không tự đưa nội dung tới trẻ.
+- Câu AI tạo **luôn chờ admin duyệt**, và lời "giải thích cách khác" do AI soạn cũng phải được admin lưu: **không có chữ nào của AI tới thẳng tay trẻ**.
+- Trước đây chọn đáp án là tự sang câu sau, nên trẻ bấm thêm "Câu tiếp theo" sẽ bị nhảy mất một câu. Nay bỏ tự chuyển và thêm chấm tròn để trẻ thấy câu nào còn trống.
 - Lần nộp đầu của bài được giao mới tính hoàn thành; các lần sau là luyện tập.
 
 ---
@@ -438,7 +453,8 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 **C. Bé (US-43, 44, 46)**
 - Học xong bài hoặc làm bài tập đạt mốc → thông báo nhận huy hiệu ngay.
 - `/kids-badges`: huy hiệu đã có, tiến độ tới huy hiệu chưa có, số sao.
-- `/kids-review`: các câu lần gần nhất làm sai hoặc bỏ trống → chọn lại → **"Kiểm tra"**; **"Làm lại bài tập"** để xóa câu khỏi danh sách.
+- `/kids-review`: các câu lần gần nhất làm sai hoặc bỏ trống → chọn lại → **"Kiểm tra"**; **"Làm lại bài tập"** để xóa câu khỏi danh sách. Mỗi câu có nút đọc to và **"💡 Giải thích cách khác"** (nếu admin đã soạn, tự mở khi bé kiểm tra lại vẫn sai).
+- **Học thích ứng:** đầu trang `/kids-review` có mục **"Con nên học lại bài nào?"**: các bài có câu bé làm sai, bài sai nhiều xếp trước, bấm để mở lại bài. Trang chủ `/kids-home` có thẻ **"Nên học lại: [tên bài]"** cho bài cần ôn nhất. Chỉ gợi ý bài bé còn được mở.
 
 **Mẹo demo:** tạo huy hiệu mốc thấp (ví dụ "hoàn thành 1 bài") rồi cho bé học xong 1 bài để thấy huy hiệu được trao ngay.
 
@@ -513,14 +529,16 @@ Ca lỗi: đăng nhập phụ huynh B, bài riêng của A không hiện; A sử
 | **"Xuất bản"** bị từ chối | Bài chưa có nội dung, môn đang ẩn, hoặc có video bị chặn/nguồn bị tạm ngưng | Thêm nội dung, bật môn, thay video |
 | Video không phát | Video hoặc nguồn chưa duyệt, gia đình chặn nguồn, máy không có mạng | Kiểm tra `/admin-videos`, `/admin-curate`, `/sources` |
 | Đồng bộ nguồn lỗi | Link dạng `@tên-kênh`, hoặc không có mạng | Dùng link `channel/UC...` hoặc `playlist?list=...` |
-| Bấm "Đồng bộ video" phải chờ lâu | App tải danh sách từ YouTube qua mạng và ghi tới 200 video; mạng chậm có thể mất 10–20 giây | Chờ trang tải xong, đừng bấm lại |
+| Trang nguồn hiện "Đang đồng bộ video…" khá lâu | Đồng bộ chạy nền; một kênh tới 200 video, mạng chậm mất 10–20 giây; "Đồng bộ nguồn đã duyệt" chạy lần lượt từng nguồn | Để trang tự tải lại; không cần bấm lại (bấm lại cũng không chạy trùng) |
 | Bé không thấy bài tập | Bài tập chưa "Đang mở" hoặc chưa có câu đã duyệt | Duyệt câu hỏi, mở bài tập |
 | Đặt 1 phút mà chưa hết giờ | Chỉ tính khi đang ở trang bài học/làm bài, nhịp 30 giây | Để nguyên trang bài học 1–1,5 phút |
 | Gợi ý câu hỏi không giống AI | Không có `Ai:ApiKey`, đang dùng bộ offline | Nói rõ khi báo cáo; có key thì đặt bằng `dotnet user-secrets set "Ai:ApiKey" "..."` |
 | Sửa code `Program.cs` không thấy thay đổi | Chưa khởi động lại app | Dừng app và chạy lại |
 | Phụ huynh bấm menu nào cũng về `/onboarding` | Tài khoản chưa có bé nào | Tạo 1 hồ sơ bé |
 | Không thấy ô chọn lý do báo cáo / ô gõ tên khi xóa dữ liệu | Nằm trong mục thu gọn ("Bài này có gì lạ?", "Báo cáo nội dung này", "Yêu cầu xóa hồ sơ và dữ liệu") | Bấm vào tiêu đề mục để mở |
-| `py scripts\smoke-sources.py` báo FAIL "the review queue lists pending videos" | DB đang có rất nhiều video chờ duyệt (trên 24, tức hơn 1 trang); video giả của test có ngày đăng cũ nên nằm ở trang sau. Đây là giới hạn của test, không phải lỗi chức năng | Chạy test trên DB ít video (hoặc duyệt/chặn bớt hàng chờ), hoặc chụp kết quả các test khác |
+| Hàng chờ `/admin-videos` quá dài (hàng trăm video sau khi đồng bộ) | Mỗi trang 24 video | Lọc theo nguồn, **"Chọn cả trang"** rồi **"Duyệt đã chọn"** / **"Chặn đã chọn"** |
+| Không thấy nút "🔊 Đọc to" | Máy/trình duyệt không có giọng tiếng Việt (nút tự ẩn để không đọc sai) | Windows: Settings → Time & language → Speech → thêm giọng Tiếng Việt; hoặc dùng Edge/Chrome trên máy có sẵn giọng Việt |
+| "Đánh giá" nguồn vẫn ghi "Theo quy tắc" dù đã có key | Nguồn chưa có video (AI cần tiêu đề để chấm), hoặc gọi AI lỗi (trang ghi rõ lý do) | Đồng bộ video trước rồi bấm **"Đánh giá lại"** |
 
 ---
 
@@ -530,10 +548,10 @@ Ca lỗi: đăng nhập phụ huynh B, bài riêng của A không hiện; A sử
 |---|---|
 | 1 | `/register` → mở mail → **"Xác minh tài khoản"** → `/login` sai 1 lần (thông báo chung) → đúng → `/onboarding` tạo bé + tick đồng ý → `/pin` **"Đặt PIN"** → **"Chế độ trẻ"** → gõ `/parent-home` bị chặn → `/kids-exit` mở khóa → admin `/admin-users` **"Khóa tài khoản"** |
 | 2 | `/admin-catalog` **"Thêm môn"** → **"Bài học mới"** → **"Tạo bài nháp"** → thử **"Xuất bản"** khi chưa có nội dung (bị chặn) → **"Thêm nội dung"** (bài đọc + PDF) → **"Xuất bản"** → phụ huynh `/library` thấy bài |
-| 3 | `/admin-curate` **"Thêm nguồn"** → **"Đánh giá"** (giải thích điểm) → **"Duyệt nguồn"** → **"Đồng bộ video"** → `/admin-videos` **"Duyệt"** 1, **"Chặn"** 1 → gắn video vào bài → phụ huynh `/sources` **"Chặn cho gia đình"** → video biến mất |
+| 3 | `/admin-curate` **"Thêm nguồn"** → **"Đồng bộ video"** (trang tự cập nhật) → **"Đánh giá"** (giải thích điểm, AI nếu có key) → **"Duyệt nguồn"** → **"Video của nguồn"**: **"Chặn"** 1 video (ghi lý do), **"Chọn cả trang"** → **"Duyệt đã chọn"** → gắn video vào bài → phụ huynh `/sources` **"Chặn cho gia đình"** → video biến mất |
 | 4 | Phụ huynh **"Giao bài"** kèm lời nhắn → bé `/kids-home` thấy bài giao → **"Bắt đầu"** → **"Con xong phần này rồi"** → thoát, vào lại học tiếp đúng chỗ → **"Con học xong rồi"** → **"Yêu thích"** → `/kids-search` **"Tìm"** |
 | 5 | `/time` đặt 1 phút → bé học tới khi hết giờ → **"Xin ba mẹ thêm giờ"** → ba mẹ **"Cho thêm"** → bé **"Học tiếp"** → bé **"Gửi cho ba mẹ"** báo cáo → admin **"Nhận xem"** → **"Giữ nội dung"** → `/history` |
-| 6 | **"Câu hỏi mới"** → **"Gợi ý câu hỏi"** → **"Duyệt"** → **"Tạo bài tập"** → phụ huynh **"Giao bài tập"** có hạn nộp → bé làm, **"Nộp bài"** → `/kids-result` → phụ huynh `/quiz-result/{id}` |
+| 6 | **"Câu hỏi mới"** (chọn trạng thái đã duyệt) → **"Sửa"** → **"AI soạn gợi ý"** → **"Lưu câu hỏi"** → **"Gợi ý câu hỏi"** → **"Duyệt"** → **"Tạo bài tập"** → phụ huynh **"Giao bài tập"** có hạn nộp → bé làm (chỉ ra chấm tròn, **"🔊 Đọc to"**), cố tình sai 1 câu, **"Nộp bài"** → `/kids-result` mở **"💡 Giải thích cách khác"** → `/kids-review` thấy **"Con nên học lại bài nào?"** |
 | 7 | Admin tạo huy hiệu mốc thấp + lộ trình → phụ huynh **"Chọn cho bé"**, **"Đặt mục tiêu"** → bé học xong, nhận huy hiệu → `/kids-badges` → `/kids-review` **"Kiểm tra"** → `/progress` |
 | 8 | `/weekly` **"In / lưu PDF"** → `/admin-home` → `/admin-stats` 30 ngày, **"CSV bài học"** → `/notifications` → `/privacy` **"Tải dữ liệu (JSON)"**, **"Gửi yêu cầu xóa"** → admin `/admin-data-requests` → `/admin-audit` thấy thao tác vừa làm |
 
@@ -543,30 +561,35 @@ Kết thúc mỗi demo nên mở `/admin-audit` để chứng minh thao tác đ�
 
 ## 11. Kết quả kiểm thử toàn bộ luồng (25/11/2026)
 
-Kiểm thử bằng 3 cách, trên bản code branch `sprint1-user-management`:
+Lần chạy cuối, sau đợt nâng cấp (đồng bộ chạy nền, duyệt video hàng loạt, công tắc tìm kiếm lưu SQL, khóa PIN lưu SQL, US-22 dùng Claude, giải thích cách khác, bài nên ôn lại, đọc to, sửa lỗi bỏ sót câu khi làm bài).
 
-**A. Bộ test tự động có sẵn** (`scripts/smoke-*.py`, gọi HTTP thật vào app + SQL Server):
+**A. 15 bộ test tự động** (`scripts/`, HTTP thật vào app + SQL Server, chạy trên DB dev): **15/15 bộ đạt, 996 kiểm tra PASS**.
 
-| Bộ test | Kết quả |
-|---|---|
-| `smoke-sql-auth` / `check-auth-regressions` / `smoke-admin-users` / `smoke-child-access` | 72/72 · 82/82 · 137/137 · 43/43 |
-| `smoke-pin` (mới: mọi trường hợp PIN ba mẹ, PIN riêng của bé, các lời nhắc khi chưa có PIN) | 64/64 |
-| `smoke-catalog` / `smoke-family` | 68/68 · 60/60 |
-| `smoke-sources` | 76/76 trên DB có ít video chờ duyệt (xem lưu ý bên dưới) |
-| `smoke-learning` / `smoke-time` / `smoke-quiz` | 52/52 · 56/56 · 69/69 |
-| `smoke-progress` / `smoke-home` / `smoke-reports` | 62/62 · 21/21 · 72/72 |
+| Bộ test | PASS | Bộ test | PASS |
+|---|---|---|---|
+| `smoke-sql-auth` | 72 | `smoke-sources` | 87 |
+| `check-auth-regressions` | 82 | `smoke-learning` | 59 |
+| `smoke-admin-users` | 137 | `smoke-time` | 56 |
+| `smoke-child-access` | 43 | `smoke-quiz` | 69 |
+| `smoke-pin` (mới) | 68 | `smoke-ai` (mới) | 40 |
+| `smoke-catalog` | 68 | `smoke-progress` | 62 |
+| `smoke-family` | 60 | `smoke-home` | 21 |
+| | | `smoke-reports` | 72 |
 
-Lưu ý: trên DB đang có hơn 24 video chờ duyệt, `smoke-sources` dừng ở bước "the review queue lists pending videos" vì video giả của test nằm ở trang 2 của hàng chờ. Đây là giới hạn của test, không phải lỗi chức năng (xem bảng gỡ vướng mục 9).
+- `smoke-pin`: mọi trường hợp PIN ba mẹ và PIN riêng của bé, các lời nhắc khi chưa có PIN, khóa PIN còn nguyên sau khi khởi động lại app.
+- `smoke-ai`: dựng **server Claude giả** trên máy nên không cần key thật, không tốn phí. Kiểm tra prompt gửi đi (tiêu đề video, kết quả quy tắc, schema JSON, dặn coi tiêu đề là dữ liệu), kết quả AI được kiểm soát (cờ lạ bị bỏ, lý do bị cắt độ dài, từ khóa chặn giới hạn điểm), AI lỗi thì quay về bộ quy tắc, key không lọt vào log, bản nháp giải thích chỉ lưu khi admin bấm lưu.
+- `smoke-sources` trước đây FAIL trên DB có nhiều video chờ duyệt; nay test lọc theo nguồn của chính nó nên chạy được trên mọi DB.
 
-**B. Đi theo đúng file hướng dẫn này trong trình duyệt thật** (Playwright, 4 cửa sổ: admin, phụ huynh A, máy của bé, phụ huynh B), trên database mới dựng từ `database/01-schema.sql` + `02-reference-data.sql`, admin tạo bằng `Bootstrap:AdminEmail`: **89/89 bước PASS**, gồm luồng chính và ca lỗi của Sprint 1 → 8 và phần mở rộng. Một số số liệu thực tế:
-- Đặt giới hạn 1 phút → bé bị chuyển sang `/kids-time-up` sau khoảng 60 giây.
-- "Đánh giá" nguồn kênh YouTube thật cho 70 điểm (`rule-v1`); đồng bộ RSS lấy về 200 video.
-- Làm bài tập đúng 3/3 → 100%, Đạt; trang kết quả và `/quiz-result/{id}` có giải thích.
-- Bé gõ địa chỉ bài không được mở → 404. Phụ huynh gõ `/admin-users` → 403.
-- Không có lỗi JavaScript trên mọi trang đã đi qua.
+**B. Đi theo đúng file hướng dẫn này trong trình duyệt thật** (Playwright, 4 cửa sổ, DB mới dựng từ `database/*.sql`, admin tạo bằng `Bootstrap:AdminEmail`): **89/89 bước PASS**.
 
-**C. Quét toàn bộ giao diện** (`scripts/crawl-ui.py`, 130 trang với 4 vai): 0 lỗi server, 0 link hỏng, 0 lỗi script, 0 trang tràn ngang trên điện thoại. Có 1 "nút không phản hồi" là ô lớp "3" ở `/onboarding`, vốn đã được chọn sẵn nên bấm lại không đổi gì (báo động giả).
+**C. Kiểm tra giao diện các tính năng mới** (Playwright): **12/12 PASS**. Gồm: chọn đáp án không tự chuyển câu và không còn bỏ sót câu (3 câu, 0 câu trống); chấm tròn nhảy câu; nộp khi còn câu trống thì hỏi lại; đọc to bằng giọng vi-VN (giả lập), bấm lại thì dừng, máy không có giọng Việt thì ẩn nút; "AI soạn gợi ý" chỉ điền nháp; chọn cả trang và chặn hàng loạt phải có lý do; trang nguồn tự tải lại khi đang đồng bộ; 0 lỗi JavaScript.
 
-**Bổ sung sau rà soát luồng PIN:** trước đây khi chưa có PIN, hệ thống không nhắc gì lúc vào chế độ trẻ. Nay đã thêm lời nhắc ở trang Tổng quan và ở màn hình chọn bé, nút thoát ghi đúng "cần PIN" hoặc "cần mật khẩu", và có bộ test riêng `smoke-pin.py`. Sau thay đổi đã chạy lại toàn bộ: 14 bộ smoke đạt (riêng `smoke-sources` theo lưu ý trên), kịch bản trình duyệt 88/89 (bước còn lại là "Đồng bộ video" chờ mạng quá 12 giây nhưng vẫn đồng bộ đủ 200 video), `crawl-ui` 0 lỗi.
+**D. Quét toàn bộ giao diện** (`scripts/crawl-ui.py`, 130 trang, 4 vai): 0 lỗi server, 0 link hỏng, 0 lỗi script, 0 tài nguyên lỗi, 0 trang tràn ngang trên điện thoại. 1 "nút không phản hồi" là ô lớp "3" đã chọn sẵn ở `/onboarding` (báo động giả).
 
-**Những điểm hướng dẫn cũ ghi chưa đúng, đã sửa trong file này:** onboarding chỉ có 1 màn hình; thẻ bé ở `/profiles` có "Sửa / Giờ học / Vào học" (không có "Giao bài"); bàn phím PIN tự mở khóa khi đủ 4 số; câu hỏi mới lưu ở Nháp nên phải bấm "Duyệt"; báo cáo nội dung và yêu cầu xóa dữ liệu nằm trong mục thu gọn; phụ huynh chưa có bé bị đẩy về `/onboarding`; chọn đáp án là tự sang câu sau.
+**Lỗi tìm ra và đã sửa trong quá trình kiểm thử:**
+- Làm bài tập: chọn đáp án tự chuyển câu, bấm thêm "Câu tiếp theo" thì bỏ sót một câu → bỏ tự chuyển, thêm chấm tròn.
+- Không nhắc gì khi chưa tạo PIN; nút thoát luôn ghi "cần PIN" → thêm lời nhắc ở trang Tổng quan và màn hình chọn bé, nút thoát ghi đúng.
+- Đánh giá nguồn bằng AI lưu tên model kèm dấu ngoặc kép (do `ToString()` của SDK) → đã sửa, có test.
+- Khóa PIN ba mẹ mất khi khởi động lại app; công tắc tìm kiếm chỉ nằm ở trình duyệt; đồng bộ YouTube làm admin chờ 10–20 giây trên nút → đã chuyển vào SQL / chạy nền.
+
+**Những điểm hướng dẫn cũ ghi chưa đúng, đã sửa trong file này:** onboarding chỉ có 1 màn hình; thẻ bé ở `/profiles` có "Sửa / Giờ học / Vào học"; bàn phím PIN tự mở khóa khi đủ 4 số; câu hỏi chọn được trạng thái đã duyệt ngay trong form (không bắt buộc bấm "Duyệt" thêm); báo cáo nội dung và yêu cầu xóa dữ liệu nằm trong mục thu gọn; phụ huynh chưa có bé bị đẩy về `/onboarding`.

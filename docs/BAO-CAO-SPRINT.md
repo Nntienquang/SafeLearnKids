@@ -105,6 +105,7 @@ Mẹo đọc code nhanh:
   - `Views/Curation/Index.cshtml`, `Source.cshtml`, `Videos.cshtml`
 - **US-21** (phụ huynh chặn hoặc cho phép nguồn): `Areas/Parent/Controllers/SourcesController.cs`.
 - **US-22** (đánh giá nguồn tự động): `Services/SourceAssessor.cs`. Xem mục "Về AI" cuối file.
+- **Đồng bộ chạy nền:** `Services/SourceSyncQueue.cs` (hàng đợi + tiến trình nền), cột `SyncRequestedAt`. **Duyệt/chặn hàng loạt:** `CurationController.BulkVideoStatus`, `Views/Curation/Videos.cshtml`, `wwwroot/js/admin.js`.
 - **Ý chính:**
   - Video chỉ phát được khi đã duyệt.
   - Phát qua `youtube-nocookie` trong iframe có sandbox.
@@ -157,7 +158,9 @@ Mẹo đọc code nhanh:
 - **Ý chính:**
   - Câu hỏi do AI gợi ý luôn ở trạng thái "Chờ duyệt"; admin duyệt rồi mới dùng được.
   - Chấm điểm trên server; nộp trễ có ghi nhận.
-- **Test:** `smoke-quiz.py`
+- **Không tự chuyển câu, chấm tròn, đọc to:** `Areas/Kids/Views/Learn/Quiz.cshtml`, `wwwroot/js/kids.js` (khối quiz và khối "read aloud").
+- **Giải thích cách khác:** `Services/KidExplainer.cs`, `QuestionsController.DraftKidExplanation`, cột `Questions.KidExplanation`; bé thấy ở `Result.cshtml`, `Review.cshtml`.
+- **Test:** `smoke-quiz.py`, `smoke-ai.py`
 
 ---
 
@@ -168,6 +171,7 @@ Mẹo đọc code nhanh:
 - Phía admin: `Admin/AchievementsController.cs`, `Views/Achievements/Paths.cshtml`, `Badges.cshtml`.
 - Phía bé: `LearnController` (`/kids-badges`, `/kids-review`).
 - **Ý chính:** huy hiệu được trao tự động theo 4 loại tiêu chí: số bài, chuỗi ngày, bài đạt 100%, tổng số phút.
+- **Học thích ứng:** `ProgressService.ReviewLessonsAsync` gom câu sai theo bài → "Con nên học lại bài nào?" (`/kids-review`) và "Nên học lại" (`/kids-home`).
 - **Test:** `smoke-progress.py`
 
 ---
@@ -197,8 +201,8 @@ Mẹo đọc code nhanh:
 | | US-22: đánh giá nguồn | US-40: gợi ý câu hỏi |
 |---|---|---|
 | File | `Services/SourceAssessor.cs` | `Services/QuestionSuggester.cs` |
-| Cách làm hiện tại | **Bộ quy tắc** (`rule-v1`), không gọi AI. Bắt đầu 60 điểm, cộng hoặc trừ theo: YouTube hay website, từ khóa bị chặn (−40), từ ngữ không hợp với trẻ (−25), dấu hiệu nội dung học tập (+5 mỗi dấu hiệu). Từ 75 điểm trở lên gợi ý duyệt; dưới 50 gợi ý từ chối. | **AI thật: Claude** của Anthropic, gọi qua thư viện NuGet `Anthropic`, model đặt ở `Ai:Model` (`claude-opus-5-5`). Không có `Ai:ApiKey` thì dùng bộ sinh câu hỏi offline (`offline-rule-v1`). |
+| Cách làm hiện tại | **Bộ quy tắc** (`rule-v1`) luôn chạy: bắt đầu 60 điểm, cộng/trừ theo YouTube hay website, từ khóa bị chặn (−40), từ ngữ không hợp với trẻ (−25), dấu hiệu nội dung học tập (+5 mỗi dấu hiệu). **Có `Ai:ApiKey`: thêm Claude** đọc tên, mô tả, 50 tiêu đề và kết quả quy tắc, trả JSON (điểm, kết luận, vấn đề, lý do). Từ khóa bị chặn giới hạn điểm AI. Từ 75 gợi ý duyệt; dưới 50 gợi ý từ chối. | **AI thật: Claude** của Anthropic, gọi qua thư viện NuGet `Anthropic`, model đặt ở `Ai:Model` (`claude-opus-5-5`). Không có `Ai:ApiKey` thì dùng bộ sinh câu hỏi offline (`offline-rule-v1`). |
 | Ai quyết định | Admin. Gợi ý chỉ để tham khảo; mọi lý do cộng hoặc trừ điểm được hiển thị. | Admin. Câu hỏi AI tạo ra luôn chờ duyệt. |
-| Lưu ở đâu | Bảng `CurationSuggestions` (`Score`, `SafetyFlags`, `Summary`, `ModelName`) | Bảng `Questions` (trạng thái `InReview`) |
+| Lưu ở đâu | Bảng `CurationSuggestions` (`Score`, `SafetyFlags`, `Summary`, `ModelName` = `rule-v1` hoặc tên model Claude) | Bảng `Questions` (trạng thái `InReview`) |
 
-Khi báo cáo US-22, nói đúng: "hệ thống chấm điểm tự động bằng quy tắc minh bạch, admin quyết định". Không nói là AI học máy, trừ khi nhóm nâng cấp US-22 sang gọi Claude như US-40.
+Khi báo cáo US-22, nói đúng: "có key thì Claude chấm cùng bộ quy tắc minh bạch; không key thì chỉ bộ quy tắc; admin luôn quyết định". Thêm: "giải thích cách khác" (`Services/KidExplainer.cs`) cũng do Claude soạn **nháp**, admin lưu thì bé mới thấy, nên không có chữ AI nào tới thẳng tay trẻ. Kiểm thử phần AI không cần key thật: `scripts/smoke-ai.py` dựng server Claude giả.

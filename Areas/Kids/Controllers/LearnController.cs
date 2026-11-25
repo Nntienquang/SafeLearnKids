@@ -84,10 +84,10 @@ public class LearnController(KidContext kids, ParentSettings settings, Microsoft
         if (await users.GetUserAsync(User) is not { } user) return Challenge();
         var hasPin = (await settings.FindAsync(user.Id, cancellationToken))?.ParentPinHash is not null;
         ParentSettings.PinCheck check;
-        if (settings.LockedMinutes(user.Id) is { } locked) check = new(false, 0, locked);
-        else if (!string.IsNullOrEmpty(password)) check = settings.Record(user.Id, await users.CheckPasswordAsync(user, password));
+        if (await settings.LockedMinutesAsync(user.Id, cancellationToken) is { } locked) check = new(false, 0, locked);
+        else if (!string.IsNullOrEmpty(password)) check = await settings.RecordAsync(user.Id, await users.CheckPasswordAsync(user, password), cancellationToken);
         else if (hasPin) check = await settings.CheckPinAsync(user, pin, cancellationToken);
-        else check = settings.Record(user.Id, false);
+        else check = await settings.RecordAsync(user.Id, false, cancellationToken);
         if (check.Ok)
         {
             kids.Clear();
@@ -107,7 +107,7 @@ public class LearnController(KidContext kids, ParentSettings settings, Microsoft
         {
             HasPin = (await settings.FindAsync(userId, cancellationToken))?.ParentPinHash is not null,
             Error = error,
-            LockedMinutes = settings.LockedMinutes(userId),
+            LockedMinutes = await settings.LockedMinutesAsync(userId, cancellationToken),
             Back = kid is null ? "/kids-picker" : "/kids-home"
         };
     }
@@ -126,6 +126,7 @@ public class LearnController(KidContext kids, ParentSettings settings, Microsoft
             .ToListAsync(cancellationToken);
         var lastStarted = await db.LessonActivities.AsNoTracking().Where(item => item.ChildProfileId == kid.Id && item.Status == "Started")
             .OrderByDescending(item => item.UpdatedAt).Select(item => item.LessonId).ToListAsync(cancellationToken);
+        var review = await ProgressService.ReviewAsync(db, kid.Id, cancellationToken);
         return View(new KidHomeViewModel
         {
             Kid = kid,
@@ -139,7 +140,8 @@ public class LearnController(KidContext kids, ParentSettings settings, Microsoft
             Streak = await ProgressService.StreakAsync(db, kid.Id, cancellationToken),
             Week = await ProgressService.WeekAsync(db, kid.Id, ProgressService.WeekStart(StudyTimeService.Today), cancellationToken),
             Paths = (await ProgressService.PathsAsync(db, kid.Id, followedOnly: true, cancellationToken)).Where(path => path.Status != PathStatus.Completed).ToList(),
-            ReviewCount = (await ProgressService.ReviewAsync(db, kid.Id, cancellationToken)).Count
+            ReviewCount = review.Count,
+            ReviewLessons = await ProgressService.ReviewLessonsAsync(db, kid, review, 1, cancellationToken)
         });
     }
 
@@ -318,6 +320,8 @@ public class LearnController(KidContext kids, ParentSettings settings, Microsoft
         if (Db is not { } db) return View("SqlOnly");
         if (await KidAsync(cancellationToken) is not { } kid) return RedirectToAction(nameof(Picker));
         if (await GateAsync(db, kid, cancellationToken) is { } stop) return stop;
+        if (!await db.ChildProfiles.AsNoTracking().Where(item => item.Id == kid.Id).Select(item => item.AllowSearch).FirstOrDefaultAsync(cancellationToken))
+            return View(new KidSearchViewModel { Disabled = true });
         var term = q?.Trim();
         if (string.IsNullOrEmpty(term)) return View(new KidSearchViewModel());
         if (term.Length > 200) term = term[..200];
@@ -518,7 +522,12 @@ public class LearnController(KidContext kids, ParentSettings settings, Microsoft
         if (Db is not { } db) return View("SqlOnly");
         if (await KidAsync(cancellationToken) is not { } kid) return RedirectToAction(nameof(Picker));
         if (await GateAsync(db, kid, cancellationToken) is { } stop) return stop;
-        return View(new KidReviewViewModel { Kid = kid, Questions = await ProgressService.ReviewAsync(db, kid.Id, cancellationToken) });
+        var questions = await ProgressService.ReviewAsync(db, kid.Id, cancellationToken);
+        return View(new KidReviewViewModel
+        {
+            Kid = kid, Questions = questions,
+            Lessons = await ProgressService.ReviewLessonsAsync(db, kid, questions, 3, cancellationToken)
+        });
     }
 
     // Practice only: the answer is checked on the server and explained, nothing is scored. Retaking the quiz updates the list.

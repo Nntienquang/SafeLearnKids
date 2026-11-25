@@ -74,7 +74,7 @@ if(P==='profiles'){
         var cl=+$('#pf-cls .on',ov).textContent,se=$('#pf-search',ov).classList.contains('on');
         var keep=function(){S.set(function(s){var i=s.children.filter(function(z){return z.id===cur.id;})[0];i.name=nm;i.init=nm.charAt(0).toUpperCase();i.cls=cl;i.birthYear=by;i.subjects=subjects;i.search=se;});UI.toast('Đã lưu hồ sơ');render();return true;};
         if(!S.synced)return keep();
-        return S.api('/children/'+cur.id,{name:nm,cls:cl,birthYear:by,subjects:subjects}).then(keep).catch(function(err){fail(ov,err.message);return false;});
+        return S.api('/children/'+cur.id,{name:nm,cls:cl,birthYear:by,subjects:subjects,search:se}).then(keep).catch(function(err){fail(ov,err.message);return false;});
       }}).then(function(){if(remove)drop(cur);});
   }
   function drop(cur){

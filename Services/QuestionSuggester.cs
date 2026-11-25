@@ -13,6 +13,15 @@ public class AiOptions
 {
     public string? ApiKey { get; set; }
     public string Model { get; set; } = "claude-opus-5-5";
+    // Only for a proxy or the local fake used by the smoke tests; empty means Anthropic's API.
+    public string? BaseUrl { get; set; }
+
+    public bool Configured => !string.IsNullOrWhiteSpace(ApiKey);
+
+    public AnthropicClient CreateClient()
+    {
+        return string.IsNullOrWhiteSpace(BaseUrl) ? new AnthropicClient { ApiKey = ApiKey } : new AnthropicClient { ApiKey = ApiKey, BaseUrl = BaseUrl };
+    }
 }
 
 public record LessonSource(string Title, string Subject, int Grade, string? Summary, IReadOnlyList<string> Readings, IReadOnlyList<string> Existing);
@@ -25,7 +34,7 @@ public partial class QuestionSuggester(IOptions<AiOptions> options, ILogger<Ques
     public const int MaxCount = 5;
     private const int MaxSourceChars = 12000;
 
-    public bool Configured => !string.IsNullOrWhiteSpace(options.Value.ApiKey);
+    public bool Configured => options.Value.Configured;
 
     public async Task<SuggestionResult> SuggestAsync(LessonSource lesson, int count, CancellationToken cancellationToken)
     {
@@ -58,7 +67,7 @@ public partial class QuestionSuggester(IOptions<AiOptions> options, ILogger<Ques
 
     private async Task<string?> AskClaudeAsync(LessonSource lesson, int count, string model, CancellationToken cancellationToken)
     {
-        AnthropicClient client = new() { ApiKey = options.Value.ApiKey };
+        var client = options.Value.CreateClient();
         var source = string.Join("\n\n", lesson.Readings);
         if (source.Length > MaxSourceChars) source = source[..MaxSourceChars];
         var prompt = $"""

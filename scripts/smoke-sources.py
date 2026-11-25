@@ -12,6 +12,7 @@ import socket
 import sys
 import tempfile
 import threading
+import time
 import urllib.parse
 import uuid
 
@@ -122,6 +123,22 @@ def form(client, page, path, pairs=()):
     return client.request(path, list(pairs) + [("__RequestVerificationToken", token)])
 
 
+def wait_sync(where, seconds=60):
+    """Syncs run in the background: wait until the worker has cleared every mark."""
+    deadline = time.monotonic() + seconds
+    while sql(f"SELECT COUNT(*) FROM dbo.ContentSources WHERE ({where}) AND SyncRequestedAt IS NOT NULL;") != "0":
+        if time.monotonic() > deadline:
+            raise AssertionError(f"background sync did not finish: {where}")
+        time.sleep(0.3)
+
+
+def sync(admin, source):
+    page = f"/admin-sources/{source}"
+    status = form(admin, page, f"{page}/sync")[0]
+    wait_sync(f"Id={source}")
+    return status
+
+
 def source_id(external):
     return sql(f"SELECT Id FROM dbo.ContentSources WHERE ExternalId=N'{external}';")
 
@@ -164,16 +181,23 @@ def feed_checks(url, directory):
         missing = source_id(MISSING)
 
         page = f"/admin-sources/{playlist}"
-        check(form(admin, page, f"{page}/sync")[0] == 302, "Admin syncs the pending playlist")
+        status = form(admin, page, f"{page}/sync")[0]
+        check(status == 302 and sql(f"SELECT COUNT(*) FROM dbo.ContentSources WHERE Id={playlist} AND SyncRequestedAt IS NOT NULL;") in ("0", "1"),
+              "Admin starts a sync; it is queued for the background worker")
+        check("Đang đồng bộ" in admin.request(page)[2] or sql(f"SELECT COUNT(*) FROM dbo.ContentSources WHERE Id={playlist} AND LastSyncedAt IS NOT NULL;") == "1",
+              "while it runs the source page says it is syncing")
+        wait_sync(f"Id={playlist}")
+        check(sql(f"SELECT COUNT(*) FROM dbo.ContentSources WHERE Id={playlist} AND LastSyncResult IS NOT NULL;") == "1"
+              and "Lần đồng bộ gần nhất" in admin.request(page)[2], "the worker records the outcome and the page shows it")
         check(sql(f"SELECT COUNT(*) FROM dbo.SourceVideoSources WHERE SourceId={playlist};") == "3" and video_status(VIDEOS[0]) == "Pending", "new videos wait for review")
         check(video_status(VIDEOS[1]) == "Blocked" and sql(f"SELECT COUNT(*) FROM dbo.SourceVideos WHERE VideoId=N'{VIDEOS[1]}' AND ReviewNote LIKE N'%{KEYWORD}%';") == "1", "a title with a blocked keyword is blocked automatically")
         check(sql(f"SELECT ThumbnailUrl FROM dbo.SourceVideos WHERE VideoId=N'{VIDEOS[0]}';") == f"https://i.ytimg.com/vi/{VIDEOS[0]}/hqdefault.jpg", "thumbnails use YouTube's image host, not the feed's URL")
         check(sql(f"SELECT COUNT(*) FROM dbo.ContentSources WHERE Id={playlist} AND LastSyncedAt IS NOT NULL AND LastSyncError IS NULL;") == "1", "the sync time is recorded")
-        form(admin, page, f"{page}/sync")
+        sync(admin, playlist)
         check(sql(f"SELECT COUNT(*) FROM dbo.SourceVideos WHERE VideoId IN (N'{VIDEOS[0]}', N'{VIDEOS[1]}', N'{VIDEOS[2]}');") == "3", "syncing again adds no duplicates")
-        form(admin, f"/admin-sources/{website}", f"/admin-sources/{website}/sync")
+        sync(admin, website)
         check(sql(f"SELECT COUNT(*) FROM dbo.ContentSources WHERE Id={website} AND LastSyncError LIKE N'%website%';") == "1", "websites are not fetched")
-        form(admin, f"/admin-sources/{missing}", f"/admin-sources/{missing}/sync")
+        sync(admin, missing)
         check(sql(f"SELECT COUNT(*) FROM dbo.ContentSources WHERE Id={missing} AND LastSyncError IS NOT NULL;") == "1"
               and "Đồng bộ chưa thành công" in admin.request(f"/admin-sources/{missing}")[2], "a missing playlist reports the error")
 
@@ -192,7 +216,30 @@ def feed_checks(url, directory):
         check(form(admin, videos, f"/admin-videos/{video0}/status", [("to", "Blocked"), ("note", "")])[0] == 302 and video_status(VIDEOS[0]) == "Pending", "blocking a video needs a reason")
         check(form(admin, videos, f"/admin-videos/{video0}/status", [("to", "Approved"), ("back", "https://evil.example/")])[1].get("Location", "").startswith("/admin-videos")
               and video_status(VIDEOS[0]) == "Approved", "Admin approves a video and is never redirected off-site")
-        check(VIDEOS[2] in admin.request("/admin-videos")[2] and VIDEOS[0] not in admin.request("/admin-videos")[2], "the review queue lists pending videos")
+        queue = admin.request(f"/admin-videos?source={playlist}")[2]
+        check(VIDEOS[2] in queue and VIDEOS[0] not in queue, "the review queue lists pending videos")
+        # Bulk review: the row boxes join one form; blocking still needs a reason, the result is audited once.
+        check('form="video-bulk"' in queue and 'id="video-bulk"' in queue, "the queue offers ticking several videos")
+        video2 = sql(f"SELECT Id FROM dbo.SourceVideos WHERE VideoId=N'{VIDEOS[2]}';")
+        bulk = lambda *pairs: form(admin, "/admin-videos", "/admin-videos/bulk", [("back", f"/admin-videos?source={playlist}"), *pairs])
+        check(bulk(("to", "Approved"))[0] == 302 and video_status(VIDEOS[2]) == "Pending", "a bulk action without ticked videos changes nothing")
+        check(bulk(("ids", video2), ("ids", video0), ("to", "Blocked"), ("note", ""))[0] == 302
+              and video_status(VIDEOS[2]) == "Pending" and video_status(VIDEOS[0]) == "Approved", "blocking in bulk needs a reason")
+        check(bulk(("ids", video2), ("ids", video0), ("to", "Blocked"), ("note", "Thử chặn hàng loạt"))[0] == 302
+              and video_status(VIDEOS[2]) == "Blocked" and video_status(VIDEOS[0]) == "Blocked"
+              and sql(f"SELECT COUNT(*) FROM dbo.SourceVideos WHERE Id IN ({video2}, {video0}) AND ReviewedById IS NOT NULL;") == "2",
+              "the admin blocks two ticked videos at once")
+        check(bulk(("ids", video2), ("ids", video0), ("to", "Approved"))[0] == 302
+              and video_status(VIDEOS[2]) == "Approved" and video_status(VIDEOS[0]) == "Approved"
+              and sql(f"SELECT COUNT(*) FROM dbo.SourceVideos WHERE Id IN ({video2}, {video0}) AND ReviewNote IS NULL;") == "2",
+              "approving in bulk clears the block reason")
+        check(sql(f"SELECT COUNT(*) FROM dbo.AuditLogs WHERE Action=N'BulkVideoStatus' AND ActorId=(SELECT Id FROM dbo.Users WHERE Email=N'{ADMIN}');") == "2",
+              "each bulk action is logged once")
+        # Ids that cannot exist, so a missing limit could never touch real videos.
+        bulk(*[("ids", str(2_000_000_000 + i)) for i in range(201)], ("to", "Approved"))
+        check("tối đa 200 video" in admin.request(f"/admin-videos?source={playlist}")[2], "more than 200 videos at once is refused")
+        form(admin, "/admin-videos", f"/admin-videos/{video2}/status", [("to", "Pending")])
+        check(video_status(VIDEOS[2]) == "Pending", "the queue is back as before")
         # The content form only appears when editing a saved lesson.
         editor = "/admin-lesson/" + sql("SELECT TOP 1 Id FROM dbo.Lessons ORDER BY Id;")
         check(f'<option value="{video0}">' in admin.request(editor, raw=True)[2], "lesson editors can pick the approved video")
@@ -244,8 +291,12 @@ def feed_checks(url, directory):
         sql(f"DELETE FROM dbo.Lessons WHERE Id={lesson};")
         approved = sql("SELECT COUNT(*) FROM dbo.ContentSources WHERE Status=N'Approved' AND Platform<>N'Website';")
         # Bulk sync touches sources the test did not create; keep their sync columns to restore afterwards.
-        sql(f"SELECT Id, LastSyncedAt, LastSyncError INTO dbo.SmokeSyncBackup_{RUN[:12]} FROM dbo.ContentSources;")
-        check(form(admin, "/admin-curate", "/admin-sources/sync-approved")[0] == 302, f"Admin syncs all {approved} approved sources at once")
+        sql(f"SELECT Id, LastSyncedAt, LastSyncError, LastSyncResult, SyncRequestedAt INTO dbo.SmokeSyncBackup_{RUN[:12]} FROM dbo.ContentSources;")
+        check(form(admin, "/admin-curate", "/admin-sources/sync-approved")[0] == 302, f"Admin queues all {approved} approved sources at once")
+        # The app stops after this block: wait for the worker so no source is left half-synced.
+        wait_sync("Status=N'Approved' AND Platform<>N'Website'", seconds=180)
+        check(sql("SELECT COUNT(*) FROM dbo.ContentSources WHERE Status=N'Approved' AND Platform<>N'Website' AND SyncRequestedAt IS NOT NULL;") == "0",
+              "the worker syncs the approved sources one after another")
         check(sql(f"SELECT COUNT(*) FROM dbo.AuditLogs WHERE ActorId=N'{admin_id}' AND EntityType IN (N'ContentSource', N'SourceVideo');") != "0", "source decisions are audited")
 
 
@@ -299,14 +350,14 @@ def api_checks(url, directory):
         add_source(admin, f"https://www.youtube.com/channel/{CHANNEL}", "Kênh qua API")
         channel = source_id(CHANNEL)
         check(sql(f"SELECT Platform FROM dbo.ContentSources WHERE Id={channel};") == "YouTubeChannel", "Admin adds a channel by its id")
-        form(admin, f"/admin-sources/{channel}", f"/admin-sources/{channel}/sync")
+        sync(admin, channel)
         check(sql(f"SELECT COUNT(*) FROM dbo.SourceVideoSources WHERE SourceId={channel};") == "3", "with a key, sync reads every page of the uploads playlist")
         check(sql(f"SELECT DurationSec FROM dbo.SourceVideos WHERE VideoId=N'{API_VIDEOS[0]}';") == "245", "the API sync stores durations")
         check(video_status(API_VIDEOS[2]) == "Blocked" and sql(f"SELECT COUNT(*) FROM dbo.SourceVideos WHERE VideoId=N'{API_VIDEOS[2]}' AND ReviewNote LIKE N'%YouTube%';") == "1",
               "videos YouTube will not embed are blocked")
         add_source(admin, f"https://www.youtube.com/playlist?list={QUOTA}", "Hết hạn mức")
         quota = source_id(QUOTA)
-        form(admin, f"/admin-sources/{quota}", f"/admin-sources/{quota}/sync")
+        sync(admin, quota)
         check("hạn mức" in admin.request(f"/admin-sources/{quota}")[2], "an exhausted quota is explained")
         form(admin, "/admin-videos", "/admin-videos/add", [("url", f"https://www.youtube.com/watch?v={API_SINGLE}")])
         check(sql(f"SELECT Title + N'|' + CAST(DurationSec AS varchar) FROM dbo.SourceVideos WHERE VideoId=N'{API_SINGLE}';") == f"Video API {API_SINGLE}|245",
@@ -333,7 +384,7 @@ def main():
         emails = f"N'{ADMIN}', N'{PARENT}', N'{OTHER}'"
         ids = f"SELECT Id FROM dbo.Users WHERE Email IN ({emails})"
         externals = ", ".join(f"N'{item}'" for item in [PLAYLIST, MISSING, QUOTA, CHANNEL] + [f"PLmine{i}{RUN[:18]}" for i in range(6)])
-        sql(f"IF OBJECT_ID(N'dbo.SmokeSyncBackup_{RUN[:12]}') IS NOT NULL BEGIN UPDATE s SET LastSyncedAt=b.LastSyncedAt, LastSyncError=b.LastSyncError FROM dbo.ContentSources s JOIN dbo.SmokeSyncBackup_{RUN[:12]} b ON b.Id=s.Id; DROP TABLE dbo.SmokeSyncBackup_{RUN[:12]}; END")
+        sql(f"IF OBJECT_ID(N'dbo.SmokeSyncBackup_{RUN[:12]}') IS NOT NULL BEGIN UPDATE s SET LastSyncedAt=b.LastSyncedAt, LastSyncError=b.LastSyncError, LastSyncResult=b.LastSyncResult, SyncRequestedAt=b.SyncRequestedAt FROM dbo.ContentSources s JOIN dbo.SmokeSyncBackup_{RUN[:12]} b ON b.Id=s.Id; DROP TABLE dbo.SmokeSyncBackup_{RUN[:12]}; END")
         sql(f"DELETE FROM dbo.Lessons WHERE Title=N'{TAG}';")
         sql(f"DELETE FROM dbo.ParentSources WHERE ParentId IN ({ids}) OR SourceId IN (SELECT Id FROM dbo.ContentSources WHERE ExternalId IN ({externals}) OR Url LIKE N'https://example.org/hoc-{RUN[:8]}%');")
         sql(f"DELETE FROM dbo.ContentSources WHERE ExternalId IN ({externals}) OR Url LIKE N'https://example.org/hoc-{RUN[:8]}%' OR SuggestedById IN ({ids});")

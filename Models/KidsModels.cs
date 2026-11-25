@@ -50,6 +50,8 @@ public class KidHomeViewModel
     public WeekGoalView? Week { get; init; }
     public IReadOnlyList<PathView> Paths { get; init; } = [];
     public int ReviewCount { get; init; }
+    // The lesson with the most questions the child last got wrong (adaptive review).
+    public IReadOnlyList<ReviewLesson> ReviewLessons { get; init; } = [];
 }
 
 public class KidSubjectViewModel
@@ -75,6 +77,8 @@ public class KidSearchViewModel
 {
     public string? Q { get; init; }
     public bool Blocked { get; init; }
+    // The parent turned search off for this child (checked on the server, nothing is searched or logged).
+    public bool Disabled { get; init; }
     public IReadOnlyList<KidLessonCard> Results { get; init; } = [];
 }
 

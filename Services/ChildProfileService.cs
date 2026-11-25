@@ -35,6 +35,7 @@ public sealed class ChildProfileService(IServiceProvider services)
                 child.DisplayName,
                 child.GradeLevel.Level,
                 child.BirthYear,
+                child.AllowSearch,
                 Codes = child.ChildSubjects.Select(item => item.Subject.Code).ToList()
             })
             .ToListAsync(cancellationToken);
@@ -43,7 +44,7 @@ public sealed class ChildProfileService(IServiceProvider services)
         {
             var today = await StudyTimeService.StatusAsync(db, child.Id, cancellationToken);
             rows.Add(ToRow(child.Id, child.DisplayName, child.Level, child.BirthYear, child.Codes.Select(SubjectCatalog.Key))
-                with { Limit = today.LimitMinutes + today.ExtraMinutes, Used = today.UsedMinutes });
+                with { Limit = today.LimitMinutes + today.ExtraMinutes, Used = today.UsedMinutes, Search = child.AllowSearch });
         }
         return rows;
     }
@@ -105,13 +106,15 @@ public sealed class ChildProfileService(IServiceProvider services)
         child.DisplayName = name;
         child.GradeLevelId = gradeId;
         child.BirthYear = input.BirthYear;
+        // Left unchanged when an older page does not send the switch.
+        if (input.Search is { } allow) child.AllowSearch = allow;
         db.ChildSubjects.RemoveRange(child.ChildSubjects.Where(item => !chosen.ContainsValue(item.SubjectId)));
         foreach (var subjectId in chosen.Values.Where(subjectId => child.ChildSubjects.All(item => item.SubjectId != subjectId)))
             child.ChildSubjects.Add(new ChildSubject { SubjectId = subjectId });
         try
         {
             await db.SaveChangesAsync(cancellationToken);
-            return new(ToRow(id, name, input.Cls, input.BirthYear, chosen.Keys), null);
+            return new(ToRow(id, name, input.Cls, input.BirthYear, chosen.Keys) with { Search = child.AllowSearch }, null);
         }
         catch (DbUpdateException exception) when (SqlError(exception) is 2601 or 2627)
         {

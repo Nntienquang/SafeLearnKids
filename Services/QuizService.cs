@@ -91,7 +91,7 @@ public static class QuizService
         if (attempt is null) return null;
         var answers = await db.QuizAttemptAnswers.AsNoTracking().Where(item => item.AttemptId == attemptId).Select(item => new
         {
-            item.QuestionId, item.SelectedOptionId, item.IsCorrect, item.Question.Text, item.Question.Explanation,
+            item.QuestionId, item.SelectedOptionId, item.IsCorrect, item.Question.Text, item.Question.Explanation, item.Question.KidExplanation,
             Options = item.Question.QuestionOptions.OrderBy(option => option.SortOrder).ThenBy(option => option.Id).Select(option => new { option.Id, option.Text, option.IsCorrect }).ToList()
         }).ToListAsync(cancellationToken);
         // Same order as the child saw.
@@ -118,7 +118,7 @@ public static class QuizService
             TimedOut = attempt.TimeLimitSec is { } limit && (attempt.SubmittedAt - attempt.StartedAt).TotalSeconds > limit + QuizRules.GraceSeconds,
             Questions = sorted.Select((item, index) => new ResultQuestion(index + 1, item.Text, item.Explanation,
                 item.Options.Select(option => new ResultOption(option.Text, option.IsCorrect, option.Id == item.SelectedOptionId)).ToList(),
-                item.IsCorrect, item.SelectedOptionId is not null)).ToList()
+                item.IsCorrect, item.SelectedOptionId is not null, item.KidExplanation)).ToList()
         };
     }
 

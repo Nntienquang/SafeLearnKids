@@ -55,7 +55,18 @@ public static class SchemaUpdater
                 CreatedAt datetime2 NOT NULL CONSTRAINT DF_LessonRequestVotes_CreatedAt DEFAULT (sysutcdatetime()),
                 CONSTRAINT PK_LessonRequestVotes PRIMARY KEY (RequestId, ParentId)
             );
-        """
+        """,
+        // The parent's "allow search" switch for each child (was kept in the browser only).
+        "IF COL_LENGTH(N'dbo.ChildProfiles', N'AllowSearch') IS NULL ALTER TABLE dbo.ChildProfiles ADD AllowSearch bit NOT NULL CONSTRAINT DF_ChildProfiles_AllowSearch DEFAULT (1);",
+        // Wrong parent PINs/passwords at the child-mode exit, counted in SQL so a restart does not reset the lock.
+        "IF COL_LENGTH(N'dbo.UserSettings', N'PinFailedAttempts') IS NULL ALTER TABLE dbo.UserSettings ADD PinFailedAttempts int NOT NULL CONSTRAINT DF_UserSettings_PinFailedAttempts DEFAULT (0);",
+        "IF COL_LENGTH(N'dbo.UserSettings', N'PinLockedUntil') IS NULL ALTER TABLE dbo.UserSettings ADD PinLockedUntil datetime2 NULL;",
+        // Background sync of a source: set when an admin asks, cleared when the worker is done; the last outcome in words.
+        "IF COL_LENGTH(N'dbo.ContentSources', N'SyncRequestedAt') IS NULL ALTER TABLE dbo.ContentSources ADD SyncRequestedAt datetime2 NULL;",
+        "IF COL_LENGTH(N'dbo.ContentSources', N'LastSyncResult') IS NULL ALTER TABLE dbo.ContentSources ADD LastSyncResult nvarchar(300) NULL;",
+        // A second, child-friendly explanation of a question ("explain it another way"), written or AI-drafted and saved by an admin.
+        "IF COL_LENGTH(N'dbo.Questions', N'KidExplanation') IS NULL ALTER TABLE dbo.Questions ADD KidExplanation nvarchar(1000) NULL;",
+        "IF COL_LENGTH(N'dbo.Questions', N'KidExplanationBy') IS NULL ALTER TABLE dbo.Questions ADD KidExplanationBy nvarchar(100) NULL;"
     ];
 
     public static async Task RunAsync(SafeLearnDbContext db, ILogger logger, CancellationToken cancellationToken = default)
@@ -65,6 +76,6 @@ public static class SchemaUpdater
         foreach (var step in Steps)
             await db.Database.ExecuteSqlRawAsync("SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; " + step, cancellationToken);
 #pragma warning restore EF1003
-        logger.LogInformation("Database schema is up to date (family lessons, community library, lesson requests).");
+        logger.LogInformation("Database schema is up to date (family lessons, community library, lesson requests, search switch, PIN lock, background sync, kid explanations).");
     }
 }

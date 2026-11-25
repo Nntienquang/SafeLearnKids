@@ -99,6 +99,7 @@ Bé không có tài khoản riêng. Bé là một hồ sơ nằm dưới tài kh
 | `PinHash` | Mã PIN riêng của bé, đã băm (US-08) |
 | `PinFailedAttempts`, `PinLockedUntil` | Đếm số lần nhập PIN sai; sai nhiều lần thì khóa 5 phút |
 | `PinChangedAt` | Lần đổi PIN gần nhất |
+| `AllowSearch` | Ba mẹ cho bé dùng ô tìm kiếm không (mặc định 1). Thêm sau bằng `SchemaUpdater`; server kiểm tra khi bé tìm. |
 | `IsActive` | 0 khi phụ huynh xóa hồ sơ |
 
 ### UserConsents: sự đồng ý của phụ huynh (US-10)
@@ -122,6 +123,7 @@ Lưu bằng chứng phụ huynh đã đồng ý điều khoản và chính sách
 | `ParentPinHash` | PIN của phụ huynh (đã băm), dùng để thoát chế độ trẻ thay cho mật khẩu |
 | `WeeklyEmail` | Có nhận email báo cáo tuần không |
 | `NotifyTimeRequest`, `NotifyContentReport` | Có nhận thông báo khi bé xin thêm giờ hoặc báo cáo nội dung không |
+| `PinFailedAttempts`, `PinLockedUntil` | Số lần nhập sai PIN/mật khẩu liên tiếp ở màn hình thoát chế độ trẻ; sai 5 lần thì khóa tới `PinLockedUntil`. Lưu trong SQL (không phải bộ nhớ) nên khởi động lại app không mở khóa. Thêm sau bằng `SchemaUpdater`. |
 
 ### AuditLogs: nhật ký thao tác
 Mỗi thao tác quan trọng (tạo bài, duyệt nguồn, xóa video, khóa tài khoản...) ghi một dòng. Dùng để biết **ai làm gì, lúc nào**.
@@ -210,6 +212,8 @@ CHECK quan trọng: loại nào thì phải có dữ liệu tương ứng. `Vide
 | `SuggestedById` | Ai đề xuất (admin hoặc phụ huynh) |
 | `ReviewedById`, `ReviewedAt`, `ReviewNote` | Ai duyệt, lúc nào, lý do |
 | `LastSyncedAt`, `LastSyncError` | Lần đồng bộ video gần nhất và lỗi nếu có |
+| `SyncRequestedAt` | Admin đã bấm đồng bộ, đang chờ tiến trình nền chạy (NULL khi xong). Lệnh còn dở được chạy tiếp khi app khởi động. Thêm sau bằng `SchemaUpdater`. |
+| `LastSyncResult` | Kết quả lần đồng bộ gần nhất bằng chữ, ví dụ "12 video, 3 video mới chờ duyệt" |
 
 ### SourceVideos: từng video
 | Trường | Ý nghĩa |
@@ -237,9 +241,9 @@ Phụ huynh chỉ **thu hẹp** được những gì admin đã duyệt, không 
 |---|---|
 | `SourceId` | Nguồn được chấm |
 | `Score` | Điểm 0 đến 100 (CHECK) |
-| `SafetyFlags` | Các dấu hiệu rủi ro tìm thấy |
+| `SafetyFlags` | Các dấu hiệu rủi ro tìm thấy: của bộ quy tắc (`blocked-keyword`, `risky-topic`, `no-videos`) và của AI (`violence`, `scary`, `adult`, `ads`...) |
 | `Summary` | Giải thích từng điểm cộng và trừ |
-| `ModelName` | Cách chấm, hiện là `rule-v1` (chấm theo quy tắc, không phải AI học máy) |
+| `ModelName` | Cách chấm: `rule-v1` (bộ quy tắc) khi không có key hoặc gọi AI lỗi; tên model Claude đã trả lời (ví dụ `claude-opus-5-5`) khi chấm bằng AI |
 | `Status` | `Pending` / `Accepted` (admin đồng ý) / `Dismissed` (admin quyết định khác) |
 | `DecidedById`, `DecidedAt` | Admin nào quyết định |
 
@@ -340,6 +344,8 @@ Bài được giao có thể thuộc lớp khác lớp của bé. Đây là các
 | `AiModelName` | Model AI đã gợi ý (nếu có) |
 | `SourceVideoId` | Câu hỏi về video nào (nếu có) |
 | `Status` | `Draft` / `InReview` / `Published` / `Archived`. Câu do AI gợi ý phải được admin duyệt mới dùng được. |
+| `KidExplanation` | "Giải thích cách khác" cho bé khi làm sai (tối đa 1000 ký tự). Admin viết hoặc AI soạn nháp rồi admin lưu. Thêm sau bằng `SchemaUpdater`. |
+| `KidExplanationBy` | `admin` nếu tự viết, hoặc model đã soạn (`claude-...`, `offline-template-v1`) |
 
 ### QuestionOptions: các đáp án
 `Text`, `IsCorrect` (đáp án đúng hay không), `SortOrder`.

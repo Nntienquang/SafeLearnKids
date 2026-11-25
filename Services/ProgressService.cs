@@ -258,7 +258,7 @@ public static class ProgressService
         var questions = await db.Questions.AsNoTracking().Where(item => ids.Contains(item.Id) && item.Status == QuestionStatus.Published)
             .Select(item => new
             {
-                item.Id, item.Text, item.Explanation, Lesson = item.Lesson.Title,
+                item.Id, item.Text, item.Explanation, Lesson = item.Lesson.Title, item.LessonId, item.KidExplanation,
                 Options = item.QuestionOptions.OrderBy(option => option.SortOrder).ThenBy(option => option.Id).Select(option => new QuizOptionView(option.Id, option.Text)).ToList()
             }).ToListAsync(cancellationToken);
         var quizIds = wrong.Select(item => item.QuizId).Distinct().ToList();
@@ -266,6 +266,21 @@ public static class ProgressService
         return wrong.Select(item => (item, question: questions.FirstOrDefault(row => row.Id == item.QuestionId)))
             .Where(pair => pair.question is not null)
             .Select(pair => new ReviewQuestion(pair.question!.Id, pair.question.Text, pair.question.Explanation, quizzes.GetValueOrDefault(pair.item.QuizId, ""),
-                pair.item.QuizId, pair.question.Lesson, pair.question.Options, pair.item.SelectedOptionId, pair.item.AnsweredAt)).ToList();
+                pair.item.QuizId, pair.question.Lesson, pair.question.Options, pair.item.SelectedOptionId, pair.item.AnsweredAt,
+                pair.question.LessonId, pair.question.KidExplanation)).ToList();
+    }
+
+    // Adaptive review: the lessons behind the questions the child last got wrong, most wrong first, limited to lessons
+    // the child may still open (published, right grade and subject, or assigned).
+    public static async Task<IReadOnlyList<ReviewLesson>> ReviewLessonsAsync(SafeLearnDbContext db, KidInfo kid, IReadOnlyList<ReviewQuestion> wrong,
+        int take, CancellationToken cancellationToken)
+    {
+        if (wrong.Count == 0) return [];
+        var counts = wrong.GroupBy(item => item.LessonId).ToDictionary(group => group.Key, group => group.Count());
+        var ids = counts.Keys.ToList();
+        var lessons = await KidContext.Openable(db, kid).Where(lesson => ids.Contains(lesson.Id))
+            .Select(lesson => new { lesson.Id, lesson.Title, Subject = lesson.Subject.Name }).ToListAsync(cancellationToken);
+        return lessons.Select(lesson => new ReviewLesson(lesson.Id, lesson.Title, lesson.Subject, counts[lesson.Id]))
+            .OrderByDescending(lesson => lesson.Wrong).ThenBy(lesson => lesson.Title).Take(take).ToList();
     }
 }

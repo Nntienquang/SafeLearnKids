@@ -3,6 +3,10 @@
     var back = Context.Request.Path + Context.Request.QueryString;
 }
 <div class="sl-row" style="gap:14px;padding:12px 0;border-top:1px solid var(--line);align-items:flex-start;flex-wrap:wrap">
+    @if (ViewData["Bulk"] is true)
+    {
+        <input type="checkbox" name="ids" value="@Model.Id" form="video-bulk" data-bulk-pick aria-label="Chọn video @Model.Title" style="margin-top:28px" />
+    }
     <a href="https://www.youtube.com/watch?v=@Model.VideoId" target="_blank" rel="noopener noreferrer" style="flex:0 0 auto" aria-label="Xem trên YouTube: @Model.Title">
         @if (Model.ThumbnailUrl is not null)
         {

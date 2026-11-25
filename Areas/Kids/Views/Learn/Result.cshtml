@@ -74,7 +74,17 @@
             }
             @if (question.Explanation is not null)
             {
-                <div class="banner t-p" style="font-weight:600"><i class="ic ic-info"></i>@question.Explanation</div>
+                <div class="banner t-p" style="font-weight:600"><i class="ic ic-info"></i><span id="rx-@question.Number">@question.Explanation</span></div>
+            }
+            @if (!question.Correct && question.KidExplanation is { Length: > 0 } another)
+            {
+                <details data-kid-explanation>
+                    <summary class="b" style="cursor:pointer;font-size:18px">💡 Giải thích cách khác</summary>
+                    <div class="sl-row" style="gap:10px;align-items:flex-start;margin-top:10px">
+                        <p id="rk-@question.Number" style="margin:0;font-size:18px;line-height:1.6;flex:1">@another</p>
+                        <button type="button" class="k-tts" data-tts="#rk-@question.Number" hidden aria-pressed="false" aria-label="Đọc to lời giải thích"><i class="ic ic-volume"></i></button>
+                    </div>
+                </details>
             }
         </article>
     }

@@ -42,11 +42,15 @@ builder.Services.AddHttpClient(SourceSyncService.ClientName, client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd("SafeLearnKids/1.0");
 });
 builder.Services.AddScoped<SourceSyncService>();
+builder.Services.AddSingleton<SourceSyncQueue>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<SourceSyncQueue>());
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<KidContext>();
 // US-40: Ai:ApiKey stays empty in appsettings.json; set it with user-secrets. Without it suggestions come from the offline generator.
 builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("Ai"));
 builder.Services.AddScoped<QuestionSuggester>();
+builder.Services.AddScoped<SourceAssessor>();
+builder.Services.AddScoped<KidExplainer>();
 builder.Services.AddSingleton<AccountEmailQueue>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<AccountEmailQueue>());
 

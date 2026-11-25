@@ -17,6 +17,7 @@ public class QuestionsController(
     UserManager<ApplicationUser> users,
     AccountActivityLog activity,
     QuestionSuggester suggester,
+    KidExplainer explainer,
     IServiceProvider services) : Controller
 {
     private const int LessonListSize = 60;
@@ -114,6 +115,7 @@ public class QuestionsController(
         var question = await db.Questions.AsNoTracking().Where(item => item.Id == id && item.Lesson.OwnerParentId == null).Select(item => new
         {
             item.Id, item.LessonId, Lesson = item.Lesson.Title, item.Text, item.QuestionType, item.Difficulty, item.Explanation, item.Status, item.Origin, item.AiModelName,
+            item.KidExplanation, item.KidExplanationBy,
             Options = item.QuestionOptions.OrderBy(option => option.SortOrder).ThenBy(option => option.Id).Select(option => new { option.Text, option.IsCorrect }).ToList(),
             Locked = item.QuizAttemptAnswers.Any()
         }).FirstOrDefaultAsync(cancellationToken);
@@ -124,8 +126,27 @@ public class QuestionsController(
         {
             Id = question.Id, LessonId = question.LessonId, LessonTitle = question.Lesson, Text = question.Text, Type = question.QuestionType,
             Difficulty = question.Difficulty, Explanation = question.Explanation, Status = question.Status, Origin = question.Origin, AiModelName = question.AiModelName,
-            Options = options, Correct = Math.Max(0, question.Options.FindIndex(option => option.IsCorrect)), Locked = question.Locked
+            Options = options, Correct = Math.Max(0, question.Options.FindIndex(option => option.IsCorrect)), Locked = question.Locked,
+            KidExplanation = question.KidExplanation, KidExplanationBy = question.KidExplanationBy
         });
+    }
+
+    // "Explain it another way": a draft for the admin to read and edit on this form; nothing is saved here.
+    [HttpPost("admin-questions/{id:int}/kid-explanation")]
+    [EnableRateLimiting("account")]
+    public async Task<IActionResult> DraftKidExplanation(int id, CancellationToken cancellationToken)
+    {
+        if (Db is not { } db) return NotFound();
+        var question = await db.Questions.AsNoTracking().Where(item => item.Id == id && item.Lesson.OwnerParentId == null).Select(item => new
+        {
+            item.Text, item.Explanation, Lesson = item.Lesson.Title, Subject = item.Lesson.Subject.Name, Grade = item.Lesson.GradeLevel.Level,
+            Options = item.QuestionOptions.OrderBy(option => option.SortOrder).ThenBy(option => option.Id).Select(option => new { option.Text, option.IsCorrect }).ToList()
+        }).FirstOrDefaultAsync(cancellationToken);
+        if (question is null) return NotFound();
+        var draft = await explainer.DraftAsync(new ExplainSource(question.Text, question.Options.Select(option => option.Text).ToList(),
+            question.Options.FindIndex(option => option.IsCorrect), question.Explanation, question.Lesson, question.Subject, question.Grade), cancellationToken);
+        await activity.ContentActionAsync(ActorId, "Question", id, "DraftKidExplanation", draft.Error ?? draft.Model);
+        return Json(new { text = draft.Text, model = draft.Model, error = draft.Error });
     }
 
     [HttpPost("admin-questions/{id:int}")]
@@ -400,6 +421,7 @@ public class QuestionsController(
     {
         model.Text = model.Text?.Trim() ?? "";
         model.Explanation = string.IsNullOrWhiteSpace(model.Explanation) ? null : model.Explanation.Trim();
+        model.KidExplanation = string.IsNullOrWhiteSpace(model.KidExplanation) ? null : model.KidExplanation.Trim();
         if (!QuestionType.All.Contains(model.Type)) ModelState.AddModelError(nameof(model.Type), "Chọn loại câu hỏi.");
         var statuses = allowReview ? QuestionStatus.All : QuestionStatus.All.Where(status => status != QuestionStatus.InReview);
         if (!statuses.Contains(model.Status)) ModelState.AddModelError(nameof(model.Status), "Trạng thái không hợp lệ.");
@@ -427,6 +449,14 @@ public class QuestionsController(
     {
         question.Text = model.Text;
         question.Explanation = model.Explanation;
+        if (model.KidExplanation != question.KidExplanation)
+        {
+            question.KidExplanation = model.KidExplanation;
+            // Only a known drafter name is kept (the page sends it after an AI draft); the admin saved it either way.
+            var by = model.KidExplanationBy?.Trim();
+            question.KidExplanationBy = model.KidExplanation is null ? null
+                : by is { Length: > 0 and <= 100 } && (by.StartsWith("claude-", StringComparison.Ordinal) || by == KidExplainer.OfflineModel) ? by : "admin";
+        }
         question.Difficulty = model.Difficulty;
         if (!model.Locked) question.QuestionType = model.Type;
         if (model.Status == QuestionStatus.Published && question.Status != QuestionStatus.Published)

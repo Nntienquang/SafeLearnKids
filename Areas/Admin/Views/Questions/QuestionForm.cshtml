@@ -90,6 +90,19 @@
             <textarea asp-for="Explanation" class="inp ta" rows="2" maxlength="500" placeholder="Bé xem sau khi nộp bài: vì sao đáp án này đúng"></textarea>
             <span asp-validation-for="Explanation" class="err"></span>
         </div>
+        <div class="field" data-kid-explain>
+            <label asp-for="KidExplanation" class="lab"></label>
+            <textarea asp-for="KidExplanation" class="inp ta" rows="4" maxlength="1000" placeholder="Bé xem khi làm sai và bấm &quot;Giải thích cách khác&quot;: ví dụ đời thường hoặc chia nhỏ từng bước"></textarea>
+            <input type="hidden" asp-for="KidExplanationBy" />
+            <span asp-validation-for="KidExplanation" class="err"></span>
+            <div class="sl-row" style="gap:10px;flex-wrap:wrap;margin-top:6px">
+                @if (Model.Id is { } questionId)
+                {
+                    <button class="sl-btn sl-btn-sm" type="button" data-kid-draft="/admin-questions/@questionId/kid-explanation"><i class="ic ic-sparkles"></i>AI soạn gợi ý</button>
+                }
+                <span class="muted" style="font-size:12.5px" data-kid-draft-note>@(Model.Id is null ? "Lưu câu hỏi trước, sau đó có thể nhờ AI soạn gợi ý." : "AI chỉ soạn nháp vào ô này. Bạn đọc, sửa rồi bấm Lưu câu hỏi thì bé mới thấy.")@(Model.KidExplanationBy is { } by ? (by == "admin" ? " · Đang lưu: do admin viết." : $" · Đang lưu: {by} soạn, admin duyệt.") : "")</span>
+            </div>
+        </div>
     </section>
     <div class="acc-foot">
         <a class="sl-btn" asp-action="Index" asp-route-lesson="@Model.LessonId">Hủy</a>

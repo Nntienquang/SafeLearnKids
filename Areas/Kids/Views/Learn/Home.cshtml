@@ -54,6 +54,14 @@
         <span class="grow"><span class="kf" style="font-size:20px">Ôn lại câu chưa đúng</span><br /><span class="k-note">Con có @Model.ReviewCount câu nên xem lại</span></span>
         <span class="k-pill p">Ôn bài</span>
     </a>
+    @foreach (var lesson in Model.ReviewLessons)
+    {
+        <a class="k-card sl-row" href="/kids-lesson?id=@lesson.LessonId" data-review-lesson="@lesson.LessonId" style="gap:14px;text-decoration:none;color:inherit">
+            <span class="ib t-b" aria-hidden="true"><i class="ic ic-book"></i></span>
+            <span class="grow"><span class="kf" style="font-size:20px">Nên học lại: @lesson.Title</span><br /><span class="k-note">@lesson.Subject · @lesson.Wrong câu trong bài này con chưa làm đúng</span></span>
+            <span class="k-pill">Học lại</span>
+        </a>
+    }
 }
 @if (Model.Paths.Count > 0)
 {

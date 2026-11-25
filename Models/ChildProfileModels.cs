@@ -19,10 +19,13 @@ public class ChildProfileInput
 
     // US-10: required when a profile is created; ignored on later edits (consent is managed on the privacy page).
     public bool Consent { get; set; }
+
+    // The parent's "allow search" switch; null keeps the stored value.
+    public bool? Search { get; set; }
 }
 
 // Matches the child shape store.js keeps, so demo pages read SQL profiles unchanged.
 // Limit and Used are today's minutes from the server (Limit includes extra time granted today).
-public record ParentChildRow(string Id, string Name, int Cls, int? BirthYear, string Init, IReadOnlyList<string> Subjects, int Limit = StudyTimeService.DefaultDailyMinutes, int Used = 0);
+public record ParentChildRow(string Id, string Name, int Cls, int? BirthYear, string Init, IReadOnlyList<string> Subjects, int Limit = StudyTimeService.DefaultDailyMinutes, int Used = 0, bool Search = true);
 
 public record ChildSaveResult(ParentChildRow? Child, string? Error, bool NotFound = false);

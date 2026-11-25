@@ -4,31 +4,39 @@
     ViewData["Page"] = "kids-search-sql";
 }
 <main style="flex:1;min-width:0;padding:8px 48px 40px;display:flex;flex-direction:column;gap:22px">
-<form method="get" asp-action="Search" class="sl-row" style="gap:14px" role="search">
-    <a class="k-pill" href="~/kids-home" aria-label="Quay lại"><i class="ic ic-arrowl"></i></a>
-    <div class="k-card grow sl-row" style="gap:12px;padding:14px 22px;min-width:0"><i class="ic ic-search" aria-hidden="true"></i><input name="q" type="search" value="@Model.Q" maxlength="200" aria-label="Tìm bài học" autocomplete="off" placeholder="Con muốn học gì?" style="all:unset;flex:1;min-width:0;font-size:20px;font-weight:700;color:var(--text)" /></div>
-    <button class="k-btn" type="submit">Tìm</button>
-</form>
-@if (Model.Q is null)
+@if (Model.Disabled)
 {
-    <div class="k-note">Con gõ tên bài, tên môn hoặc chủ đề rồi bấm Tìm nhé. Con chỉ thấy bài ba mẹ và thầy cô đã chọn cho con.</div>
-}
-else if (Model.Blocked)
-{
-    <div class="empty"><div class="b" style="font-size:16px;color:var(--text-2)">Từ này không dùng để tìm được.</div><div style="font-size:14px;margin-top:4px">Con thử từ khác hoặc hỏi ba mẹ nhé.</div></div>
+    <a class="k-pill" href="~/kids-home" aria-label="Quay lại" style="align-self:flex-start"><i class="ic ic-arrowl"></i></a>
+    <div class="empty" data-search-off><div class="b" style="font-size:16px;color:var(--text-2)">Ba mẹ đã tắt tìm kiếm.</div><div style="font-size:14px;margin-top:4px">Con học bài ba mẹ giao ở trang học nhé.</div></div>
 }
 else
 {
-    <div class="k-note">@Model.Results.Count bài phù hợp</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px">
-        @foreach (var card in Model.Results)
-        {
-            <partial name="_LessonCard" model="card" />
-        }
-    </div>
-    @if (Model.Results.Count == 0)
+    <form method="get" asp-action="Search" class="sl-row" style="gap:14px" role="search">
+        <a class="k-pill" href="~/kids-home" aria-label="Quay lại"><i class="ic ic-arrowl"></i></a>
+        <div class="k-card grow sl-row" style="gap:12px;padding:14px 22px;min-width:0"><i class="ic ic-search" aria-hidden="true"></i><input name="q" type="search" value="@Model.Q" maxlength="200" aria-label="Tìm bài học" autocomplete="off" placeholder="Con muốn học gì?" style="all:unset;flex:1;min-width:0;font-size:20px;font-weight:700;color:var(--text)" /></div>
+        <button class="k-btn" type="submit">Tìm</button>
+    </form>
+    @if (Model.Q is null)
     {
-        <div class="empty"><div class="b" style="font-size:16px;color:var(--text-2)">Không thấy bài con cần?</div><div style="font-size:14px;margin-top:4px">Nhờ ba mẹ giao thêm bài nhé.</div></div>
+        <div class="k-note">Con gõ tên bài, tên môn hoặc chủ đề rồi bấm Tìm nhé. Con chỉ thấy bài ba mẹ và thầy cô đã chọn cho con.</div>
+    }
+    else if (Model.Blocked)
+    {
+        <div class="empty"><div class="b" style="font-size:16px;color:var(--text-2)">Từ này không dùng để tìm được.</div><div style="font-size:14px;margin-top:4px">Con thử từ khác hoặc hỏi ba mẹ nhé.</div></div>
+    }
+    else
+    {
+        <div class="k-note">@Model.Results.Count bài phù hợp</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px">
+            @foreach (var card in Model.Results)
+            {
+                <partial name="_LessonCard" model="card" />
+            }
+        </div>
+        @if (Model.Results.Count == 0)
+        {
+            <div class="empty"><div class="b" style="font-size:16px;color:var(--text-2)">Không thấy bài con cần?</div><div style="font-size:14px;margin-top:4px">Nhờ ba mẹ giao thêm bài nhé.</div></div>
+        }
     }
 }
 </main>
