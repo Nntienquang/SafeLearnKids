@@ -34,7 +34,7 @@ Mở http://localhost:5000. Chi tiết cấu hình SQL xem `README.md` mục "Ch
 |---|---|---|
 | **Admin** | `dotnet user-secrets set "Bootstrap:AdminEmail" "..."` và `"Bootstrap:AdminPassword" "..."` rồi khởi động lại app | `/register` chỉ tạo được Phụ huynh |
 | **Phụ huynh A** | `/register` → xác minh email | Dùng làm luồng chính |
-| **Phụ huynh B** (nên có) | `/register` | Để demo "gia đình khác không thấy bài riêng", "Tôi cũng cần" |
+| **Phụ huynh B** (nên có) | `/register` → **tạo 1 bé** | Để demo "gia đình khác không thấy bài riêng", "Tôi cũng cần". Chưa có bé thì mọi trang của B bị đẩy về `/onboarding` |
 | **Bé** | Phụ huynh tạo hồ sơ ở `/onboarding` | Bé **không có tài khoản riêng**, học trên phiên của ba mẹ |
 
 Mật khẩu: ít nhất 8 ký tự, có chữ thường và chữ số.
@@ -60,9 +60,9 @@ Nhiều chức năng chỉ hiện khi dữ liệu phía trước đã có. Làm 
 1. **Admin** `/admin-catalog`: có ít nhất 1 môn **đang dùng**, áp dụng cho lớp của bé.
 2. **Admin** `/admin-curate`: thêm 1 nguồn YouTube → **"Duyệt nguồn"** → **"Đồng bộ video"** → `/admin-videos` **"Duyệt"** vài video.
 3. **Admin** `/admin-lesson/new`: tạo bài đúng môn và lớp, thêm nội dung (bài đọc + video đã duyệt) → **"Xuất bản"**.
-4. **Admin** `/admin-questions`: tạo 3–5 câu hỏi cho bài → **"Duyệt"** → **"Tạo bài tập"** (trạng thái Đang mở).
+4. **Admin** `/admin-questions`: tạo 3–5 câu hỏi cho bài → bấm **"Duyệt"** từng câu → **"Tạo bài tập"** (trạng thái Đang mở).
 5. **Admin** `/admin-paths`, `/admin-badges`: 1 lộ trình, vài huy hiệu (Sprint 7).
-6. **Phụ huynh** `/onboarding`: tạo bé đúng lớp, **tick đồng ý** chính sách dữ liệu, chọn đúng môn ở bước "Chọn môn và giờ học".
+6. **Phụ huynh** `/onboarding`: tạo bé đúng lớp, **tick đồng ý** chính sách dữ liệu. Bé tự nhận mọi môn đang dùng **lúc tạo**; nếu bước 1 làm sau khi tạo bé thì vào `/profiles` → **"Sửa"** để thêm môn.
 7. **Phụ huynh** `/pin`: đặt PIN chế độ trẻ.
 
 ### 0.5 Chạy test tự động của sprint (tuỳ chọn, để có bằng chứng)
@@ -74,7 +74,7 @@ py scripts\smoke-<ten>.py
 
 | Sprint | Script |
 |---|---|
-| 1 | `smoke-sql-auth.py`, `check-auth-regressions.py`, `smoke-admin-users.py`, `smoke-child-access.py` |
+| 1 | `smoke-sql-auth.py`, `check-auth-regressions.py`, `smoke-admin-users.py`, `smoke-child-access.py`, `smoke-pin.py` (mọi trường hợp PIN) |
 | 2 | `smoke-catalog.py`, `smoke-family.py` |
 | 3 | `smoke-sources.py` |
 | 4 | `smoke-learning.py` |
@@ -166,17 +166,18 @@ Nút **"Chế độ trẻ"** ở thanh trên cùng chuyển sang màn hình củ
 3. **"Chi tiết"** một phụ huynh: **"Khóa tài khoản"** / **"Mở khóa"**, đổi vai trò → **"Lưu vai trò"**, **"Gửi email đặt lại mật khẩu"**, **"Gửi lại email xác minh"**, **"Xóa tài khoản"**. Bên dưới có lịch sử đăng nhập.
 
 **D. Hồ sơ bé (US-06, 07)**
-1. `/onboarding` (menu **Thêm hồ sơ bé**; lần đầu đăng nhập chưa có bé cũng tự chuyển tới đây), gồm 3 bước:
-   - **Bước 2 / 4, hồ sơ của bé:** chọn nhân vật, nhập **"Tên hoặc biệt danh của bé"**, chọn **Lớp** 1–5, **"Năm sinh (không bắt buộc)"**, tick ô đồng ý **Chính sách dữ liệu trẻ em** → **"Tiếp tục"**.
-   - **Bước 3 / 4, chọn môn và giờ học** → **"Tiếp tục"**.
-   - **Bước 4 / 4, đặt mã PIN** → **"Tiếp tục"**. Nút **"Quay lại"** để về bước trước.
-2. `/profiles`: danh sách bé, các nút **"Thêm bé"**, **"Giao bài"**, **"Giờ học"**, **"Vào học"**; sửa hoặc xóa hồ sơ.
+1. `/onboarding` (menu **Thêm hồ sơ bé**). Lần đầu đăng nhập khi chưa có bé, **mọi trang phụ huynh đều tự chuyển về đây**.
+   - Chỉ có **một màn hình**: chọn nhân vật, nhập **"Tên hoặc biệt danh của bé"**, chọn **Lớp** 1–5, **"Năm sinh (không bắt buộc)"**, tick ô đồng ý **Chính sách dữ liệu trẻ em** → **"Tiếp tục"** → hồ sơ được tạo ngay, chuyển về `/parent-home`.
+   - Thanh bên trái ghi "3 Chọn môn và giờ học", "4 Đặt mã PIN" nhưng đó chỉ là hình minh họa, không có màn hình riêng.
+   - Bé được **tự gán mọi môn đang dùng tại thời điểm tạo**. Môn admin tạo sau đó sẽ không tự thêm cho bé; muốn thêm thì vào `/profiles` → **"Sửa"**.
+2. `/profiles`: mỗi thẻ bé có **"Sửa"** (đổi tên, lớp, môn), **"Giờ học"**, **"Vào học"**; ô "Thêm bé thứ N" khi chưa đủ 4 bé.
 
 **E. PIN và chế độ trẻ (US-08, 09)**
+0. Bé mới tạo và tài khoản mới **chưa có PIN nào**. Hệ thống nhắc ở 2 chỗ: mục "Cần ba mẹ xem" trên `/parent-home` và khung **"Dành cho ba mẹ"** khi bấm "Chế độ trẻ"; cả hai có nút dẫn tới `/pin`.
 1. `/pin`: **"Đặt PIN"** cho chế độ trẻ (4 số, phải nhập mật khẩu tài khoản).
-2. Mục "PIN riêng của từng bé": **"Đặt PIN"** cho bé (không bắt buộc), **"Bỏ PIN"** để gỡ.
+2. Mục "PIN riêng của từng bé": **"Đặt PIN"** cho bé (không bắt buộc, nên dùng khi nhà có từ 2 bé), **"Bỏ PIN"** để gỡ.
 3. Bấm **"Chế độ trẻ"** ở thanh trên → `/kids-picker` → chọn bé → (bé có PIN thì nhập PIN) → **"Vào học"** → `/kids-home`.
-4. Thoát: **"Dành cho ba mẹ (cần PIN)"** → `/kids-exit` → bấm số PIN → **"Mở khóa"**. Quên PIN thì **"Mở khóa bằng mật khẩu"**.
+4. Thoát: **"Dành cho ba mẹ (cần PIN)"** → `/kids-exit` → bấm 4 số PIN trên bàn phím số. **Bấm đủ số thứ 4 là tự gửi**, không cần bấm "Mở khóa" (nút "Mở khóa" chỉ dùng khi gõ PIN bằng bàn phím máy tính). Quên PIN thì **"Mở khóa bằng mật khẩu"**.
 
 **F. Đồng ý xử lý dữ liệu của bé (US-10)**
 - `/privacy`: mỗi bé có trạng thái đồng ý, nút **"Rút đồng ý"** / **"Đồng ý"**.
@@ -198,6 +199,14 @@ Nút **"Chế độ trẻ"** ở thanh trên cùng chuyển sang màn hình củ
 | Không tick ô đồng ý khi tạo bé | Không tạo được |
 | Đang ở chế độ trẻ, gõ `/parent-home` | Bị đưa về `/kids-home` |
 | Nhập sai PIN của bé 5 lần | Riêng bé đó khóa 5 phút, các bé khác vẫn vào được |
+| Ba mẹ **chưa đặt PIN**, xem `/parent-home` | Mục "Cần ba mẹ xem" có dòng **"Chưa đặt mã PIN chế độ trẻ"** kèm nút **"Đặt PIN"**. Đặt PIN xong thì dòng này biến mất |
+| Ba mẹ **chưa đặt PIN** mà bấm **"Chế độ trẻ"** | Màn hình chọn bé hiện khung vàng **"Dành cho ba mẹ: Ba mẹ chưa đặt mã PIN chế độ trẻ…"** kèm nút **"Đặt PIN ngay"**; nút thoát ghi **"Dành cho ba mẹ (cần mật khẩu)"**. Trang phụ huynh vẫn bị khóa khi bé đã vào học |
+| Bé chọn xong, quay lại màn hình chọn bé để đổi bạn | Khung "Dành cho ba mẹ" **không** hiện nữa (lời nhắc chỉ dành cho lúc ba mẹ vừa mở) |
+| Thoát khi chưa có PIN ba mẹ | `/kids-exit` hiện "Ba mẹ nhập mật khẩu" và "Ba mẹ chưa đặt PIN nên cần mật khẩu tài khoản…". Sai mật khẩu: "Mật khẩu chưa đúng. Còn N lần thử." |
+| Nhà có **từ 2 bé**, có bé **chưa có PIN riêng** | Khung "Dành cho ba mẹ" nêu tên các bé chưa có PIN riêng; trang Tổng quan có dòng "[tên bé] chưa có PIN riêng" ở cuối danh sách. Bấm vào thẻ bé vẫn vào học ngay vì PIN riêng không bắt buộc. Nhà **1 bé** thì không nhắc PIN riêng |
+| Bé có PIN riêng | Thẻ ghi "· có mã PIN", bấm vào phải nhập PIN; đổi sang bé khác rồi quay lại vẫn phải nhập lại |
+| Ba mẹ đổi PIN (của ba mẹ hoặc của bé) | PIN cũ hết tác dụng ngay. Đặt PIN mới cho bé đang bị khóa sẽ **gỡ khóa** luôn |
+| Sai PIN ba mẹ 5 lần ở `/kids-exit` | Khóa 5 phút, trong lúc khóa nhập đúng PIN hay mật khẩu đều chưa thoát được; máy của ba mẹ không bị ảnh hưởng |
 | `/privacy` **"Rút đồng ý"** một bé | Ở `/kids-picker` hồ sơ bé đó bị khóa |
 | Admin khóa tài khoản đang đăng nhập ở máy khác | Máy kia bị đăng xuất ngay ở lần bấm tiếp theo |
 
@@ -349,8 +358,8 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 - `/history` → chọn bé: bài đã học, tiến độ, số phút 14 ngày, từ khóa đã tìm (kể cả bị chặn), báo cáo của bé, bài tập đã làm → **"Xuất CSV"**.
 
 **D. Báo cáo nội dung không phù hợp (US-33, 34)**
-1. Bé: cuối trang bài học, mục **"Bài này có gì lạ?"** → chọn lý do → **"Gửi cho ba mẹ"**.
-2. Phụ huynh: trang `/lesson-detail/{id}` → chọn **"Lý do"**, **"Ghi chú"** → **"Gửi báo cáo"**.
+1. Bé: cột phải trang bài học, **bấm mở** mục thu gọn **"▸ Bài này có gì lạ?"** → chọn lý do → **"Gửi cho ba mẹ"**.
+2. Phụ huynh: trang `/lesson-detail/{id}` → **bấm mở** mục thu gọn **"Báo cáo nội dung này"** → chọn **"Lý do"**, **"Ghi chú"** → **"Gửi báo cáo"**.
 3. Admin `/admin-reports` → tab **"Cần xử lý"** → **"Nhận xem"** → **"Mở bài"** / **"Xem video"** để kiểm tra → **"Giữ nội dung"** hoặc **"Chặn video"** / **"Gỡ bài học"** (bắt buộc ghi kết quả).
 4. Gia đình nhận thông báo; kết quả hiện trong `/history`.
 
@@ -376,8 +385,8 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 ### Luồng chính
 
 **A. Ngân hàng câu hỏi (US-35, 40)**
-1. Admin `/admin-questions` → chọn bài học → **"Câu hỏi mới"** → loại Trắc nghiệm (2–4 đáp án, đúng 1 đáp án đúng) hoặc Đúng/Sai, độ khó 1–3, giải thích đáp án → **"Thêm câu hỏi"**.
-2. Ở danh sách: **"Duyệt"**, **"Từ chối"**, **"Lưu trữ"**, **"Khôi phục"**, **"Sửa"**.
+1. Admin `/admin-questions` → chọn bài học → **"Câu hỏi mới"** → loại Trắc nghiệm (2–4 đáp án, đúng 1 đáp án đúng) hoặc Đúng/Sai, độ khó 1–3, giải thích đáp án → **"Thêm câu hỏi"**. Câu mới lưu ở trạng thái **Nháp**.
+2. Ở danh sách, **bấm "Duyệt" từng câu** (bắt buộc, câu Nháp không đưa vào bài tập được). Các nút khác: **"Từ chối"**, **"Lưu trữ"**, **"Khôi phục"**, **"Sửa"**.
 3. **"Gợi ý câu hỏi"** (1–5 câu): câu gợi ý vào **"Chờ duyệt"**. Không có `Ai:ApiKey` thì dùng bộ sinh offline; có key thì gọi Claude.
 
 **B. Tạo bài tập (US-36)**
@@ -388,7 +397,7 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 
 **D. Bé làm bài và xem kết quả (US-38, 39)**
 1. Bé mở bài học → bấm tên bài tập → `/kids-quiz`.
-2. Làm từng câu: **"Câu trước"** / **"Câu tiếp theo"**, có đồng hồ đếm ngược → **"Nộp bài"**.
+2. Làm từng câu, có đồng hồ đếm ngược. **Bấm vào đáp án là tự chuyển sang câu sau** (sau khoảng nửa giây). Đừng bấm thêm **"Câu tiếp theo"** sau khi chọn, vì sẽ nhảy qua mất một câu; nút đó chỉ dùng để bỏ qua câu chưa muốn trả lời, **"Câu trước"** để quay lại. Ở câu cuối → **"Nộp bài"**.
 3. `/kids-result`: điểm, số sao, đáp án đã chọn, đáp án đúng, giải thích. Nút **"Làm lại"**, **"Xem lại bài học"**, **"Về trang học"**.
 4. Phụ huynh: `/history` mục "Bài tập đã làm" → `/quiz-result/{id}` xem từng câu.
 
@@ -464,7 +473,7 @@ Trạng thái bài: **Bản nháp → Chờ duyệt → Đã xuất bản → L�
 
 **E. Dữ liệu của bé (US-52)**
 1. Phụ huynh `/privacy` → **"Tải dữ liệu (JSON)"**.
-2. Yêu cầu xóa: gõ đúng tên bé để xác nhận → **"Gửi yêu cầu xóa"**; chưa xử lý thì **"Hủy yêu cầu"**.
+2. Yêu cầu xóa: **bấm mở** mục thu gọn **"Yêu cầu xóa hồ sơ và dữ liệu"** dưới thẻ bé → gõ đúng tên bé để xác nhận → **"Gửi yêu cầu xóa"**; chưa xử lý thì **"Hủy yêu cầu"**.
 3. Admin `/admin-data-requests` → tab **"Cần xử lý"** → **"Xóa dữ liệu"** hoặc **"Từ chối"** (kèm lý do). Phụ huynh nhận thông báo.
 
 ### Ca lỗi nên demo
@@ -504,10 +513,14 @@ Ca lỗi: đăng nhập phụ huynh B, bài riêng của A không hiện; A sử
 | **"Xuất bản"** bị từ chối | Bài chưa có nội dung, môn đang ẩn, hoặc có video bị chặn/nguồn bị tạm ngưng | Thêm nội dung, bật môn, thay video |
 | Video không phát | Video hoặc nguồn chưa duyệt, gia đình chặn nguồn, máy không có mạng | Kiểm tra `/admin-videos`, `/admin-curate`, `/sources` |
 | Đồng bộ nguồn lỗi | Link dạng `@tên-kênh`, hoặc không có mạng | Dùng link `channel/UC...` hoặc `playlist?list=...` |
+| Bấm "Đồng bộ video" phải chờ lâu | App tải danh sách từ YouTube qua mạng và ghi tới 200 video; mạng chậm có thể mất 10–20 giây | Chờ trang tải xong, đừng bấm lại |
 | Bé không thấy bài tập | Bài tập chưa "Đang mở" hoặc chưa có câu đã duyệt | Duyệt câu hỏi, mở bài tập |
 | Đặt 1 phút mà chưa hết giờ | Chỉ tính khi đang ở trang bài học/làm bài, nhịp 30 giây | Để nguyên trang bài học 1–1,5 phút |
 | Gợi ý câu hỏi không giống AI | Không có `Ai:ApiKey`, đang dùng bộ offline | Nói rõ khi báo cáo; có key thì đặt bằng `dotnet user-secrets set "Ai:ApiKey" "..."` |
 | Sửa code `Program.cs` không thấy thay đổi | Chưa khởi động lại app | Dừng app và chạy lại |
+| Phụ huynh bấm menu nào cũng về `/onboarding` | Tài khoản chưa có bé nào | Tạo 1 hồ sơ bé |
+| Không thấy ô chọn lý do báo cáo / ô gõ tên khi xóa dữ liệu | Nằm trong mục thu gọn ("Bài này có gì lạ?", "Báo cáo nội dung này", "Yêu cầu xóa hồ sơ và dữ liệu") | Bấm vào tiêu đề mục để mở |
+| `py scripts\smoke-sources.py` báo FAIL "the review queue lists pending videos" | DB đang có rất nhiều video chờ duyệt (trên 24, tức hơn 1 trang); video giả của test có ngày đăng cũ nên nằm ở trang sau. Đây là giới hạn của test, không phải lỗi chức năng | Chạy test trên DB ít video (hoặc duyệt/chặn bớt hàng chờ), hoặc chụp kết quả các test khác |
 
 ---
 
@@ -525,3 +538,35 @@ Ca lỗi: đăng nhập phụ huynh B, bài riêng của A không hiện; A sử
 | 8 | `/weekly` **"In / lưu PDF"** → `/admin-home` → `/admin-stats` 30 ngày, **"CSV bài học"** → `/notifications` → `/privacy` **"Tải dữ liệu (JSON)"**, **"Gửi yêu cầu xóa"** → admin `/admin-data-requests` → `/admin-audit` thấy thao tác vừa làm |
 
 Kết thúc mỗi demo nên mở `/admin-audit` để chứng minh thao tác đã được ghi nhật ký, và mở bảng tương ứng trong SQL Server (xem `docs/HOC-DATABASE.md`) để chứng minh dữ liệu đã lưu thật.
+
+---
+
+## 11. Kết quả kiểm thử toàn bộ luồng (25/11/2026)
+
+Kiểm thử bằng 3 cách, trên bản code branch `sprint1-user-management`:
+
+**A. Bộ test tự động có sẵn** (`scripts/smoke-*.py`, gọi HTTP thật vào app + SQL Server):
+
+| Bộ test | Kết quả |
+|---|---|
+| `smoke-sql-auth` / `check-auth-regressions` / `smoke-admin-users` / `smoke-child-access` | 72/72 · 82/82 · 137/137 · 43/43 |
+| `smoke-pin` (mới: mọi trường hợp PIN ba mẹ, PIN riêng của bé, các lời nhắc khi chưa có PIN) | 64/64 |
+| `smoke-catalog` / `smoke-family` | 68/68 · 60/60 |
+| `smoke-sources` | 76/76 trên DB có ít video chờ duyệt (xem lưu ý bên dưới) |
+| `smoke-learning` / `smoke-time` / `smoke-quiz` | 52/52 · 56/56 · 69/69 |
+| `smoke-progress` / `smoke-home` / `smoke-reports` | 62/62 · 21/21 · 72/72 |
+
+Lưu ý: trên DB đang có hơn 24 video chờ duyệt, `smoke-sources` dừng ở bước "the review queue lists pending videos" vì video giả của test nằm ở trang 2 của hàng chờ. Đây là giới hạn của test, không phải lỗi chức năng (xem bảng gỡ vướng mục 9).
+
+**B. Đi theo đúng file hướng dẫn này trong trình duyệt thật** (Playwright, 4 cửa sổ: admin, phụ huynh A, máy của bé, phụ huynh B), trên database mới dựng từ `database/01-schema.sql` + `02-reference-data.sql`, admin tạo bằng `Bootstrap:AdminEmail`: **89/89 bước PASS**, gồm luồng chính và ca lỗi của Sprint 1 → 8 và phần mở rộng. Một số số liệu thực tế:
+- Đặt giới hạn 1 phút → bé bị chuyển sang `/kids-time-up` sau khoảng 60 giây.
+- "Đánh giá" nguồn kênh YouTube thật cho 70 điểm (`rule-v1`); đồng bộ RSS lấy về 200 video.
+- Làm bài tập đúng 3/3 → 100%, Đạt; trang kết quả và `/quiz-result/{id}` có giải thích.
+- Bé gõ địa chỉ bài không được mở → 404. Phụ huynh gõ `/admin-users` → 403.
+- Không có lỗi JavaScript trên mọi trang đã đi qua.
+
+**C. Quét toàn bộ giao diện** (`scripts/crawl-ui.py`, 130 trang với 4 vai): 0 lỗi server, 0 link hỏng, 0 lỗi script, 0 trang tràn ngang trên điện thoại. Có 1 "nút không phản hồi" là ô lớp "3" ở `/onboarding`, vốn đã được chọn sẵn nên bấm lại không đổi gì (báo động giả).
+
+**Bổ sung sau rà soát luồng PIN:** trước đây khi chưa có PIN, hệ thống không nhắc gì lúc vào chế độ trẻ. Nay đã thêm lời nhắc ở trang Tổng quan và ở màn hình chọn bé, nút thoát ghi đúng "cần PIN" hoặc "cần mật khẩu", và có bộ test riêng `smoke-pin.py`. Sau thay đổi đã chạy lại toàn bộ: 14 bộ smoke đạt (riêng `smoke-sources` theo lưu ý trên), kịch bản trình duyệt 88/89 (bước còn lại là "Đồng bộ video" chờ mạng quá 12 giây nhưng vẫn đồng bộ đủ 200 video), `crawl-ui` 0 lỗi.
+
+**Những điểm hướng dẫn cũ ghi chưa đúng, đã sửa trong file này:** onboarding chỉ có 1 màn hình; thẻ bé ở `/profiles` có "Sửa / Giờ học / Vào học" (không có "Giao bài"); bàn phím PIN tự mở khóa khi đủ 4 số; câu hỏi mới lưu ở Nháp nên phải bấm "Duyệt"; báo cáo nội dung và yêu cầu xóa dữ liệu nằm trong mục thu gọn; phụ huynh chưa có bé bị đẩy về `/onboarding`; chọn đáp án là tự sang câu sau.

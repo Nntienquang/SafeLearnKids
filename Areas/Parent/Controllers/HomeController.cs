@@ -11,7 +11,7 @@ namespace SafeLearnKids.Web.Areas.Parent.Controllers;
 // The parent's home: today, this week and what needs attention for one child, all from SQL.
 [Area("Parent")]
 [Authorize(Roles = "Parent")]
-public class HomeController(KidContext kids, IServiceProvider services) : Controller
+public class HomeController(KidContext kids, ParentSettings settings, IServiceProvider services) : Controller
 {
     [HttpGet("parent-home")]
     public async Task<IActionResult> Index(int? child, CancellationToken cancellationToken)
@@ -39,9 +39,15 @@ public class HomeController(KidContext kids, IServiceProvider services) : Contro
         var attention = new List<HomeAttention>();
         if (!await ChildConsent.Active(db, parentId).AnyAsync(item => item.ChildProfileId == chosen.Id, cancellationToken))
             attention.Add(new HomeAttention("shield", "t-r", $"Chưa đồng ý xử lý dữ liệu của {chosen.Name}", "Bé chưa vào học được cho tới khi ba mẹ đồng ý.", "/privacy", "Xem"));
+        // US-50: without a parent PIN, leaving child mode asks for the account password.
+        if ((await settings.FindAsync(parentId, cancellationToken))?.ParentPinHash is null)
+            attention.Add(new HomeAttention("key", "t-a", "Chưa đặt mã PIN chế độ trẻ", "Khi rời chế độ trẻ, ba mẹ phải nhập mật khẩu tài khoản. Đặt PIN 4 số để mở khóa nhanh hơn.", "/pin", "Đặt PIN"));
         attention.AddRange(pending.Select(item => new HomeAttention("clock", "t-a", $"{chosen.Name} xin thêm {item.RequestedMinutes} phút", item.Reason ?? "Không ghi lời nhắn", $"/time?child={chosen.Id}", "Trả lời")));
         attention.AddRange(weak.Select(item => new HomeAttention("alert", "t-r", "Bài tập chưa đạt: " + item.Title, $"Điểm cao nhất {item.Best:0.#}% (cần {item.PassPercent}%)", $"/quiz-result/{item.Last}", "Xem bài")));
         attention.AddRange(notices.Select(item => new HomeAttention(NotificationKind.Icon(item.NotificationType), NotificationKind.Tone(item.NotificationType), item.Title, item.Body, item.LinkUrl ?? "/notifications", "Xem")));
+        // US-08: a child's own PIN is optional and only matters with siblings, so it is the last and lowest reminder.
+        if (choices.Count >= 2 && await db.ChildProfiles.AnyAsync(item => item.Id == chosen.Id && item.PinHash == null, cancellationToken))
+            attention.Add(new HomeAttention("key", "t-n", $"{chosen.Name} chưa có PIN riêng", "Không bắt buộc. Có PIN riêng thì anh chị em không vào nhầm hồ sơ của nhau.", "/pin", "Đặt PIN"));
         var status = await StudyTimeService.StatusAsync(db, chosen.Id, cancellationToken);
         var continuing = await db.LessonActivities.AsNoTracking().Where(item => item.ChildProfileId == chosen.Id && item.Status == "Started")
             .OrderByDescending(item => item.UpdatedAt)

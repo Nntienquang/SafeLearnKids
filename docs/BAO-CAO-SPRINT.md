@@ -65,7 +65,9 @@ Mẹo đọc code nhanh:
 - `Areas/Parent/Controllers/PrivacyController.cs`, `Views/Privacy/Index.cshtml`
 - Ý chính: phải tick đồng ý khi tạo hồ sơ; rút đồng ý được; chưa đồng ý thì bé không vào học.
 
-**Test:** `scripts/smoke-sql-auth.py`, `check-auth-regressions.py`, `smoke-admin-users.py`, `smoke-child-access.py`
+**Test:** `scripts/smoke-sql-auth.py`, `check-auth-regressions.py`, `smoke-admin-users.py`, `smoke-child-access.py`, `smoke-pin.py`
+
+**Nhắc khi chưa có PIN:** `Parent/HomeController` (mục "Cần ba mẹ xem") và `Kids/Views/Learn/Picker.cshtml` (khung "Dành cho ba mẹ", chỉ hiện khi ba mẹ vừa mở chế độ trẻ, chưa chọn bé).
 
 **Demo:** `/register` → mail xác minh → `/login` → `/onboarding` (tick đồng ý) → `/pin` → `/kids-picker`
 

@@ -23,7 +23,6 @@ if(P==='kids-picker'){
   var cs=S.get().children;
   var row=$('main > div[style*="gap:24px"]');
   row.addEventListener('click',function(e){var a=e.target.closest('[data-c]');if(!a)return;S.set(function(s){s.kidsChild=a.dataset.c;});});
-  var par=$('main > a.sl-btn');par.innerHTML='<i class="ic ic-lock"></i>Dành cho ba mẹ (cần PIN)';
   S.set(function(s){s.kidsChild=null;});
 }
 
