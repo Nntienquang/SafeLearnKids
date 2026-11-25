@@ -91,4 +91,8 @@ public class KidPickerViewModel
     // The child whose PIN is being asked for, and the message to show.
     public int? Ask { get; init; }
     public string? Error { get; init; }
+    // The parent PIN exists (leaving child mode asks for it; otherwise the account password is asked).
+    public bool ParentHasPin { get; init; } = true;
+    // The parent opened the picker (child mode not started yet), so a reminder about missing PINs is shown and /pin is reachable.
+    public bool ParentMode { get; init; }
 }

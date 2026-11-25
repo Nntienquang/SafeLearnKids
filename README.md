@@ -235,8 +235,12 @@ Kiểm thử: `py scripts\smoke-family.py` sau khi build.
   - Xóa hồ sơ bé thì xóa luôn bản ghi đồng ý của bé.
 - **Lưu ý khi cập nhật:** các hồ sơ bé tạo trước bản này chưa có bản ghi đồng ý. Ba mẹ vào `/privacy` bấm "Đồng ý" một lần cho từng bé; trang Tổng quan có nhắc việc này.
 - Form có `data-confirm` giờ hỏi xác nhận trên mọi trang. Trước đây chỉ trang admin có hộp xác nhận.
+- **Nhắc khi chưa có PIN:** tài khoản và bé mới tạo chưa có PIN nào.
+  - Trang Tổng quan, mục "Cần ba mẹ xem", nhắc "Chưa đặt mã PIN chế độ trẻ". Khi nhà có từ 2 bé, trang này nhắc thêm "[tên bé] chưa có PIN riêng" ở cuối danh sách, vì PIN riêng không bắt buộc.
+  - Khi ba mẹ bấm "Chế độ trẻ", màn hình chọn bé hiện khung "Dành cho ba mẹ" kèm nút "Đặt PIN ngay". Khung này không hiện khi bé đang đổi bạn trong chế độ trẻ.
+  - Nút thoát ghi "(cần PIN)" hoặc "(cần mật khẩu)" đúng theo việc ba mẹ đã đặt PIN hay chưa.
 
-Kiểm thử: `py scripts\smoke-child-access.py`.
+Kiểm thử: `py scripts\smoke-child-access.py` và `py scripts\smoke-pin.py` (mọi trường hợp PIN của ba mẹ và của bé, cùng các lời nhắc).
 
 ## Trang tổng quan phụ huynh
 

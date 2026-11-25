@@ -65,7 +65,12 @@ public class LearnController(KidContext kids, ParentSettings settings, Microsoft
         var withPin = await db.ChildProfiles.AsNoTracking().Where(item => item.ParentId == parentId && item.IsActive && item.PinHash != null)
             .Select(item => item.Id).ToListAsync(cancellationToken);
         var consented = await ChildConsent.Active(db, parentId).Select(item => item.ChildProfileId!.Value).ToListAsync(cancellationToken);
-        return new KidPickerViewModel { Kids = choices, WithPin = withPin.ToHashSet(), Consented = consented.ToHashSet(), Ask = ask, Error = error };
+        return new KidPickerViewModel
+        {
+            Kids = choices, WithPin = withPin.ToHashSet(), Consented = consented.ToHashSet(), Ask = ask, Error = error,
+            ParentHasPin = (await settings.FindAsync(parentId, cancellationToken))?.ParentPinHash is not null,
+            ParentMode = !await kids.InChildModeAsync(cancellationToken)
+        };
     }
 
     // US-50: leaving child mode needs the parent PIN, or the account password when no PIN is set.

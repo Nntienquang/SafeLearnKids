@@ -12,6 +12,31 @@
 {
     <div class="banner t-r" role="alert" style="font-weight:700;max-width:560px">@Model.Error</div>
 }
+@{
+    // Shown to the parent only, before child mode starts: which PINs are missing and what that means.
+    // A child's own PIN only matters with siblings (it keeps them out of each other's profile), so it is mentioned from two children on.
+    var noChildPin = Model.Kids.Count >= 2
+        ? Model.Kids.Where(kid => Model.Consented.Contains(kid.Id) && !Model.WithPin.Contains(kid.Id)).Select(kid => kid.Name).ToList()
+        : [];
+}
+@if (Model.ParentMode && (!Model.ParentHasPin || noChildPin.Count > 0))
+{
+    <div class="banner t-a" role="status" data-pin-notice style="max-width:620px;font-size:14.5px">
+        <i class="ic ic-key"></i>
+        <div class="grow" style="min-width:0;flex:1 1 300px">
+            <div class="b">Dành cho ba mẹ</div>
+            @if (!Model.ParentHasPin)
+            {
+                <div data-no-parent-pin>Ba mẹ chưa đặt mã PIN chế độ trẻ. Khi rời chế độ trẻ, ba mẹ sẽ phải nhập mật khẩu tài khoản.</div>
+            }
+            @if (noChildPin.Count > 0)
+            {
+                <div data-no-child-pin>@string.Join(", ", noChildPin) chưa có PIN riêng nên bấm vào là vào học ngay (PIN riêng của bé không bắt buộc).</div>
+            }
+        </div>
+        <a class="sl-btn sl-btn-sm" href="/pin" data-set-pin>Đặt PIN ngay</a>
+    </div>
+}
 <div style="display:flex;flex-wrap:wrap;gap:24px;justify-content:center">
     @for (var i = 0; i < Model.Kids.Count; i++)
     {
@@ -54,4 +79,4 @@
 {
     <div class="empty">Chưa có hồ sơ bé. Ba mẹ hãy tạo hồ sơ trước nhé.</div>
 }
-<a class="sl-btn sl-btn-g" href="~/kids-exit"><i class="ic ic-lock"></i>Dành cho ba mẹ (cần PIN)</a></main>
+<a class="sl-btn sl-btn-g" href="~/kids-exit" data-exit><i class="ic ic-lock"></i>Dành cho ba mẹ (@(Model.ParentHasPin ? "cần PIN" : "cần mật khẩu"))</a></main>
